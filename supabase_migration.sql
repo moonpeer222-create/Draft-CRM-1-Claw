@@ -178,18 +178,14 @@ as $$
 declare
   v_org_id uuid;
 begin
-  -- Use the first existing organization (seed org) or create a fallback
-  select id into v_org_id from public.organizations limit 1;
-
-  if v_org_id is null then
-    insert into public.organizations (name, slug, subscription_status)
-    values (
-      'My Organization',
-      'my-org-' || substr(md5(random()::text), 1, 6),
-      'free'
-    )
-    returning id into v_org_id;
-  end if;
+  -- Create a new organization for every new user
+  insert into public.organizations (name, slug, subscription_status)
+  values (
+    coalesce(new.raw_user_meta_data->>'full_name', new.email) || '''s Organization',
+    'org-' || substr(md5(random()::text), 1, 8),
+    'free'
+  )
+  returning id into v_org_id;
 
   insert into public.profiles (id, email, full_name, organization_id, role)
   values (
