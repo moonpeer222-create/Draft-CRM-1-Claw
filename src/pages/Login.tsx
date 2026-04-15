@@ -14,16 +14,22 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    const { error } = await signIn(email, password);
-
-    if (error) {
-      toast.error(error.message);
-      setIsLoading(false);
-    } else {
-      toast.success('Welcome back!');
-      navigate('/dashboard');
+    
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Welcome back!');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Login failed');
     }
+    
+    setIsLoading(false);
   };
 
   return (
