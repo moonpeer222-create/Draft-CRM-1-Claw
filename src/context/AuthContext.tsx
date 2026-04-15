@@ -4,7 +4,7 @@ import { supabase, getUserProfile } from '../lib/supabaseClient';
 import { Database } from '../lib/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
-  organizations?: { name: string; slug: string; branding: any };
+  organizations?: { name: string; slug: string; branding: any } | null;
 };
 
 interface AuthContextType {

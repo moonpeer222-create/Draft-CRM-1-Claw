@@ -1,7 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Documents from './pages/Documents';
 
 function Dashboard() {
   const { profile, signOut } = useAuth();
@@ -9,14 +10,24 @@ function Dashboard() {
     <div className="min-h-screen p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <button onClick={signOut} className="px-4 py-2 bg-red-600 text-white rounded">Logout</button>
+        <div className="flex items-center space-x-3">
+          <Link
+            to="/documents"
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+          >
+            Documents
+          </Link>
+          <button onClick={signOut} className="px-4 py-2 bg-red-600 text-white rounded">Logout</button>
+        </div>
       </div>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-4">Welcome, {profile?.full_name}</h2>
         <p className="text-gray-600 dark:text-gray-400">Organization: {profile?.organizations?.name}</p>
         <p className="text-gray-600 dark:text-gray-400">Role: {profile?.role}</p>
-        <div className="mt-6 p-4 bg-yellow-100 dark:bg-yellow-900 rounded">
-          <p className="text-sm">⚠️ Next Step: Run the SQL Migration in Supabase Dashboard to enable full multi-tenancy.</p>
+        <div className="mt-6 p-4 bg-emerald-100 dark:bg-emerald-900 rounded">
+          <p className="text-sm text-emerald-800 dark:text-emerald-200">
+            ✅ Multi-tenancy is active. Document upload is ready.
+          </p>
         </div>
       </div>
     </div>
@@ -38,6 +49,11 @@ export default function App() {
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/documents" element={
+        <ProtectedRoute>
+          <Documents />
         </ProtectedRoute>
       } />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
