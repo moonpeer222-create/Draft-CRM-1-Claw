@@ -1,8 +1,15 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\.html$ - [L]
+  Options -MultiViews
+  
+  # Don't rewrite requests for actual files or directories
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  
+  # Redirect everything to index.html
+  RewriteRule ^(.*)$ /index.html [QSA,L]
 </IfModule>
+
+# Fallback: if mod_rewrite is off, at least handle 404s
+ErrorDocument 404 /index.html
