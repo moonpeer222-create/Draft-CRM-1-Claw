@@ -81,7 +81,7 @@ export interface Database {
           destination_country: string | null
           status: string
           priority: string
-          meta: Json
+          metadata: Json
           created_at: string
           updated_at: string
         }

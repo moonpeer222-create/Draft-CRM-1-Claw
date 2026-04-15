@@ -11,7 +11,7 @@ create extension if not exists "uuid-ossp";
 -- ============================================================================
 
 -- ORGANIZATIONS (Tenants)
-create table organizations (
+create table public.organizations (
   id uuid default uuid_generate_v4() primary key,
   name text not null,
   slug text unique not null,
@@ -23,23 +23,23 @@ create table organizations (
 );
 
 -- PROFILES (Users linked to Auth)
-create table profiles (
+create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
   email text not null,
   full_name text,
   role text default 'agent', -- master_admin, admin, agent, customer
-  organization_id uuid references organizations(id),
+  organization_id uuid references public.organizations(id),
   avatar_url text,
   last_seen timestamptz default now(),
   created_at timestamptz default now()
 );
 
 -- CASES (Visa Applications)
-create table cases (
+create table public.cases (
   id uuid default uuid_generate_v4() primary key,
-  organization_id uuid references organizations(id) not null,
-  client_id uuid references profiles(id),
-  agent_id uuid references profiles(id),
+  organization_id uuid references public.organizations(id) not null,
+  client_id uuid references public.profiles(id),
+  agent_id uuid references public.profiles(id),
   case_number text not null,
   visa_type text,
   destination_country text,
@@ -51,11 +51,11 @@ create table cases (
 );
 
 -- DOCUMENTS
-create table documents (
+create table public.documents (
   id uuid default uuid_generate_v4() primary key,
-  organization_id uuid references organizations(id) not null,
-  case_id uuid references cases(id) on delete cascade,
-  uploaded_by uuid references profiles(id),
+  organization_id uuid references public.organizations(id) not null,
+  case_id uuid references public.cases(id) on delete cascade,
+  uploaded_by uuid references public.profiles(id),
   file_name text not null,
   file_path text not null,
   file_type text,
@@ -65,10 +65,10 @@ create table documents (
 );
 
 -- AUDIT LOGS (Security & Compliance)
-create table audit_logs (
+create table public.audit_logs (
   id uuid default uuid_generate_v4() primary key,
-  organization_id uuid references organizations(id),
-  user_id uuid references profiles(id),
+  organization_id uuid references public.organizations(id),
+  user_id uuid references public.profiles(id),
   action text not null,
   table_name text,
   record_id uuid,
@@ -82,53 +82,65 @@ create table audit_logs (
 -- 3. INDEXES FOR PERFORMANCE
 -- ============================================================================
 
-create index idx_cases_org on cases(organization_id);
-create index idx_cases_status on cases(status);
-create index idx_profiles_org on profiles(organization_id);
-create index idx_docs_case on documents(case_id);
-create index idx_audit_logs_org on audit_logs(organization_id);
-create index idx_audit_logs_user on audit_logs(user_id);
+create index idx_cases_org on public.cases(organization_id);
+create index idx_cases_status on public.cases(status);
+create index idx_profiles_org on public.profiles(organization_id);
+create index idx_docs_case on public.documents(case_id);
+create index idx_audit_logs_org on public.audit_logs(organization_id);
+create index idx_audit_logs_user on public.audit_logs(user_id);
 
 -- ============================================================================
 -- 4. ROW LEVEL SECURITY (RLS) - MULTI-TENANCY ISOLATION
 -- ============================================================================
 
-alter table organizations enable row level security;
-alter table profiles enable row level security;
-alter table cases enable row level security;
-alter table documents enable row level security;
-alter table audit_logs enable row level security;
+alter table public.organizations enable row level security;
+alter table public.profiles enable row level security;
+alter table public.cases enable row level security;
+alter table public.documents enable row level security;
+alter table public.audit_logs enable row level security;
+
+-- Helper function to avoid infinite recursion in RLS policies
+-- Security definer bypasses RLS, so querying profiles here is safe
+create or replace function public.get_current_user_org_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select organization_id from public.profiles where id = auth.uid();
+$$;
 
 -- POLICIES: Users can only see data in their own organization
 
 -- Organizations: Users can see their own org
-create policy "Org isolation select" on organizations
-  for select using ( 
-    id in (select organization_id from profiles where id = auth.uid()) 
+create policy "Org isolation select" on public.organizations
+  for select using (
+    id = public.get_current_user_org_id()
   );
 
--- Profiles: Users can see others in their own org
-create policy "View own org profiles" on profiles
-  for select using ( 
-    organization_id in (select organization_id from profiles where id = auth.uid()) 
+-- Profiles: Users can see their own profile + others in same org
+create policy "Select own or org profiles" on public.profiles
+  for select using (
+    id = auth.uid() or organization_id = public.get_current_user_org_id()
   );
 
 -- Cases: Full CRUD within own org
-create policy "View own org cases" on cases
-  for all using ( 
-    organization_id in (select organization_id from profiles where id = auth.uid()) 
+create policy "CRUD own org cases" on public.cases
+  for all using (
+    organization_id = public.get_current_user_org_id()
   );
 
 -- Documents: Full CRUD within own org
-create policy "View own org docs" on documents
-  for all using ( 
-    organization_id in (select organization_id from profiles where id = auth.uid()) 
+create policy "CRUD own org docs" on public.documents
+  for all using (
+    organization_id = public.get_current_user_org_id()
   );
 
 -- Audit Logs: Select only within own org
-create policy "View own org logs" on audit_logs
-  for select using ( 
-    organization_id in (select organization_id from profiles where id = auth.uid()) 
+create policy "Select own org logs" on public.audit_logs
+  for select using (
+    organization_id = public.get_current_user_org_id()
   );
 
 -- ============================================================================
@@ -136,33 +148,46 @@ create policy "View own org logs" on audit_logs
 -- ============================================================================
 
 -- Auto-update updated_at column
-create or replace function update_updated_at_column()
-returns trigger as $$
+create or replace function public.update_updated_at_column()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
-create trigger update_org_updated_at before update on organizations
-  for each row execute procedure update_updated_at_column();
+create trigger update_org_updated_at
+  before update on public.organizations
+  for each row execute procedure public.update_updated_at_column();
 
-create trigger update_case_updated_at before update on cases
-  for each row execute procedure update_updated_at_column();
+create trigger update_case_updated_at
+  before update on public.cases
+  for each row execute procedure public.update_updated_at_column();
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 declare
   v_org_id uuid;
 begin
-  -- If this is the first user ever, create a demo org for them
-  -- In production, you might want a more complex onboarding flow
-  select id into v_org_id from organizations limit 1;
-  
+  -- Use the first existing organization (seed org) or create a fallback
+  select id into v_org_id from public.organizations limit 1;
+
   if v_org_id is null then
-    insert into organizations (name, slug, subscription_status)
-    values ('My Organization', 'my-org-' || substr(md5(random()::text), 1, 6), 'free')
+    insert into public.organizations (name, slug, subscription_status)
+    values (
+      'My Organization',
+      'my-org-' || substr(md5(random()::text), 1, 6),
+      'free'
+    )
     returning id into v_org_id;
   end if;
 
@@ -170,16 +195,17 @@ begin
   values (
     new.id,
     new.email,
-    new.raw_user_meta_data->>'full_name',
+    coalesce(new.raw_user_meta_data->>'full_name', new.email),
     v_org_id,
-    'admin' -- First user becomes admin
+    'admin'
   );
-  
+
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- Trigger the function on signup
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
@@ -188,7 +214,7 @@ create trigger on_auth_user_created
 -- 6. SEED DATA (Optional - Creates a default org if none exist)
 -- ============================================================================
 
-insert into organizations (id, name, slug, subscription_status) 
+insert into public.organizations (id, name, slug, subscription_status)
 values ('00000000-0000-0000-0000-000000000001', 'Emerald Demo Org', 'emerald-demo', 'pro')
 on conflict (id) do nothing;
 
