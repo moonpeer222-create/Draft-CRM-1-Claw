@@ -15,21 +15,15 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     
-    try {
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success('Welcome back!');
-        navigate('/dashboard', { replace: true });
-        return;
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Login failed');
-    }
+    const { error } = await signIn(email, password);
     
-    setIsLoading(false);
+    if (error) {
+      toast.error(error.message);
+      setIsLoading(false);
+    } else {
+      toast.success('Welcome back!');
+      navigate('/dashboard', { replace: true });
+    }
   };
 
   return (
