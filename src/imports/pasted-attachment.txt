@@ -1,0 +1,116 @@
+Add "Operations page" existing Emerald Visa CRM for Computer Operator role. Keep it EXTREMELY simple (operator has limited education, barely knows Excel).
+
+TECH & DESIGN (Match Existing):
+- Stack: React 18 + Vite + Tailwind v4 + shadcn/ui + Radix UI + MUI + Lucide Icons
+- Theme: Relivant/ Sleek elegant
+- Language: Urdu/English toggle + Roman Urdu support
+- Mobile-responsive (operator may use tablet/phone)
+
+OPERATIONS PAGE REQUIREMENTS (Super Simple):
+
+1. 📁 CASE FOLDER MANAGER:
+   - Big button: "➕ New Case Folder."
+   - Form: Client Name* | Phone* | Destination* → Click "Create"
+   - Auto-generates: Folder ID (EMR-2024-XXX) + assigns to operator or dropdown to assign to agent
+   - Visual: Folder icon + client name + assigned person badge
+   - Search bar: Type name/phone → instant filter
+   - He must check all the documents. If anything is missing, he has to arrange the full document offline and online, both Althought except for the Master agent, he will be the only person to see and approve payments and documents and download them, but cannot back up for compliance reasons 
+
+2. ✅ STATUS CONFIRMATION DASHBOARD:
+   - Simple list view (NOT complex table):
+     ```
+     [📁 EMR-001] Ahmed Khan → 🟡 Medical → [✓ Confirm] [⏳ Pending]
+     [📁 EMR-002] Hassan Ali → 🔵 Documents → [✓ Confirm] [⏳ Pending]
+     ```
+   - One-click confirm: Click [✓] → Status updates + notification to Admin
+   - Color-coded: 🟢 Done | 🟡 In Progress | 🔴 Overdue
+   - Filter: Show only "Pending Confirmations"
+
+3. 📅 APPOINTMENT MANAGER (Auto + Manual):
+   - Auto-Generate Button: "🔄 Generate Next Appointments"
+     * System suggests: Medical follow-ups, Protector 8 AM slots, Payment reminders
+     * Based on case stage + deadlines
+   - Manual Add Button: "➕ Add Appointment"
+     * Simple form: Client* | Type* (Medical/Protector/Payment) | Date/Time* | Notes
+     * Large date picker + time slots (8 AM, 10 AM, 2 PM presets)
+   - Calendar View: Simple monthly grid with colored dots per appointment type
+   - Today's List: Big cards showing: Client | Time | Type | [✓ Done] [📞 Remind]
+
+4. 🎯 AGENT SUPPORT MODE (Backup for Agents):
+   - Toggle: "Show Pending Agent Tasks"
+   - List: Tasks missed by agents (overdue documents, unconfirmed payments, etc.)
+   - One-click take over: [🔄 I'll Do This] → Task assigned to operator
+   - Visual cue: "Agent Farhan missed: Upload CNIC for EMR-001" → [Fix Now]
+
+5. 👥 ATTENDANCE MARKER (Compulsory):
+   - Big buttons for each staff member:
+     ```
+     [👤 Agent Farhan]  [✅ Present] [⏰ Late] [❌ Absent]
+     [👤 Agent Ayesha]  [✅ Present] [⏰ Late] [❌ Absent]
+     [👤 Operator You]  [✅ Present] [⏰ Late] [❌ Absent]
+     ```
+   - Click status → Auto-logs time + location (if mobile)
+   - Monthly view: Simple calendar with colored dots (Green=Present, Yellow=Late, Red=Absent)
+   - Export: "Download Attendance" → CSV (for payroll)
+
+6. 🏢 OFFICE VISIT LOGGER:
+   - Big button: "➕ Log Office Visit"
+   - Simple form: Client Name* | Phone* | Purpose* (Consultation/Document/Payment) | Met With* (Dropdown: Expert/Agent/Operator) | Notes
+   - Auto-saves with timestamp
+   - Today's Visits: Simple list with client name + time + purpose
+
+7. 💰 PAYMENT DOCUMENTATION (Simple):
+   - Big button: "➕ Record Payment"
+   - Form: Client* | Amount* | Method* (Cash/EasyPaisa/JazzCash/Bank) | Receipt Photo [📸 Upload]
+   - Auto-generates: Receipt # + timestamp
+   - List view: Date | Client | Amount | Method | [📄 View Receipt]
+   - Filter: Today | This Week | This Month
+
+DESIGN RULES (Operator-Friendly):
+- Large buttons (min 56px height) with clear icons + text
+- Max 3 actions per screen (avoid overwhelming)
+- Visual cues over text: Icons + colors > long descriptions
+- Urdu labels default (English toggle available)
+- No complex tables → Use card-based lists
+- No dropdowns with 50 options → Use search + type-ahead
+- Auto-save every action (no "Save" button needed)
+- Confirmation toast after every action: "✅ Done!" with sound option
+- Error messages: Simple Urdu + icon (❌ "Phone number galat hai")
+
+NAVIGATION INTEGRATION:
+- Add "Operations" icon to sidebar (Admin + Operator only)
+- Icon: 🎛️ or ⚙️ with label "Operations"
+- Agent view: Operations menu hidden (role-based)
+- Mobile: Bottom nav includes "Operations" for operator role
+
+ALL INTERACTIONS MUST WORK (Prototype):
+✅ Click "New Case Folder" → Opens simple form → Creates folder → Shows in list
+✅ Click [✓ Confirm] → Status updates → Toast "✅ Confirmed!"
+✅ Click "Generate Appointments" → Shows suggested list → [Add All] or select individually
+✅ Click attendance status → Logs time → Updates monthly view
+✅ Upload receipt photo → Shows preview → Saves with receipt #
+✅ Toggle Urdu/English → All labels switch instantly
+✅ Mobile: All buttons thumb-friendly, forms stack vertically
+
+DO NOT CHANGE:
+❌ Existing colors (#50C878, #D4AF37)
+❌ Existing components (shadcn/ui, Radix, MUI)
+❌ Existing workflow stages or case detail pages
+❌ Admin/Agent dashboards (only add Operations page)
+
+FINAL CHECKLIST:
+□ Case folder creation + assignment (simple form) ✓
+□ One-click status confirmation (visual list) ✓
+□ Appointment manager: Auto-generate + manual add ✓
+□ Agent support mode: Take over missed tasks ✓
+□ Attendance marker: Big buttons + monthly view ✓
+□ Office visit logger: Simple form + today's list ✓
+□ Payment documentation: Upload receipt + auto receipt # ✓
+□ Ultra-simple UI: Large buttons, icons, Urdu default ✓
+□ Auto-save + confirmation toast after every action ✓
+□ Mobile-responsive + thumb-friendly ✓
+□ Role-based: Visible only to Admin + Operator ✓
+□ Existing Emerald Green theme preserved ✓
+
+KISS PRINCIPLE:
+Operator opens CRM → Sees big buttons for daily tasks → Clicks → Done. No menus, no confusion, no training needed. Every action has visual + sound feedback. Urdu by default.
