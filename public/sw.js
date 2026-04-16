@@ -6,7 +6,7 @@
  *  - Background sync to replay queued mutations when network returns
  */
 
-const CACHE_NAME = "emerald-crm-v2";
+const CACHE_NAME = "emerald-crm-v3";
 const STATIC_URLS = ["/", "/index.html"];
 
 // ── Install: pre-cache shell ──────────────────────────────────────────
