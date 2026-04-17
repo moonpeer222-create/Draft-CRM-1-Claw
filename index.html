@@ -6,6 +6,17 @@
     <title>Emerald Visa CRM</title>
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
     <script>
+      // Redirect direct path access to hash routes for HashRouter compatibility
+      // e.g., /master/login -> /#/master/login
+      (function() {
+        var path = window.location.pathname;
+        var hash = window.location.hash;
+        var search = window.location.search;
+        if (path !== '/' && !hash) {
+          window.location.replace('/#' + path + search);
+        }
+      })();
+
       // Emergency service-worker unregister to fix stale cached blank pages
       if (navigator.serviceWorker) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
