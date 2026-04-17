@@ -34,9 +34,10 @@ jobs:
       - name: Build for GitHub Pages (HashRouter)
         run: VITE_USE_HASH_ROUTER=true npx vite build --base=/Draft-CRM-1-Claw/
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: dist-pages
           path: ./dist
 
   build-hostinger:
@@ -72,6 +73,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-pages
+          path: ./dist
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
