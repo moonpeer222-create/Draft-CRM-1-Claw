@@ -1,0 +1,1 @@
+import{a6 as r}from"./index-DU4EOeGQ.js";function e(){const{pathname:t}=r();return t.startsWith("/master")?"/master":t.startsWith("/agent")?"/agent":t.startsWith("/customer")?"/customer":t.startsWith("/operator")?"/operator":"/admin"}export{e as u};

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emerald Visa CRM</title>
+    <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+    <script>
+      // Emergency service-worker unregister to fix stale cached blank pages
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) { reg.unregister(); });
+        });
+      }
+      // Clear old caches from broken deployments
+      if (window.caches) {
+        caches.keys().then(function(names) {
+          names.forEach(function(name) { caches.delete(name); });
+        });
+      }
+    </script>
+    <script type="module" crossorigin src="/Draft-CRM-1-Claw/assets/index-DU4EOeGQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/Draft-CRM-1-Claw/assets/index-whLz3uiz.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
