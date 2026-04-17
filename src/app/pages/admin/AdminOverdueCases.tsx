@@ -1,6 +1,9 @@
 import { AdminSidebar } from "../../components/AdminSidebar";
 import { AdminHeader } from "../../components/AdminHeader";
-import { CRMDataStore, Case, WORKFLOW_STAGES, DELAY_REASONS, getStageLabel, getOverdueInfo, getDelayReasonLabel, reportDelay } from "../../lib/mockData";
+import { Case, WORKFLOW_STAGES, DELAY_REASONS, getStageLabel, getOverdueInfo, getDelayReasonLabel } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { updateCase } from "../../lib/caseApi";
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
@@ -55,7 +58,10 @@ export function AdminOverdueCases() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadCases = () => setCases(CRMDataStore.getCases());
+  const loadCases = async () => {
+    const { data, error } = await supabase.from('cases').select('*');
+    setCases(error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r)));
+  };
 
   // ===== COMPUTED ANALYTICS =====
   const overdueCases = useMemo(() =>
@@ -187,21 +193,33 @@ export function AdminOverdueCases() {
     setShowDelayModal(true);
   };
 
-  const handleReportDelay = () => {
+  const handleReportDelay = async () => {
     if (!selectedCase || !selectedDelayReason) {
       toast.error(isUrdu ? "وجہ منتخب کریں" : "Select a reason first");
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const updated = reportDelay(selectedCase.id, selectedDelayReason, delayNote || undefined);
-      if (updated) {
-        toast.success(isUrdu ? "تاخیر کی وجہ محفوظ!" : `Delay reported for ${selectedCase.id}`);
-        setShowDelayModal(false);
-        loadCases();
-      }
-      setIsLoading(false);
-    }, 600);
+    const now = new Date().toISOString();
+    const timelineEntry = {
+      id: `TL-DELAY-${Date.now()}`,
+      date: now,
+      title: `Delay Reported: ${getDelayReasonLabel(selectedDelayReason)}`,
+      description: delayNote || `Case delayed at stage ${getStageLabel(selectedCase.status)}. Reason: ${getDelayReasonLabel(selectedDelayReason)}`,
+      type: "status" as any,
+      user: "Admin",
+    };
+    const success = await updateCase(selectedCase.id, {
+      isOverdue: true,
+      delayReason: selectedDelayReason,
+      delayReportedAt: now,
+      timeline: [...selectedCase.timeline, timelineEntry],
+    });
+    if (success) {
+      toast.success(isUrdu ? "تاخیر کی وجہ محفوظ!" : `Delay reported for ${selectedCase.id}`);
+      setShowDelayModal(false);
+      await loadCases();
+    }
+    setIsLoading(false);
   };
 
   const handleExportCSV = () => {

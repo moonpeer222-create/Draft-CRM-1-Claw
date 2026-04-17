@@ -26,7 +26,8 @@ import { headerDrop } from "../lib/animations";
 import { NotificationBell } from "./NotificationPanel";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { AccessCodeService } from "../lib/accessCode";
-import { CRMDataStore } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { AgentSessionTimer } from "./AgentSessionTimer";
 import { getAgentAvatar } from "../pages/agent/AgentProfile";
 import { AgentMobileMenu } from "./AgentMobileMenu";
@@ -169,6 +170,14 @@ export function AgentHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Live stats for agent's cases from Supabase
+  const [cases, setCases] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('cases').select('*').then(({ data }) => {
+      setCases((data || []).map(mapSupabaseCaseToLocal));
+    });
+  }, []);
+
   // Early return for unified layout — AFTER all hooks
   if (insideUnifiedLayout) return null;
 
@@ -176,9 +185,6 @@ export function AgentHeader() {
 
   // Get agent avatar from localStorage
   const agentAvatar = session?.agentName ? getAgentAvatar(session.agentName) : null;
-
-  // Live stats for agent's cases
-  const cases = CRMDataStore.getCases();
   const myCases = cases.filter(c => c.agentId === session?.agentId);
   const stats = {
     total: myCases.length,

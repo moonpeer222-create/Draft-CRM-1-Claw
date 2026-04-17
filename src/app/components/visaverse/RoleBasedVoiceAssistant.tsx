@@ -478,14 +478,14 @@ export function RoleBasedVoiceAssistant({ role }: RoleBasedVoiceAssistantProps) 
     if (isFallback) {
       // Try Gemini AI with CRM context for dynamic response
       try {
-        const crmCtx = buildCRMContext() + "\n" + CRM_ACTION_INSTRUCTIONS;
+        const crmCtx = (await buildCRMContext()) + "\n" + CRM_ACTION_INSTRUCTIONS;
         const geminiResult = await callGeminiAI(inputText, role, "ur", [], crmCtx);
         if (geminiResult.success && geminiResult.response) {
           // Parse and execute CRM actions from voice response
           const { actions, cleanText } = parseActions(geminiResult.response);
           let finalText = cleanText;
           if (actions.length > 0) {
-            const results = executeAllActions(actions);
+            const results = await executeAllActions(actions);
             const actionSummary = results.map(r =>
               r.success ? `\u2705 ${r.message}` : `\u274c ${r.message}`
             ).join("\n");

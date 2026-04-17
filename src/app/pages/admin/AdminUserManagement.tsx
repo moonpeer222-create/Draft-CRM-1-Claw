@@ -10,6 +10,7 @@ import {
   Edit
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { getAgentPassword } from "../../lib/agentAuth";
 
 type UserRole = "master_admin" | "admin" | "agent" | "customer" | "operator";
 
@@ -88,9 +89,28 @@ export function AdminUserManagement() {
 
     const lt = toast.loading("Creating user...");
     try {
+      // Generate agent_id and deterministic password for agents
+      let agentId: string | undefined;
+      if (newUser.role === "agent") {
+        const { data: existingAgents } = await supabase
+          .from("profiles")
+          .select("agent_id")
+          .eq("role", "agent")
+          .not("agent_id", "is", null)
+          .order("agent_id", { ascending: false })
+          .limit(1);
+        const lastNum = existingAgents && existingAgents.length > 0
+          ? parseInt((existingAgents[0] as any).agent_id.replace(/\D/g, ""), 10) || 0
+          : 0;
+        agentId = `AGENT-${lastNum + 1}`;
+      }
+      const finalPassword = newUser.role === "agent" && agentId
+        ? getAgentPassword(agentId)
+        : newUser.password;
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: newUser.email.trim(),
-        password: newUser.password,
+        password: finalPassword,
         options: { data: { full_name: newUser.fullName.trim() } },
       });
       if (signUpError || !signUpData.user) {
@@ -101,6 +121,7 @@ export function AdminUserManagement() {
       await supabase.from("profiles").update({
         role: newUser.role,
         full_name: newUser.fullName.trim(),
+        ...(agentId ? { agent_id: agentId, agent_name: newUser.fullName.trim() } : {}),
       }).eq("id", signUpData.user.id);
 
       toast.dismiss(lt);

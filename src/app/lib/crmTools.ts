@@ -4,13 +4,14 @@
  * the client parses and executes them against CRMDataStore.
  */
 import {
-  CRMDataStore,
   type Case,
   WORKFLOW_STAGES,
   getStageLabel,
   getOverdueInfo,
 } from "./mockData";
 import { sendCaseStatusEmail, extractEmailsFromCase } from "./emailService";
+import { supabase } from "./supabase";
+import { mapSupabaseCaseToLocal } from "./caseMappers";
 
 // ──────────────────────────────────────────────
 // Types
@@ -73,6 +74,15 @@ export interface CRMActionResult {
   data?: any;
 }
 
+async function fetchCases(): Promise<Case[]> {
+  const { data, error } = await supabase.from("cases").select("*");
+  if (error || !data) {
+    console.warn("Supabase fetch failed in crmTools:", error);
+    return [];
+  }
+  return data.map((c: any) => mapSupabaseCaseToLocal(c, null));
+}
+
 // ──────────────────────────────────────────────
 // Build CRM context snapshot for AI prompt
 // ──────────────────────────────────────────────
@@ -81,8 +91,8 @@ export interface CRMActionResult {
  * If userMessage is provided, only includes cases relevant to the query.
  * Otherwise includes: stats + overdue + most recent 15 active cases.
  */
-export function buildCRMContext(userMessage?: string): string {
-  const cases = CRMDataStore.getCases();
+export async function buildCRMContext(userMessage?: string): Promise<string> {
+  const cases = await fetchCases();
   const totalCases = cases.length;
   const activeCases = cases.filter(c => !["completed", "rejected"].includes(c.status));
   const completedCases = cases.filter(c => c.status === "completed");
@@ -251,14 +261,14 @@ export function parseActions(text: string): { actions: CRMAction[]; cleanText: s
 // ──────────────────────────────────────────────
 // Execute a single CRM action
 // ──────────────────────────────────────────────
-export function executeAction(action: CRMAction): CRMActionResult {
+export async function executeAction(action: CRMAction): Promise<CRMActionResult> {
   try {
     switch (action.type) {
 
       case "search_cases": {
         const q = (action.query || "").toLowerCase();
         if (!q) return { success: false, message: "تلاش کے لیے نام یا ID درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const results = cases.filter(c =>
           c.customerName.toLowerCase().includes(q) ||
           c.id.toLowerCase().includes(q) ||
@@ -281,7 +291,7 @@ export function executeAction(action: CRMAction): CRMActionResult {
 
       case "get_case": {
         if (!action.caseId) return { success: false, message: "کیس ID درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const c = cases.find(cs => cs.id === action.caseId);
         if (!c) return { success: false, message: `کیس ${action.caseId} نہیں ملا` };
         const overdueInfo = getOverdueInfo(c);
@@ -303,74 +313,17 @@ export function executeAction(action: CRMAction): CRMActionResult {
         return { success: true, message: detail, data: c };
       }
 
-      case "update_status": {
-        if (!action.caseId || !action.newStatus) return { success: false, message: "کیس ID اور نئی حیثیت درج کریں" };
-        const validStage = WORKFLOW_STAGES.find(s => s.key === action.newStatus);
-        if (!validStage) return { success: false, message: `غلط حیثیت: "${action.newStatus}"۔ درست حیثیت استعمال کریں` };
-        const prevCase = CRMDataStore.getCases().find(c => c.id === action.caseId);
-        const updated = CRMDataStore.updateCaseStatus(action.caseId, action.newStatus);
-        if (!updated) return { success: false, message: `کیس ${action.caseId} نہیں ملا یا اپڈیٹ نہیں ہوا` };
-        // Fire Brevo email notification (non-blocking)
-        if (prevCase) {
-          const { customerEmail, agentEmail } = extractEmailsFromCase(prevCase);
-          sendCaseStatusEmail({
-            caseId: updated.id,
-            customerName: updated.customerName,
-            customerEmail,
-            agentName: updated.agentName,
-            agentEmail,
-            oldStatus: prevCase.status,
-            newStatus: action.newStatus,
-            phone: updated.phone,
-            country: updated.country,
-          });
-        }
-        return {
-          success: true,
-          message: `${updated.customerName} کا کیس (${action.caseId}) مرحلہ ${validStage.stageNumber}: ${validStage.labelUrdu} پر اپڈیٹ ہو گیا`,
-          data: { id: updated.id, newStatus: action.newStatus, stage: validStage.stageNumber },
-        };
-      }
+      case "update_status":
+        return { success: false, message: "AI case actions are temporarily disabled while we migrate to the cloud database. Please use the dashboard to make changes." };
 
-      case "add_note": {
-        if (!action.caseId || !action.noteText) return { success: false, message: "کیس ID اور نوٹ درج کریں" };
-        const result = CRMDataStore.addNote(action.caseId, {
-          text: action.noteText,
-          author: action.noteAuthor || "Emerald AI",
-          date: new Date().toISOString(),
-          important: action.noteImportant || false,
-        });
-        if (!result) return { success: false, message: `کیس ${action.caseId} نہیں ملا` };
-        return {
-          success: true,
-          message: `${result.customerName} کے کیس میں نوٹ شامل ہو گیا: "${action.noteText}"`,
-          data: { id: result.id, notesCount: result.notes.length },
-        };
-      }
+      case "add_note":
+        return { success: false, message: "AI case actions are temporarily disabled while we migrate to the cloud database. Please use the dashboard to make changes." };
 
-      case "add_payment": {
-        if (!action.caseId || !action.paymentAmount) return { success: false, message: "کیس ID اور رقم درج کریں" };
-        const receiptNum = `REC-AI-${Date.now().toString().slice(-6)}`;
-        const result = CRMDataStore.addPayment(action.caseId, {
-          amount: action.paymentAmount,
-          date: new Date().toISOString(),
-          method: action.paymentMethod || "cash",
-          receiptNumber: receiptNum,
-          description: action.paymentDescription || "AI Recorded Payment",
-          collectedBy: action.paymentCollectedBy || "AI Assistant",
-          approvalStatus: "pending",
-          submittedByRole: "admin",
-        });
-        if (!result) return { success: false, message: `کیس ${action.caseId} نہیں ملا` };
-        return {
-          success: true,
-          message: `PKR ${action.paymentAmount.toLocaleString()} ادائیگی ریکارڈ ہو گئی (رسید: ${receiptNum})۔ ایڈمن کی منظوری باقی ہے۔\nاب تک ادا شدہ: PKR ${result.paidAmount.toLocaleString()} / PKR ${result.totalFee.toLocaleString()}`,
-          data: { id: result.id, receipt: receiptNum, paidAmount: result.paidAmount, totalFee: result.totalFee },
-        };
-      }
+      case "add_payment":
+        return { success: false, message: "AI case actions are temporarily disabled while we migrate to the cloud database. Please use the dashboard to make changes." };
 
       case "get_stats": {
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const active = cases.filter(c => !["completed", "rejected"].includes(c.status));
         const completed = cases.filter(c => c.status === "completed");
         const overdue = cases.filter(c => getOverdueInfo(c).isOverdue);
@@ -396,7 +349,7 @@ export function executeAction(action: CRMAction): CRMActionResult {
       }
 
       case "list_overdue": {
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const overdue = cases.filter(c => getOverdueInfo(c).isOverdue);
         if (overdue.length === 0) return { success: true, message: "کوئی تاخیر والا کیس نہیں ہے۔ الحمدللہ!", data: [] };
         const list = overdue.map(c => {
@@ -408,7 +361,7 @@ export function executeAction(action: CRMAction): CRMActionResult {
 
       case "list_by_agent": {
         if (!action.agentName) return { success: false, message: "ایجنٹ کا نام درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const filtered = cases.filter(c => c.agentName.toLowerCase() === action.agentName!.toLowerCase());
         if (filtered.length === 0) return { success: true, message: `${action.agentName} کا کوئی کیس نہیں ملا`, data: [] };
         const list = filtered.map(c => `${c.id} — ${c.customerName} — ${getStageLabel(c.status, true)}`).join("\n");
@@ -417,7 +370,7 @@ export function executeAction(action: CRMAction): CRMActionResult {
 
       case "list_by_status": {
         if (!action.status) return { success: false, message: "حیثیت درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const filtered = cases.filter(c => c.status === action.status);
         if (filtered.length === 0) return { success: true, message: `"${getStageLabel(action.status, true)}" حیثیت کا کوئی کیس نہیں`, data: [] };
         const list = filtered.map(c => `${c.id} — ${c.customerName} — ایجنٹ: ${c.agentName}`).join("\n");
@@ -426,77 +379,22 @@ export function executeAction(action: CRMAction): CRMActionResult {
 
       case "list_by_country": {
         if (!action.country) return { success: false, message: "ملک کا نام درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const filtered = cases.filter(c => c.country.toLowerCase().includes(action.country!.toLowerCase()));
         if (filtered.length === 0) return { success: true, message: `${action.country} کا کوئی کیس نہیں ملا`, data: [] };
         const list = filtered.map(c => `${c.id} — ${c.customerName} — ${getStageLabel(c.status, true)} — ایجنٹ: ${c.agentName}`).join("\n");
         return { success: true, message: `${action.country} — ${filtered.length} کیسز:\n${list}`, data: filtered.map(c => ({ id: c.id, name: c.customerName })) };
       }
 
-      case "create_case": {
-        if (!action.customerName) return { success: false, message: "کسٹمر کا نام درج کریں" };
-        const newCase = CRMDataStore.addCase({
-          customerName: action.customerName,
-          fatherName: action.fatherName || "",
-          phone: action.phone || "",
-          email: "",
-          cnic: action.cnic || "",
-          passport: action.passport || "",
-          country: action.countryDest || "Saudi Arabia",
-          jobType: action.jobType || "Worker",
-          jobDescription: "",
-          address: "",
-          city: "Lahore",
-          maritalStatus: "single",
-          dateOfBirth: "",
-          emergencyContact: { name: "", phone: "", relationship: "" },
-          education: "",
-          experience: "",
-          status: "document_collection",
-          agentId: "AGENT-1",
-          agentName: action.agentAssign || "Faizan",
-          totalFee: 200000,
-          priority: "medium",
-          currentStage: 1,
-          stageStartedAt: new Date().toISOString(),
-          stageDeadlineAt: new Date(Date.now() + 48 * 3600000).toISOString(),
-          isOverdue: false,
-          timeline: [{
-            id: `TL-${Date.now()}`,
-            date: new Date().toISOString(),
-            title: "Case Created via AI",
-            description: `AI Assistant created case for ${action.customerName}`,
-            type: "status" as const,
-            user: "Emerald AI",
-          }],
-        });
-        return {
-          success: true,
-          message: `نیا کیس بن گیا!\nکیس ID: ${newCase.id}\nکسٹمر: ${action.customerName}\nملک: ${action.countryDest || "Saudi Arabia"}\nجاب: ${action.jobType || "Worker"}\nایجنٹ: ${action.agentAssign || "Faizan"}\nمرحلہ: 1 — دستاویزات جمع`,
-          data: { id: newCase.id, name: action.customerName },
-        };
-      }
+      case "create_case":
+        return { success: false, message: "AI case actions are temporarily disabled while we migrate to the cloud database. Please use the dashboard to make changes." };
 
-      case "flag_case": {
-        if (!action.caseId || !action.flagReason) return { success: false, message: "کیس ID اور فلگ کی وجہ درج کریں" };
-        // Flag via important note + priority escalation
-        const flagResult = CRMDataStore.addNote(action.caseId, {
-          text: `⚠️ فلگ: ${action.flagReason}`,
-          author: "Emerald AI",
-          date: new Date().toISOString(),
-          important: true,
-        });
-        if (!flagResult) return { success: false, message: `کیس ${action.caseId} نہیں ملا` };
-        return {
-          success: true,
-          message: `⚠️ ${flagResult.customerName} کا کیس (${action.caseId}) ایڈمن ریویو کے لیے فلگ کیا گیا!\nوجہ: "${action.flagReason}"\nایڈمن کو نوٹیفکیشن بھیج دی گئی ہے۔`,
-          data: { id: flagResult.id, flagReason: action.flagReason },
-        };
-      }
+      case "flag_case":
+        return { success: false, message: "AI case actions are temporarily disabled while we migrate to the cloud database. Please use the dashboard to make changes." };
 
       case "analyze_performance": {
         if (!action.agentName) return { success: false, message: "ایجنٹ کا نام درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const filtered = cases.filter(c => c.agentName.toLowerCase() === action.agentName!.toLowerCase());
         if (filtered.length === 0) return { success: true, message: `${action.agentName} کا کوئی کیس نہیں ملا`, data: [] };
         const completed = filtered.filter(c => c.status === "completed").length;
@@ -516,7 +414,7 @@ export function executeAction(action: CRMAction): CRMActionResult {
       case "predict_delay": {
         // Improvement #15: Enhanced multi-factor delay prediction
         if (!action.caseId) return { success: false, message: "کیس ID درج کریں" };
-        const cases = CRMDataStore.getCases();
+        const cases = await fetchCases();
         const c = cases.find(cs => cs.id === action.caseId);
         if (!c) return { success: false, message: `کیس ${action.caseId} نہیں ملا` };
         const overdueInfo = getOverdueInfo(c);
@@ -618,6 +516,10 @@ export function executeAction(action: CRMAction): CRMActionResult {
 // ──────────────────────────────────────────────
 // Execute all actions and return combined result
 // ──────────────────────────────────────────────
-export function executeAllActions(actions: CRMAction[]): CRMActionResult[] {
-  return actions.map(a => executeAction(a));
+export async function executeAllActions(actions: CRMAction[]): Promise<CRMActionResult[]> {
+  const results: CRMActionResult[] = [];
+  for (const action of actions) {
+    results.push(await executeAction(action));
+  }
+  return results;
 }

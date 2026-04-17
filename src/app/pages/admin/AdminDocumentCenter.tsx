@@ -19,7 +19,10 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore, Case, Document } from "../../lib/mockData";
+import { Case, Document } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { updateCase } from "../../lib/caseApi";
 import { toast } from "../../lib/toast";
 import { documentUploadApi, documentStorageApi } from "../../lib/api";
 import { ImageLightbox } from "../../components/ImageLightbox";
@@ -80,8 +83,9 @@ export function AdminDocumentCenter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load cases ────────────────────────────────────────────
-  const loadCases = useCallback(() => {
-    setCases(CRMDataStore.getCases());
+  const loadCases = useCallback(async () => {
+    const { data, error } = await supabase.from('cases').select('*');
+    setCases(error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r)));
   }, []);
 
   useEffect(() => {
@@ -206,11 +210,11 @@ export function AdminDocumentCenter() {
         const signedUrl = uploadRes.data?.signedUrl || "";
 
         // Directly push to the case documents array to preserve all metadata
-        const allCases = CRMDataStore.getCases();
-        const caseIdx = allCases.findIndex(c => c.id === uploadCaseId);
-        if (caseIdx !== -1) {
-          if (!allCases[caseIdx].documents) allCases[caseIdx].documents = [];
-          allCases[caseIdx].documents.push({
+        const { data: caseData } = await supabase.from('cases').select('*').eq('id', uploadCaseId).single();
+        if (caseData) {
+          const c = mapSupabaseCaseToLocal(caseData);
+          if (!c.documents) c.documents = [];
+          c.documents.push({
             id: docId,
             name: file.name,
             type: file.type || "application/octet-stream",
@@ -224,8 +228,7 @@ export function AdminDocumentCenter() {
             fileSize: file.size,
             uploadedByRole: "admin",
           } as any);
-          allCases[caseIdx].updatedDate = new Date().toISOString();
-          CRMDataStore.saveCases(allCases);
+          await updateCase(uploadCaseId, { documents: c.documents });
         }
 
         // Cache the signed URL
@@ -261,40 +264,41 @@ export function AdminDocumentCenter() {
   };
 
   // ── Verify / Reject / Delete handlers ─────────────────────
-  const handleVerify = (caseId: string, docId: string) => {
-    const allCases = CRMDataStore.getCases();
-    const c = allCases.find(c => c.id === caseId);
-    if (!c) return;
-    const doc = c.documents?.find(d => d.id === docId);
+  const handleVerify = async (caseId: string, docId: string) => {
+    const { data: caseData, error } = await supabase.from('cases').select('*').eq('id', caseId).single();
+    if (error || !caseData) return;
+    const c = mapSupabaseCaseToLocal(caseData);
+    const doc = c.documents?.find((d: any) => d.id === docId);
     if (!doc) return;
     doc.status = "verified";
     doc.verifiedBy = "Admin";
     doc.verifiedAt = new Date().toISOString();
-    CRMDataStore.saveCases(allCases);
+    await updateCase(caseId, { documents: c.documents });
     toast.success(`${doc.name} verified`);
     setActionDocId(null);
     loadCases();
   };
 
-  const handleReject = (caseId: string, docId: string) => {
-    const allCases = CRMDataStore.getCases();
-    const c = allCases.find(c => c.id === caseId);
-    if (!c) return;
-    const doc = c.documents?.find(d => d.id === docId);
+  const handleReject = async (caseId: string, docId: string) => {
+    const { data: caseData, error } = await supabase.from('cases').select('*').eq('id', caseId).single();
+    if (error || !caseData) return;
+    const c = mapSupabaseCaseToLocal(caseData);
+    const doc = c.documents?.find((d: any) => d.id === docId);
     if (!doc) return;
     doc.status = "rejected";
     doc.rejectionReason = "Document not meeting requirements";
-    CRMDataStore.saveCases(allCases);
+    await updateCase(caseId, { documents: c.documents });
     toast.success(`${doc.name} rejected`);
     setActionDocId(null);
     loadCases();
   };
 
   const handleDelete = async (caseId: string, docId: string) => {
-    const allCases = CRMDataStore.getCases();
-    const c = allCases.find(c => c.id === caseId);
-    if (!c || !c.documents) return;
-    const doc = c.documents.find(d => d.id === docId);
+    const { data: caseData, error } = await supabase.from('cases').select('*').eq('id', caseId).single();
+    if (error || !caseData) return;
+    const c = mapSupabaseCaseToLocal(caseData);
+    if (!c.documents) return;
+    const doc = c.documents.find((d: any) => d.id === docId);
     if (!doc) return;
 
     // Delete from Supabase Storage if path exists
@@ -309,8 +313,8 @@ export function AdminDocumentCenter() {
       }
     }
 
-    c.documents = c.documents.filter(d => d.id !== docId);
-    CRMDataStore.saveCases(allCases);
+    const updatedDocs = c.documents.filter((d: any) => d.id !== docId);
+    await updateCase(caseId, { documents: updatedDocs });
     toast.success(`${doc.name} deleted`);
     setActionDocId(null);
     loadCases();

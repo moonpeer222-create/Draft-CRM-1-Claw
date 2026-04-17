@@ -46,7 +46,9 @@ import { useUnifiedLayout } from "./UnifiedLayout";
 import { AuditLogService } from "../lib/auditLog";
 import { AccessCodeService } from "../lib/accessCode";
 import { triggerPanic } from "../lib/panicMode";
-import { CRMDataStore, getOverdueInfo } from "../lib/mockData";
+import { getOverdueInfo } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { getAdminProfile, subscribeToProfileUpdates } from "../lib/adminProfile";
 import { getPendingConflicts } from "../lib/syncService";
 import { useState, useEffect, useRef } from "react";
@@ -119,8 +121,9 @@ export function AdminSidebar() {
 
   const [overdueCount, setOverdueCount] = useState(0);
   useEffect(() => {
-    const updateCount = () => {
-      const cases = CRMDataStore.getCases();
+    const updateCount = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
       setOverdueCount(cases.filter(c => getOverdueInfo(c).isOverdue).length);
     };
     updateCount();

@@ -11,7 +11,9 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
-import { CRMDataStore, type Case } from "../../lib/mockData";
+import { type Case } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import {
   DashboardSection, FoldersSection, StatusSection, PaymentsSection, ReportsSection,
   AllCasesSection, DocumentsSection,
@@ -20,7 +22,6 @@ import {
   STORAGE, load, save,
 } from "./OperatorSections";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
-import { supabase } from "../../lib/supabase";
 import { OperatorSidebar, type OperatorTabId } from "../../components/OperatorSidebar";
 import { OperatorHeader } from "../../components/OperatorHeader";
 import { pullOperatorData, pushOperatorData, getLastSyncTime } from "../../lib/operatorSync";
@@ -65,7 +66,7 @@ export function OperatorOperations() {
   const isEmbedded = location.pathname.startsWith("/admin") || location.pathname.startsWith("/master");
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-  const cases = CRMDataStore.getCases();
+  const [cases, setCases] = useState<Case[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [allStaff, setAllStaff] = useState<any[]>([]);
 
@@ -111,9 +112,16 @@ export function OperatorOperations() {
     setCasesVersion(v => v + 1);
   }, []);
 
-  // Re-read cases when version changes (after status change or sync restore)
-  const latestCases = CRMDataStore.getCases();
-  const activeCases = casesVersion >= 0 ? latestCases : cases; // always use latest
+  // Fetch cases from Supabase when version changes (after status change or sync restore)
+  useEffect(() => {
+    const fetchCases = async () => {
+      const { data, error } = await supabase.from('cases').select('*');
+      if (!error && data) {
+        setCases(data.map((c: any) => mapSupabaseCaseToLocal(c)));
+      }
+    };
+    fetchCases();
+  }, [casesVersion]);
 
   // ── Notifications System ──
   const [notifications, setNotifications] = useState<Notification[]>(() => load(STORAGE.notifications, []));
@@ -289,37 +297,25 @@ export function OperatorOperations() {
       </AnimatePresence>
 
       {/* ── Admin-like Layout with Sidebar + Header ── */}
-      {!isEmbedded ? (
-        <div className={`${insideUnifiedLayout ? "" : "flex min-h-screen"}`}>
-          {!insideUnifiedLayout && <OperatorSidebar activeTab={activeTab} onTabChange={setActiveTab} />}
-          <div className={`flex-1 min-w-0 ${insideUnifiedLayout ? "" : "pt-14 lg:pt-0"}`}>
-            {!insideUnifiedLayout && <OperatorHeader activeTab={activeTab} onTabChange={setActiveTab} bellButton={<BellButton />} />}
-             <main className={`p-3 sm:p-4 md:p-6 ${insideUnifiedLayout ? "pb-4" : "pb-20 lg:pb-6"}`}>
-              {/* Session Timer */}
-              {sessionTimeLeft && (
-                <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-xl text-xs font-medium ${
-                  parseInt(sessionTimeLeft) <= 0 ? "bg-red-100 text-red-700" :
-                  sessionTimeLeft.startsWith("0h") ? "bg-amber-100 text-amber-700" :
-                  dc ? "bg-gray-800 text-gray-400 border border-gray-700" : "bg-white text-gray-500 border border-gray-200"
-                }`}>
-                  <Clock className="w-3.5 h-3.5" />
-                  {u("Session", "سیشن")}: {sessionTimeLeft}
-                  {syncStatus === "synced" && <Cloud className="w-3.5 h-3.5 text-emerald-500 ms-auto" />}
-                  {syncStatus === "error" && <CloudOff className="w-3.5 h-3.5 text-red-400 ms-auto" />}
-                </div>
-              )}
+      {!isEmbedded && !insideUnifiedLayout ? (
+        <div className="flex min-h-screen">
+          <OperatorSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className="flex-1 min-w-0 pt-14 lg:pt-0">
+            <OperatorHeader activeTab={activeTab} onTabChange={setActiveTab} bellButton={<BellButton />} />
+             <main className="p-3 sm:p-4 md:p-6 pb-20 lg:pb-6">
+
               <AnimatePresence mode="wait">
-                {activeTab === "dashboard" && <DashboardSection key="d" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} agents={agents} allStaff={allStaff} notifications={notifications} addNotification={addNotification} />}
-                {activeTab === "folders" && <FoldersSection key="f" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} agents={agents} addNotification={addNotification} onCaseCreated={onCaseUpdated} />}
-                {activeTab === "all-cases" && <AllCasesSection key="ac" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} agents={agents} />}
-                {activeTab === "documents" && <DocumentsSection key="doc" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
-                {activeTab === "status" && <StatusSection key="s" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
-                {activeTab === "appointments" && <AppointmentsSection key="a" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} />}
-                {activeTab === "agent-support" && <AgentSupportSection key="as" u={u} dc={dc} card={card} txt={txt} sub={sub} cases={activeCases} agents={agents} />}
+                {activeTab === "dashboard" && <DashboardSection key="d" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} agents={agents} allStaff={allStaff} notifications={notifications} addNotification={addNotification} />}
+                {activeTab === "folders" && <FoldersSection key="f" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} agents={agents} addNotification={addNotification} onCaseCreated={onCaseUpdated} />}
+                {activeTab === "all-cases" && <AllCasesSection key="ac" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} agents={agents} />}
+                {activeTab === "documents" && <DocumentsSection key="doc" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
+                {activeTab === "status" && <StatusSection key="s" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
+                {activeTab === "appointments" && <AppointmentsSection key="a" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} />}
+                {activeTab === "agent-support" && <AgentSupportSection key="as" u={u} dc={dc} card={card} txt={txt} sub={sub} cases={cases} agents={agents} />}
                 {activeTab === "attendance" && <AttendanceSection key="at" u={u} dc={dc} card={card} txt={txt} sub={sub} allStaff={allStaff} />}
                 {activeTab === "visits" && <VisitsSection key="v" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} />}
-                {activeTab === "payments" && <PaymentsSection key="p" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} />}
-                {activeTab === "reports" && <ReportsSection key="r" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} allStaff={allStaff} addNotification={addNotification} />}
+                {activeTab === "payments" && <PaymentsSection key="p" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} addNotification={addNotification} />}
+                {activeTab === "reports" && <ReportsSection key="r" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} allStaff={allStaff} addNotification={addNotification} />}
                 {activeTab === "profile" && <ProfileSection key="prof" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} session={profile} syncStatus={syncStatus} onLogout={() => { signOut(); navigate("/operator/login"); }} />}
               </AnimatePresence>
             </main>
@@ -332,20 +328,22 @@ export function OperatorOperations() {
       ) : (
         <>
           {/* ── Embedded Header (inside admin) ── */}
-          <div className="px-4 pt-4 pb-2">
-            <div className="max-w-5xl mx-auto flex items-center justify-between">
-              <div>
-                <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${txt}`}>
-                  <Monitor className="w-5 h-5 text-emerald-500" />
-                  {u("Operations Center", "آپریشنز سینٹر")}
-                </h2>
-                <p className={`text-xs mt-0.5 ${sub}`}>{u("Computer Operator daily tasks", "کمپیوٹر آپریٹر کے روزمرہ کام")}</p>
+          {!insideUnifiedLayout && (
+            <div className="px-4 pt-4 pb-2">
+              <div className="max-w-5xl mx-auto flex items-center justify-between">
+                <div>
+                  <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${txt}`}>
+                    <Monitor className="w-5 h-5 text-emerald-500" />
+                    {u("Operations Center", "آپریشنز سینٹر")}
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${sub}`}>{u("Computer Operator daily tasks", "کمپیوٹر آپریٹر کے روزمرہ کام")}</p>
+                </div>
+                <BellButton />
               </div>
-              <BellButton />
             </div>
-          </div>
+          )}
 
-          {/* ── Tab Navigation (embedded) ── */}
+          {/* ── Tab Navigation (embedded or unified layout) ── */}
           <nav className={`sticky top-0 z-30 border-b ${dc ? "bg-gray-900/90 border-gray-800" : "bg-white/90 border-gray-200"} backdrop-blur-md`}>
             <div className="max-w-5xl mx-auto flex gap-1 px-3 py-2 overflow-x-auto scrollbar-hide" dir="ltr">
               {TABS.map(tab => {
@@ -367,18 +365,18 @@ export function OperatorOperations() {
           {/* ── Content (embedded) ── */}
           <main className="max-w-5xl mx-auto p-3 sm:p-4 pb-24">
             <AnimatePresence mode="wait">
-              {activeTab === "dashboard" && <DashboardSection key="d" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} agents={agents} allStaff={allStaff} notifications={notifications} addNotification={addNotification} />}
-              {activeTab === "folders" && <FoldersSection key="f" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} agents={agents} addNotification={addNotification} onCaseCreated={onCaseUpdated} />}
-              {activeTab === "all-cases" && <AllCasesSection key="ac" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} agents={agents} />}
-              {activeTab === "documents" && <DocumentsSection key="doc" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
-              {activeTab === "status" && <StatusSection key="s" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
-              {activeTab === "appointments" && <AppointmentsSection key="a" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} />}
-              {activeTab === "agent-support" && <AgentSupportSection key="as" u={u} dc={dc} card={card} txt={txt} sub={sub} cases={activeCases} agents={agents} />}
+              {activeTab === "dashboard" && <DashboardSection key="d" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} agents={agents} allStaff={allStaff} notifications={notifications} addNotification={addNotification} />}
+              {activeTab === "folders" && <FoldersSection key="f" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} agents={agents} addNotification={addNotification} onCaseCreated={onCaseUpdated} />}
+              {activeTab === "all-cases" && <AllCasesSection key="ac" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} agents={agents} />}
+              {activeTab === "documents" && <DocumentsSection key="doc" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
+              {activeTab === "status" && <StatusSection key="s" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} addNotification={addNotification} onCaseUpdated={onCaseUpdated} />}
+              {activeTab === "appointments" && <AppointmentsSection key="a" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} />}
+              {activeTab === "agent-support" && <AgentSupportSection key="as" u={u} dc={dc} card={card} txt={txt} sub={sub} cases={cases} agents={agents} />}
               {activeTab === "attendance" && <AttendanceSection key="at" u={u} dc={dc} card={card} txt={txt} sub={sub} allStaff={allStaff} />}
               {activeTab === "visits" && <VisitsSection key="v" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} />}
-              {activeTab === "payments" && <PaymentsSection key="p" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={activeCases} addNotification={addNotification} />}
-              {activeTab === "reports" && <ReportsSection key="r" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={activeCases} allStaff={allStaff} addNotification={addNotification} />}
-              {activeTab === "profile" && <ProfileSection key="prof" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} session={session} sessionTimeLeft={sessionTimeLeft} syncStatus={syncStatus} />}
+              {activeTab === "payments" && <PaymentsSection key="p" u={u} dc={dc} card={card} txt={txt} sub={sub} inputCls={inputCls} bigBtn={bigBtn} cases={cases} addNotification={addNotification} />}
+              {activeTab === "reports" && <ReportsSection key="r" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} cases={cases} allStaff={allStaff} addNotification={addNotification} />}
+              {activeTab === "profile" && <ProfileSection key="prof" u={u} dc={dc} card={card} txt={txt} sub={sub} bigBtn={bigBtn} session={profile} syncStatus={syncStatus} onLogout={() => { signOut(); navigate("/operator/login"); }} />}
             </AnimatePresence>
           </main>
         </>

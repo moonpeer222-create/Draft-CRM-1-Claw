@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
 import { motion, AnimatePresence } from "motion/react";
-import { CRMDataStore, Case } from "../../lib/mockData";
+import { Case } from "../../lib/mockData";
+import { updateCase } from "../../lib/caseApi";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { AuditLogService } from "../../lib/auditLog";
 import { DataSyncService } from "../../lib/dataSync";
 import { NotificationService } from "../../lib/notifications";
@@ -12,7 +15,6 @@ import { MobileBottomNav } from "../../components/MobileBottomNav";
 import { CustomerMobileMenu } from "../../components/CustomerMobileMenu";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
-import { supabase } from "../../lib/supabase";
 
 export function CustomerPayments() {
   const { insideUnifiedLayout } = useUnifiedLayout();
@@ -186,16 +188,18 @@ export function CustomerPayments() {
     };
 
     const updatedPayments = [...(myCase.payments || []), newPayment];
-    const updated = CRMDataStore.updateCase(myCase.id, { payments: updatedPayments });
+    const ok = await updateCase(myCase.id, { payments: updatedPayments });
 
     toast.dismiss(lt);
 
-    if (updated) {
-      setMyCase(updated);
+    if (ok) {
+      const { data } = await supabase.from('cases').select('*').eq('id', myCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data, profile) : null;
+      if (refreshed) setMyCase(refreshed);
 
       // Audit log
       AuditLogService.logPaymentAction(customerName, "customer", "payment_added", myCase.id, amount);
-      DataSyncService.markModified(myCase.id, session?.userId || "customer", customerName, "customer", "case", `Customer submitted payment proof: PKR ${amount.toLocaleString()} via ${selectedMethod}`);
+      DataSyncService.markModified(myCase.id, profile?.id || "customer", customerName, "customer", "case", `Customer submitted payment proof: PKR ${amount.toLocaleString()} via ${selectedMethod}`);
 
       // Notify admin/agent
       NotificationService.addNotification({

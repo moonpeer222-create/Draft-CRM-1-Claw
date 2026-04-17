@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, Medal, Star, Flame, Target, Share2, X, Crown, Zap } from "lucide-react";
 import { useVisaVerse } from "./VisaVerseContext";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 
 interface BadgeInfo {
   id: string;
@@ -31,8 +32,13 @@ export function AgentLeaderboardWidget({ isUrdu = false }: { isUrdu?: boolean })
 
   if (classicMode || !features.agentLeaderboard) return null;
 
-  // Derive agent leaderboard from cases (no getAgents method exists)
-  const cases = CRMDataStore.getCases();
+  // Derive agent leaderboard from live Supabase cases
+  const [cases, setCases] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('cases').select('*').then(({ data }) => {
+      setCases((data || []).map(mapSupabaseCaseToLocal));
+    });
+  }, []);
 
   // Build agent map from cases
   const agentMap: Record<string, { name: string; completed: number; active: number; revenue: number; totalRating: number; ratingCount: number }> = {};

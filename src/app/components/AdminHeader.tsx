@@ -1,4 +1,5 @@
-import { CRMDataStore } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
@@ -73,11 +74,16 @@ export function AdminHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Live stats from Supabase
+  const [cases, setCases] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('cases').select('*').then(({ data }) => {
+      setCases((data || []).map(mapSupabaseCaseToLocal));
+    });
+  }, []);
+
   // Early return for unified layout — AFTER all hooks
   if (insideUnifiedLayout) return null;
-
-  // Live stats
-  const cases = CRMDataStore.getCases();
   const stats = {
     total: cases.length,
     agents: new Set(cases.map(c => c.agentId)).size,

@@ -16,7 +16,8 @@ import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
 import { staggerContainer, staggerItem, tabContent } from "../../lib/animations";
 import { backupApi } from "../../lib/api";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 
 // ---- Types ----
 
@@ -122,7 +123,15 @@ export function AdminBackup() {
   const successCount = history.filter((h) => h.status === "success").length;
   const failedCount = history.filter((h) => h.status === "failed").length;
   const totalStorageKB = history.reduce((sum, h) => sum + parseFloat(h.sizeKB || "0"), 0);
-  const localCasesCount = CRMDataStore.getCases().length;
+  const [localCasesCount, setLocalCasesCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      const { data, error } = await supabase.from('cases').select('*');
+      setLocalCasesCount(error ? 0 : (data || []).map((r: any) => mapSupabaseCaseToLocal(r)).length);
+    };
+    fetchCount();
+  }, []);
 
   const filteredHistory = history.filter((h) => {
     if (historyFilter === "all") return true;

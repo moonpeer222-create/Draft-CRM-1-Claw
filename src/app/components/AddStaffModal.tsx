@@ -12,6 +12,7 @@ import { copyToClipboard } from "../lib/clipboard";
 import { AuditLogService } from "../lib/auditLog";
 import { modalVariants } from "../lib/animations";
 import { supabase } from "../lib/supabase";
+import { getAgentPassword } from "../lib/agentAuth";
 
 type UserRole = "agent" | "admin" | "operator";
 
@@ -72,10 +73,13 @@ export function AddStaffModal({
         return;
       }
 
+      // Determine password: agents use deterministic password for code-based login
+      const finalPassword = role === "agent" ? getAgentPassword(agentId!) : password;
+
       // Create auth user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
-        password,
+        password: finalPassword,
         options: { data: { full_name: fullName.trim() } },
       });
 
@@ -85,10 +89,27 @@ export function AddStaffModal({
         return;
       }
 
+      // Assign agent_id for agents (sequential AGENT-N)
+      let agentId: string | undefined;
+      if (role === "agent") {
+        const { data: existingAgents } = await supabase
+          .from("profiles")
+          .select("agent_id")
+          .eq("role", "agent")
+          .not("agent_id", "is", null)
+          .order("agent_id", { ascending: false })
+          .limit(1);
+        const lastNum = existingAgents && existingAgents.length > 0
+          ? parseInt((existingAgents[0] as any).agent_id.replace(/\D/g, ""), 10) || 0
+          : 0;
+        agentId = `AGENT-${lastNum + 1}`;
+      }
+
       // Update profile with role
       const { error: updateError } = await supabase.from("profiles").update({
         role,
         full_name: fullName.trim(),
+        ...(agentId ? { agent_id: agentId, agent_name: fullName.trim() } : {}),
       }).eq("id", signUpData.user.id);
 
       if (updateError) {

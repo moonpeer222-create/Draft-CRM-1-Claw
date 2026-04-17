@@ -9,7 +9,8 @@ import {
   Moon, Sun, Globe, LogOut,
 } from "lucide-react";
 import { useTheme } from "../lib/ThemeContext";
-import { CRMDataStore } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { UserDB } from "../lib/userDatabase";
 
 interface CommandItem {
@@ -36,6 +37,14 @@ export function CommandPalette({ role }: CommandPaletteProps) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Fetch live cases for search
+  const [cases, setCases] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('cases').select('*').then(({ data }) => {
+      setCases((data || []).map(mapSupabaseCaseToLocal));
+    });
+  }, []);
 
   // Build command list based on role
   const commands: CommandItem[] = useMemo(() => {
@@ -122,8 +131,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
     }
 
     // Dynamic case search items
-    const cases = CRMDataStore.getCases();
-    cases.forEach(c => {
+    cases.forEach((c: any) => {
       items.push({
         id: `case-${c.id}`,
         label: `${c.id} — ${c.customerName}`,
@@ -136,7 +144,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
         },
         category: "Cases",
         categoryUr: "کیسز",
-        keywords: [(c.customerName || "").toLowerCase(), (c.id || "").toLowerCase(), (c.agentName || "").toLowerCase(), (c.destination || "").toLowerCase()],
+        keywords: [(c.customerName || "").toLowerCase(), (c.id || "").toLowerCase(), (c.agentName || "").toLowerCase(), (c.country || "").toLowerCase()],
       });
     });
 

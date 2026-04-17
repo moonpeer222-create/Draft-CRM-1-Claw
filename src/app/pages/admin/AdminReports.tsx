@@ -9,7 +9,7 @@ import { useTheme } from "../../lib/ThemeContext";
 import { motion } from "motion/react";
 import { toast } from "../../lib/toast";
 import { AttendanceService } from "../../lib/attendanceService";
-import { CRMDataStore } from "../../lib/mockData";
+
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
 // Simple custom bar chart to avoid recharts null-key warnings

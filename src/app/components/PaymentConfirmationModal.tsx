@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../lib/ThemeContext";
-import { Case, Payment, CRMDataStore } from "../lib/mockData";
+import { Case, Payment } from "../lib/mockData";
+import { addPayment } from "../lib/caseApi";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { toast } from "../lib/toast";
 import {
   X, CreditCard, Banknote, Smartphone, Wallet, Receipt,
@@ -67,19 +70,19 @@ export function PaymentConfirmationModal({ caseData, isOpen, onClose, onPaymentR
     setIsProcessing(true);
     const lt = toast.loading(isUrdu ? "ادائیگی ریکارڈ ہو رہی ہے..." : "Recording payment...");
 
-    setTimeout(() => {
-      const updated = CRMDataStore.addPayment(caseData.id, {
+    setTimeout(async () => {
+      const ok = await addPayment(caseData.id, {
         amount: parsedAmount,
         date: new Date().toISOString(),
         method,
         receiptNumber: receiptNumber || `REC-${Date.now().toString().slice(-8)}`,
         description: description || `Payment via ${method}`,
         collectedBy: "Admin",
-      });
+      } as any);
 
       toast.dismiss(lt);
 
-      if (updated) {
+      if (ok) {
         setShowSuccess(true);
         toast.success(
           isUrdu
@@ -87,8 +90,10 @@ export function PaymentConfirmationModal({ caseData, isOpen, onClose, onPaymentR
             : `Payment of PKR ${parsedAmount.toLocaleString()} recorded!`
         );
 
-        setTimeout(() => {
-          onPaymentRecorded?.(updated);
+        setTimeout(async () => {
+          const { data } = await supabase.from('cases').select('*').eq('id', caseData.id).single();
+          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+          if (refreshed) onPaymentRecorded?.(refreshed);
           resetAndClose();
         }, 2000);
       } else {

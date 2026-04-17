@@ -11,8 +11,10 @@ import {
   Calendar, GraduationCap, Heart, Globe, Shield, Home, FileText,
   Loader2, CheckCircle2, Building2,
 } from "lucide-react";
-import { Case, CRMDataStore } from "../lib/mockData";
-import { casesApi } from "../lib/api";
+import { Case } from "../lib/mockData";
+import { updateCase } from "../lib/caseApi";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { AuditLogService } from "../lib/auditLog";
 import { toast } from "../lib/toast";
 
@@ -134,19 +136,21 @@ export function EditableCaseFields({
 
       updates.updatedDate = new Date().toISOString();
 
-      // 1. Update locally
-      const updated = CRMDataStore.updateCase(caseData.id, updates);
-      if (!updated) {
+      // 1. Update in Supabase
+      const ok = await updateCase(caseData.id, updates);
+      if (!ok) {
         toast.error(isUrdu ? "اپ ڈیٹ ناکام" : "Update failed");
         setSaving(false);
         return;
       }
 
-      // 2. Push to server
-      try {
-        await casesApi.update(caseData.id, updates);
-      } catch {
-        // Offline-first: local update succeeded, server sync will catch up
+      // 2. Fetch refreshed data
+      const { data } = await supabase.from('cases').select('*').eq('id', caseData.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (!refreshed) {
+        toast.error(isUrdu ? "اپ ڈیٹ ناکام" : "Update failed");
+        setSaving(false);
+        return;
       }
 
       // 3. Audit log
@@ -164,7 +168,7 @@ export function EditableCaseFields({
       toast.success(isUrdu ? "کیس اپ ڈیٹ ہو گیا" : "Case updated successfully");
       setDirtyFields(new Set());
       setEditMode(false);
-      onUpdate(updated);
+      onUpdate(refreshed);
     } catch (err) {
       toast.error(`Save error: ${err}`);
     } finally {

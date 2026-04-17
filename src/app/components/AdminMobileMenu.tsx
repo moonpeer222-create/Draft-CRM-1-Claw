@@ -9,7 +9,9 @@ import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../lib/ThemeContext";
-import { CRMDataStore, getOverdueInfo } from "../lib/mockData";
+import { getOverdueInfo } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { getPendingConflicts } from "../lib/syncService";
 import { getAdminProfile, subscribeToProfileUpdates } from "../lib/adminProfile";
 import { toast } from "../lib/toast";
@@ -100,18 +102,22 @@ export function AdminMobileMenu({ isOpen, onClose }: Props) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const cases = CRMDataStore.getCases();
-    setTotalCases(cases.length);
-    setCompletedCases(cases.filter(c => c.status === "stamped").length);
-    setOverdueCount(cases.filter((c) => getOverdueInfo(c).isOverdue).length);
-    setPendingConflicts(getPendingConflicts().filter((c) => !c.resolved).length);
-    // Unique agents with active (non-completed/rejected) cases
-    const agentIds = new Set(
-      cases
-        .filter(c => c.status !== "stamped" && c.status !== "rejected" && c.agentId)
-        .map(c => c.agentId)
-    );
-    setActiveAgents(agentIds.size);
+    const fetchCases = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      setTotalCases(cases.length);
+      setCompletedCases(cases.filter(c => c.status === "stamped").length);
+      setOverdueCount(cases.filter((c) => getOverdueInfo(c).isOverdue).length);
+      setPendingConflicts(getPendingConflicts().filter((c) => !c.resolved).length);
+      // Unique agents with active (non-completed/rejected) cases
+      const agentIds = new Set(
+        cases
+          .filter(c => c.status !== "stamped" && c.status !== "rejected" && c.agentId)
+          .map(c => c.agentId)
+      );
+      setActiveAgents(agentIds.size);
+    };
+    fetchCases();
   }, [isOpen]);
 
   // Reset search when menu closes

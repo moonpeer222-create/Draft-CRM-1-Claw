@@ -3,18 +3,22 @@
  * Allows wiping specific data categories with confirmation dialogs.
  * NOT available to Admin, Agent, or any other role.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trash2, AlertTriangle, ShieldAlert, Briefcase, FileText,
   Users, DollarSign, ClipboardList, Database, ChevronDown,
-  ChevronUp, Lock, CheckCircle, XCircle, Loader2,
+  ChevronUp, Lock, CheckCircle, XCircle, Loader2, Cloud,
 } from "lucide-react";
 import { CRMDataStore } from "../lib/mockData";
 import { UserDB } from "../lib/userDatabase";
 import { AuditLogService } from "../lib/auditLog";
 import { toast } from "../lib/toast";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { forceSync, pushCases, pushUsers, pushAuditLog, pushDocumentFiles, pushNotifications, markEntityModified } from "../lib/syncService";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 
 interface ResetOption {
   id: string;
@@ -40,6 +44,21 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [serverCounts, setServerCounts] = useState({ cases: 0, docs: 0, payments: 0, notes: 0 });
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const { data } = await supabase.from("cases").select("*");
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      setServerCounts({
+        cases: cases.length,
+        docs: cases.reduce((sum, c) => sum + (c.documents?.length || 0), 0),
+        payments: cases.reduce((sum, c) => sum + (c.payments?.length || 0), 0),
+        notes: cases.reduce((sum, c) => sum + (c.notes?.length || 0), 0),
+      });
+    };
+    fetchCounts();
+  }, []);
 
   const txt = dc ? "text-white" : "text-gray-900";
   const sub = dc ? "text-gray-400" : "text-gray-500";
@@ -56,7 +75,7 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
       icon: Briefcase,
       color: "red",
       danger: "critical",
-      countFn: () => CRMDataStore.getCases().length,
+      countFn: () => serverCounts.cases,
       action: () => {
         CRMDataStore.saveCases([]);
         // Don't removeItem — saveCases already wrote "[]" + version stamp
@@ -74,10 +93,7 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
       icon: FileText,
       color: "orange",
       danger: "high",
-      countFn: () => {
-        const cases = CRMDataStore.getCases();
-        return cases.reduce((sum, c) => sum + (c.documents?.length || 0), 0);
-      },
+      countFn: () => serverCounts.docs,
       action: () => {
         const cases = CRMDataStore.getCases();
         cases.forEach(c => { c.documents = []; });
@@ -98,10 +114,7 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
       icon: DollarSign,
       color: "amber",
       danger: "high",
-      countFn: () => {
-        const cases = CRMDataStore.getCases();
-        return cases.reduce((sum, c) => sum + (c.payments?.length || 0), 0);
-      },
+      countFn: () => serverCounts.payments,
       action: () => {
         const cases = CRMDataStore.getCases();
         cases.forEach(c => {
@@ -123,10 +136,7 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
       icon: ClipboardList,
       color: "yellow",
       danger: "medium",
-      countFn: () => {
-        const cases = CRMDataStore.getCases();
-        return cases.reduce((sum, c) => sum + (c.notes?.length || 0), 0);
-      },
+      countFn: () => serverCounts.notes,
       action: () => {
         const cases = CRMDataStore.getCases();
         cases.forEach(c => { c.notes = []; });
@@ -282,6 +292,12 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
       transition={{ delay: 1.0 }}
       className={`rounded-xl border ${cardBg} overflow-hidden`}
     >
+      <div className={`px-5 py-3 text-xs flex items-center gap-2 ${dc ? "bg-blue-900/20 text-blue-300" : "bg-blue-50 text-blue-700"}`}>
+        <Cloud className="w-4 h-4" />
+        {isUrdu
+          ? "اب ڈیٹا Supabase کلاؤڈ میں محفوظ ہوتا ہے۔ یہ پینل صرف براؤزر کیشے صاف کرے گا — سرور کا ڈیٹا متاثر نہیں ہوگا۔"
+          : "Data now lives in the Supabase cloud. This panel only clears browser cache — it will NOT affect server data."}
+      </div>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-5 text-left hover:opacity-90 transition-opacity"
@@ -316,6 +332,21 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
             exit={{ height: 0, opacity: 0 }}
             className={`border-t ${brd}`}
           >
+            {/* Supabase Cloud Warning */}
+            <div className={`mx-4 mt-4 p-3 rounded-lg flex items-start gap-3 ${dc ? "bg-blue-900/20 border border-blue-700/30" : "bg-blue-50 border border-blue-200"}`}>
+              <AlertTriangle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className={`text-sm font-bold ${dc ? "text-blue-400" : "text-blue-700"}`}>
+                  {isUrdu ? "نوٹ: ڈیٹا اب Supabase کلاؤڈ میں محفوظ ہے۔" : "Data now lives in Supabase cloud."}
+                </p>
+                <p className={`text-xs mt-1 ${dc ? "text-blue-400/70" : "text-blue-600"}`}>
+                  {isUrdu
+                    ? "Resetting localStorage صرف براؤزر کیش صاف کرتی ہے اور سرور ڈیٹا متاثر نہیں کرتی۔"
+                    : "Resetting localStorage only clears browser cache and will not affect server data."}
+                </p>
+              </div>
+            </div>
+
             {/* Warning Banner */}
             <div className={`mx-4 mt-4 p-3 rounded-lg flex items-start gap-3 ${dc ? "bg-red-900/20 border border-red-700/30" : "bg-red-50 border border-red-200"}`}>
               <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />

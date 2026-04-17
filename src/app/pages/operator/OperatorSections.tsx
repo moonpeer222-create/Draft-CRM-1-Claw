@@ -11,7 +11,10 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "../../lib/toast";
 import { copyToClipboard } from "../../lib/clipboard";
-import { CRMDataStore, type Case } from "../../lib/mockData";
+import { type Case } from "../../lib/mockData";
+import { createCase, updateCase } from "../../lib/caseApi";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { ALL_COUNTRIES, POPULAR_COUNTRIES } from "../../constants/countries";
 import { SearchableCountrySelect } from "../../components/SearchableCountrySelect";
 
@@ -294,7 +297,7 @@ export function FoldersSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases,
     toast.success(`${u("Folder created!", "فولڈر بن گیا!")} ${newId}`);
   };
 
-  const handleCreateFullCase = () => {
+  const handleCreateFullCase = async () => {
     if (!fullCase.customerName.trim() || !fullCase.phone.trim()) {
       toast.error(u("Name and phone are required", "نام اور فون ضروری ہیں"));
       return;
@@ -303,8 +306,8 @@ export function FoldersSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases,
     const agentNameToId: Record<string, string> = {
       "Faizan": "AGENT-1", "Imran": "AGENT-2", "Safeer": "AGENT-3", "Aynee": "AGENT-4",
     };
-    setTimeout(() => {
-      const created = CRMDataStore.addCase({
+    try {
+      const created = await createCase({
         customerName: fullCase.customerName.trim(),
         fatherName: fullCase.fatherName.trim(),
         phone: fullCase.phone.trim(),
@@ -335,12 +338,14 @@ export function FoldersSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases,
         stageDeadlineAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
         isOverdue: false,
       });
-      toast.success(`${u("Case created!", "کیس بن گیا!")} ${created.id}`);
-      addNotification(
-        `Operator created case ${created.id} for ${fullCase.customerName}`,
-        `آپریٹر نے ${fullCase.customerName} کا کیس ${created.id} بنایا`,
-        "status"
-      );
+      if (created) {
+        toast.success(`${u("Case created!", "کیس بن گیا!")} ${created.id}`);
+        addNotification(
+          `Operator created case ${created.id} for ${fullCase.customerName}`,
+          `آپریٹر نے ${fullCase.customerName} کا کیس ${created.id} بنایا`,
+          "status"
+        );
+      }
       setFullCase({
         customerName: "", fatherName: "", phone: "", email: "", cnic: "", passport: "",
         dateOfBirth: "", maritalStatus: "single", address: "", city: "Lahore",
@@ -350,9 +355,13 @@ export function FoldersSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases,
         agentName: agents[0]?.fullName || "Faizan", totalFee: 50000, priority: "medium",
       });
       setShowFullForm(false);
-      setIsCreating(false);
       if (onCaseCreated) onCaseCreated();
-    }, 800);
+    } catch (e) {
+      console.error(e);
+      toast.error(u("Failed to create case", "کیس بنانا ناکام"));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const toggleDoc = (caseId: string, docId: string) => {
@@ -683,19 +692,21 @@ export function StatusSection({ u, dc, card, txt, sub, bigBtn, cases, addNotific
     return STAGE_ORDER.slice(minIdx, maxIdx + 1).filter(s => s.id !== currentStatus);
   };
 
-  const doStatusChange = (c: Case) => {
+  const doStatusChange = async (c: Case) => {
     if (!selectedNewStatus) { toast.error(u("Select a status", "صورتحال منتخب کریں")); return; }
     const stageInfo = STAGE_ORDER.find(s => s.id === selectedNewStatus);
     if (!stageInfo) return;
 
-    // Update the case via CRMDataStore
-    CRMDataStore.updateCase(c.id, {
+    await updateCase(c.id, {
       status: selectedNewStatus as Case["status"],
       currentStage: stageInfo.stageNum,
       stageStartedAt: new Date().toISOString(),
       updatedDate: new Date().toISOString(),
       isOverdue: false,
     });
+
+    const { data } = await supabase.from('cases').select('*').eq('id', c.id).single();
+    const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
 
     const oldSt = getStatus(c.status);
     const newSt = getStatus(selectedNewStatus);
@@ -1613,9 +1624,11 @@ export function DocumentsSection({ u, dc, card, txt, sub, inputCls, bigBtn, case
           notes: "Uploaded by Operator via Documents tab",
         };
         const updatedDocs = [...currentDocs, newDoc];
-        CRMDataStore.updateCase(selectedCaseId, { documents: updatedDocs });
+        await updateCase(selectedCaseId, { documents: updatedDocs });
+        const { data } = await supabase.from('cases').select('*').eq('id', selectedCaseId).single();
+        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
         setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: "done", progress: 100 } : q));
-        return { success: true, docs: updatedDocs };
+        return { success: true, docs: refreshed ? refreshed.documents : updatedDocs };
       } else {
         setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: "error", error: result.error || "Upload failed" } : q));
         return { success: false, docs: currentDocs };
@@ -1771,8 +1784,10 @@ export function DocumentsSection({ u, dc, card, txt, sub, inputCls, bigBtn, case
       const updatedDocs = selectedCase.documents.map(d =>
         selectedDocIds.has(d.id) ? { ...d, status: newStatus } : d
       );
-      const updated = CRMDataStore.updateCase(selectedCaseId, { documents: updatedDocs });
-      if (updated) {
+      const ok = await updateCase(selectedCaseId, { documents: updatedDocs });
+      if (ok) {
+        const { data } = await supabase.from('cases').select('*').eq('id', selectedCaseId).single();
+        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
         const statusLabel = newStatus === "verified" ? u("Verified", "تصدیق شدہ") : newStatus === "rejected" ? u("Rejected", "مسترد") : u("Pending", "زیر التواء");
         toast.success(`${selectedDocIds.size} ${u("documents marked as", "دستاویزات کی حالت")} ${statusLabel}`);
         addNotification(

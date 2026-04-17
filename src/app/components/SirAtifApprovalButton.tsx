@@ -6,7 +6,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ShieldCheck, Lock, Unlock, Loader2, CheckCircle2, XCircle, Crown, MessageSquare } from "lucide-react";
 import { pipelineApi } from "../lib/api";
-import { CRMDataStore, Case } from "../lib/mockData";
+import { Case } from "../lib/mockData";
+import { updateCase } from "../lib/caseApi";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { AuditLogService } from "../lib/auditLog";
 import { toast } from "../lib/toast";
 
@@ -42,11 +45,16 @@ export function SirAtifApprovalButton({ caseData, darkMode: dc, isUrdu, userName
     }
 
     // Local update
-    CRMDataStore.updateCase(caseData.id, {
+    await updateCase(caseData.id, {
       sirAtifApproval: approved,
       sirAtifApprovalAt: approved ? new Date().toISOString() : undefined,
       sirAtifApprovalNote: note || undefined,
     });
+    const { data } = await supabase.from('cases').select('*').eq('id', caseData.id).single();
+    const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+    if (refreshed) {
+      // continue
+    }
 
     AuditLogService.log({
       userId,

@@ -14,7 +14,8 @@ import { useTheme } from "../lib/ThemeContext";
 import { AccessCodeService } from "../lib/accessCode";
 import { AuditLogService } from "../lib/auditLog";
 import { AttendanceService } from "../lib/attendanceService";
-import { CRMDataStore } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { toast } from "../lib/toast";
 import { getAgentAvatar } from "../pages/agent/AgentProfile";
 import {
@@ -84,11 +85,15 @@ export function AgentMobileMenu({ isOpen, onClose }: Props) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const cases = CRMDataStore.getCases();
-    const myCases = cases.filter(c => c.agentId === session?.agentId);
-    setTotalCount(myCases.length);
-    setCompletedCount(myCases.filter(c => c.status === "stamped").length);
-    setPendingCount(myCases.filter(c => c.status !== "stamped" && c.status !== "rejected").length);
+    const fetchCases = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const myCases = cases.filter(c => c.agentId === session?.agentId);
+      setTotalCount(myCases.length);
+      setCompletedCount(myCases.filter(c => c.status === "stamped").length);
+      setPendingCount(myCases.filter(c => c.status !== "stamped" && c.status !== "rejected").length);
+    };
+    fetchCases();
 
     // Session timer
     setTimeRemaining(AccessCodeService.getAgentTimeRemaining());

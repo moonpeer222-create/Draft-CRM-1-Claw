@@ -1,6 +1,7 @@
 import { AgentSidebar } from "../../components/AgentSidebar";
 import { AgentHeader } from "../../components/AgentHeader";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { useState, useEffect, useRef } from "react";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -106,9 +107,17 @@ export function AgentProfile() {
     }
   }, [agentName]);
 
-  // Live stats from CRMDataStore
-  const allCases = CRMDataStore.getCases();
-  const myCases = allCases.filter(c => c.agentName === agentName || c.agentId === agentId);
+  // Live stats from Supabase
+  const [myCases, setMyCases] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchCases = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      setMyCases(cases.filter(c => c.agentName === agentName || c.agentId === agentId));
+    };
+    fetchCases();
+  }, [agentName, agentId]);
+
   const activeCases = myCases.filter(c => !["completed", "rejected"].includes(c.status));
   const completedCases = myCases.filter(c => c.status === "completed");
   const totalRevenue = myCases.reduce((sum, c) => sum + c.paidAmount, 0);

@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
 import { staggerContainer, staggerItem, modalVariants } from "../../lib/animations";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import {
   getConflictAutoResolveMode,
   setConflictAutoResolveMode,
@@ -53,11 +54,13 @@ export function AdminSettings() {
     setTimeout(() => { toast.dismiss(lt); toast.success(`Test "${name}" sent successfully!`); }, 1500);
   };
 
-  const handleBackup = () => {
+  const handleBackup = async () => {
     const lt = toast.loading("Creating backup...");
-    setTimeout(() => {
+    setTimeout(async () => {
+      const { data: casesData, error } = await supabase.from('cases').select('*');
+      const cases = error ? [] : (casesData || []).map((r: any) => mapSupabaseCaseToLocal(r));
       const data = {
-        cases: CRMDataStore.getCases(),
+        cases,
         users: JSON.parse(localStorage.getItem("crm_users") || "[]"),
         timestamp: new Date().toISOString(),
       };
@@ -73,10 +76,11 @@ export function AdminSettings() {
     }, 1500);
   };
 
-  const handleExportDB = () => {
+  const handleExportDB = async () => {
     const lt = toast.loading("Exporting database...");
-    setTimeout(() => {
-      const cases = CRMDataStore.getCases();
+    setTimeout(async () => {
+      const { data: casesData, error } = await supabase.from('cases').select('*');
+      const cases = error ? [] : (casesData || []).map((r: any) => mapSupabaseCaseToLocal(r));
       const headers = "Case ID,Customer,Phone,Country,Status,Agent,Total Fee,Paid\n";
       const rows = cases.map((c) => `${c.id},${c.customerName},${c.phone},${c.country},${c.status},${c.agentName},${c.totalFee},${c.paidAmount}`).join("\n");
       const blob = new Blob([headers + rows], { type: "text/csv" });

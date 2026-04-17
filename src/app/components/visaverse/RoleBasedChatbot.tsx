@@ -525,7 +525,7 @@ export function RoleBasedChatbot({ role }: RoleBasedChatbotProps) {
     const history: ChatMessage[] = messages
       .filter(m => m.id !== 0)
       .map(m => ({ text: m.text, isBot: m.isBot }));
-    const crmCtx = buildCRMContext(msg) + "\n" + CRM_ACTION_INSTRUCTIONS;
+    const crmCtx = (await buildCRMContext(msg)) + "\n" + CRM_ACTION_INSTRUCTIONS;
 
     // Create a streaming placeholder message
     const botMsgId = Date.now() + 1;
@@ -533,11 +533,11 @@ export function RoleBasedChatbot({ role }: RoleBasedChatbotProps) {
     setIsGeminiThinking(true);
     setMessages(prev => [...prev, { id: botMsgId, text: "", isBot: true, avatar: "arcee" }]);
 
-    const finalize = (fullText: string) => {
+    const finalize = async (fullText: string) => {
       const { actions, cleanText } = parseActions(fullText);
       let actionResultText = "";
       if (actions.length > 0) {
-        const results = executeAllActions(actions);
+        const results = await executeAllActions(actions);
         actionResultText = results.map(r =>
           r.success ? `\u2705 ${r.message}` : `\u274c ${r.message}`
         ).join("\n\n");

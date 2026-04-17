@@ -27,6 +27,9 @@ export type DbUser = {
   avatar_url: string | null;
   last_seen: string;
   created_at: string;
+  agent_id?: string | null;
+  agent_name?: string | null;
+  status?: string | null;
 };
 
 export async function getCurrentUser() {

@@ -5,7 +5,9 @@ import { motion } from "motion/react";
 import { toast } from "../../lib/toast";
 import { staggerContainer, staggerItem } from "../../lib/animations";
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore, Case } from "../../lib/mockData";
+import { Case } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { AnalyticsEngine, AnalyticsSummary, formatCurrency, formatPercentage, formatDays } from "../../lib/analytics";
 import { AttendanceService } from "../../lib/attendanceService";
 import {
@@ -102,9 +104,10 @@ export function AdminBusinessIntelligence() {
     loadAnalytics();
   }, []);
 
-  const loadAnalytics = () => {
+  const loadAnalytics = async () => {
     setIsLoading(true);
-    const loadedCases = CRMDataStore.getCases();
+    const { data, error } = await supabase.from('cases').select('*');
+    const loadedCases = error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
     setCases(loadedCases);
     const analyticsData = AnalyticsEngine.calculateAnalytics(loadedCases);
     setAnalytics(analyticsData);
@@ -120,10 +123,11 @@ export function AdminBusinessIntelligence() {
     }, 1500);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const loadingToast = toast.loading(t("bi.exportingReport"));
-    setTimeout(() => {
-      const cases = CRMDataStore.getCases();
+    setTimeout(async () => {
+      const { data: casesData, error } = await supabase.from('cases').select('*');
+      const cases = error ? [] : (casesData || []).map((r: any) => mapSupabaseCaseToLocal(r));
       const headers = "Case ID,Customer,Country,Job Type,Status,Priority,Agent,Total Fee,Paid,Outstanding\n";
       const rows = cases.map(c =>
         `${c.id},${c.customerName},${c.country},${c.jobType},${c.status},${c.priority},${c.agentName},${c.totalFee},${c.paidAmount},${c.totalFee - c.paidAmount}`

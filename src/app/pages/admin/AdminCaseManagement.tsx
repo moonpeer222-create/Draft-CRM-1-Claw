@@ -1,4 +1,4 @@
-import { CRMDataStore, Case, Payment, WORKFLOW_STAGES, getStageLabel, getStageNumber, DELAY_REASONS, getOverdueInfo, getDelayReasonLabel, reportDelay, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES, getPipelineStages, shouldAutoMigrateToVisa } from "../../lib/mockData";
+import { Case, Payment, WORKFLOW_STAGES, getStageLabel, getStageNumber, DELAY_REASONS, getOverdueInfo, getDelayReasonLabel, reportDelay, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES, getPipelineStages, shouldAutoMigrateToVisa } from "../../lib/mockData";
 import { ALL_COUNTRIES, POPULAR_COUNTRIES } from "../../constants/countries";
 import { SearchableCountrySelect } from "../../components/SearchableCountrySelect";
 import { pipelineApi } from "../../lib/api";
@@ -14,6 +14,7 @@ import { pushCases } from "../../lib/syncService";
 import { copyToClipboard } from "../../lib/clipboard";
 import { supabase } from "../../lib/supabase";
 import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { createCase, updateCase, updateCaseStatus, addPayment, addNote, deleteCase, bulkDeleteCases } from "../../lib/caseApi";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -249,23 +250,25 @@ export function AdminCaseManagement() {
     const tab = searchParams.get("tab") || state?.openTab;
     const fromNotification = searchParams.get("from") === "notification" || state?.fromNotification;
     if (targetCaseId) {
-      const allCases = CRMDataStore.getCases();
-      const target = allCases.find(c => c.id === targetCaseId);
-      if (target) {
-        setSelectedCase(target);
-        setShowCaseDetail(true);
-        setActiveTab(tab || "overview");
-        if (fromNotification) {
-          setDeepLinked(true);
-          setTimeout(() => setDeepLinked(false), 3200);
-          const tabLabel = tab ? ` → ${tab.charAt(0).toUpperCase() + tab.slice(1)}` : "";
-          toast.success(`Opened ${target.id} (${target.customerName})${tabLabel}`);
+      (async () => {
+        const { data, error } = await supabase.from('cases').select('*').eq('id', targetCaseId).single();
+        if (!error && data) {
+          const target = mapSupabaseCaseToLocal(data);
+          setSelectedCase(target);
+          setShowCaseDetail(true);
+          setActiveTab(tab || "overview");
+          if (fromNotification) {
+            setDeepLinked(true);
+            setTimeout(() => setDeepLinked(false), 3200);
+            const tabLabel = tab ? ` → ${tab.charAt(0).toUpperCase() + tab.slice(1)}` : "";
+            toast.success(`Opened ${target.id} (${target.customerName})${tabLabel}`);
+          } else {
+            toast.info(`Navigated to case ${target.id}`);
+          }
         } else {
-          toast.info(`Navigated to case ${target.id}`);
+          toast.error(`Case ${targetCaseId} not found`);
         }
-      } else {
-        toast.error(`Case ${targetCaseId} not found`);
-      }
+      })();
       // Clear query params and state so refresh doesn't re-open
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -332,8 +335,8 @@ export function AdminCaseManagement() {
     };
     const resolvedAgentId = agentNameToId[newCase.agentName] || "AGENT-1";
 
-    setTimeout(() => {
-      const created = CRMDataStore.addCase({
+    setTimeout(async () => {
+      const created = await createCase({
         customerName: newCase.customerName,
         fatherName: newCase.fatherName,
         phone: newCase.phone,
@@ -384,10 +387,14 @@ export function AdminCaseManagement() {
         ],
       });
       toast.dismiss(lt);
-      toast.success(`Case ${created.id} created successfully!`);
-      NotificationService.notifyCaseCreated(created.id, newCase.customerName, newCase.agentName);
-      AuditLogService.logCaseCreated(adminName, "admin", created.id, newCase.customerName);
-      DataSyncService.markModified(created.id, "admin", adminName, "admin", "case", "Case created by admin");
+      if (created) {
+        toast.success(`Case ${created.id} created successfully!`);
+        NotificationService.notifyCaseCreated(created.id, newCase.customerName, newCase.agentName);
+        AuditLogService.logCaseCreated(adminName, "admin", created.id, newCase.customerName);
+        DataSyncService.markModified(created.id, "admin", adminName, "admin", "case", "Case created by admin");
+      } else {
+        toast.error("Failed to create case in database");
+      }
       setShowNewCaseModal(false);
       setNewCase({ customerName: "", fatherName: "", phone: "", email: "", cnic: "", passport: "", dateOfBirth: "", maritalStatus: "single", address: "", city: "Lahore", country: "Saudi Arabia", jobType: "Driver", jobDescription: "", education: "High School", experience: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "father", agentName: "Faizan", totalFee: 50000, priority: "medium", uploadedDocs: [] });
       uploadedFiles.forEach((f) => { if (f.preview) URL.revokeObjectURL(f.preview); });
@@ -404,16 +411,16 @@ export function AdminCaseManagement() {
     }
     setIsLoading(true);
 
-    // Apply locally first (optimistic)
-    const updated = CRMDataStore.addPayment(selectedCase.id, {
+    const success = await addPayment(selectedCase.id, {
       ...newPayment,
       date: new Date().toISOString(),
       collectedBy: "Admin",
     });
 
-    if (updated) {
-      // UI updates immediately
-      setSelectedCase(updated);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
       toast.success(`Payment of PKR ${newPayment.amount.toLocaleString()} recorded!`);
       AuditLogService.logPaymentAction(adminName, "admin", "payment_added", selectedCase.id, newPayment.amount);
       DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `Payment PKR ${newPayment.amount.toLocaleString()} recorded`);
@@ -421,17 +428,8 @@ export function AdminCaseManagement() {
       setShowPaymentModal(false);
       setNewPayment({ amount: 0, method: "cash", description: "", receiptNumber: "" });
       loadCases();
-
-      // Push to server in background with rollback on failure
-      const snapshot = localStorage.getItem("crm_cases");
-      try {
-        await pushCases();
-      } catch (err) {
-        // Rollback: restore snapshot and reload
-        if (snapshot) localStorage.setItem("crm_cases", snapshot);
-        loadCases();
-        toast.error(`Server sync failed — payment reverted. ${err}`);
-      }
+    } else {
+      toast.error("Failed to record payment");
     }
     setIsLoading(false);
   };
@@ -441,26 +439,20 @@ export function AdminCaseManagement() {
       toast.error("Please enter a note");
       return;
     }
-    const snapshot = localStorage.getItem("crm_cases");
-    const updated = CRMDataStore.addNote(selectedCase.id, {
+    const success = await addNote(selectedCase.id, {
       ...newNote,
       author: "Admin",
       date: new Date().toISOString(),
     });
-    if (updated) {
-      setSelectedCase(updated);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
       toast.success("Note added successfully!");
       setNewNote({ text: "", important: false });
       loadCases();
-
-      // Push to server with rollback
-      try {
-        await pushCases();
-      } catch (err) {
-        if (snapshot) localStorage.setItem("crm_cases", snapshot);
-        loadCases();
-        toast.error(`Server sync failed — note reverted. ${err}`);
-      }
+    } else {
+      toast.error("Failed to add note");
     }
   };
 
@@ -484,10 +476,11 @@ export function AdminCaseManagement() {
       // Fallback to local if server unavailable
     }
 
-    // Apply locally (optimistic)
-    const updated = CRMDataStore.updateCaseStatus(caseId, status);
-    if (updated) {
-      setSelectedCase(updated);
+    const success = await updateCaseStatus(caseId, status);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
       toast.success(`Case status updated to ${status}!`);
       if (currentCase) {
         NotificationService.notifyCaseStatusChanged(caseId, currentCase.customerName, currentCase.status, status);
@@ -569,14 +562,17 @@ export function AdminCaseManagement() {
   const handleDeleteCase = (caseId: string) => {
     if (!confirm("Are you sure you want to delete this case?")) return;
     const lt = toast.loading("Deleting case...");
-    setTimeout(() => {
-      const success = CRMDataStore.deleteCase(caseId);
+    setTimeout(async () => {
+      const success = await deleteCase(caseId);
       if (success) {
         toast.dismiss(lt);
         toast.success("Case deleted successfully!");
         setShowCaseDetail(false);
         setSelectedCase(null);
         loadCases();
+      } else {
+        toast.dismiss(lt);
+        toast.error("Failed to delete case");
       }
     }, 800);
   };
@@ -751,15 +747,18 @@ export function AdminCaseManagement() {
                     <button onClick={() => setShowBulkStatusModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
                       <Edit className="w-3 h-3" /> Change Status
                     </button>
-                    <button onClick={() => {
+                    <button onClick={async () => {
                       if (!confirm(`Delete ${bulkSelected.size} cases? This cannot be undone.`)) return;
-                      const allC = CRMDataStore.getCases();
-                      const remaining = allC.filter(cs => !bulkSelected.has(cs.id));
-                      CRMDataStore.saveCases(remaining);
-                      setCases(remaining);
-                      toast.success(`${bulkSelected.size} cases deleted`);
-                      setBulkSelected(new Set());
-                      setBulkMode(false);
+                      const ids = Array.from(bulkSelected);
+                      const success = await bulkDeleteCases(ids);
+                      if (success) {
+                        toast.success(`${ids.length} cases deleted`);
+                        setBulkSelected(new Set());
+                        setBulkMode(false);
+                        loadCases();
+                      } else {
+                        toast.error("Failed to delete cases");
+                      }
                     }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors">
                       <Trash2 className="w-3 h-3" /> Delete
                     </button>
@@ -1123,9 +1122,10 @@ export function AdminCaseManagement() {
                       )}
                     </div>
                     <div className="flex flex-col gap-1.5 flex-shrink-0">
-                      <button onClick={() => {
+                      <button onClick={async () => {
                         conflictState.refresh();
-                        const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
                         if (refreshed) setSelectedCase({ ...refreshed });
                         toast.success(isUrdu ? "تازہ ترین ڈیٹا لوڈ ہو گیا" : "Latest data loaded");
                       }}
@@ -1328,9 +1328,10 @@ export function AdminCaseManagement() {
                         isUrdu={isUrdu}
                         userName={adminName}
                         userId="master_admin"
-                        onUpdate={() => {
-                          loadCases();
-                          const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+                        onUpdate={async () => {
+                          await loadCases();
+                          const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
                           if (refreshed) setSelectedCase(refreshed);
                         }}
                       />
@@ -1441,9 +1442,10 @@ export function AdminCaseManagement() {
                         userRole="admin"
                         userName={adminName}
                         userId="admin"
-                        onUpdate={() => {
-                          loadCases();
-                          const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+                        onUpdate={async () => {
+                          await loadCases();
+                          const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
                           if (refreshed) setSelectedCase(refreshed);
                         }}
                       />
@@ -1508,11 +1510,13 @@ export function AdminCaseManagement() {
                           });
                         }
                       }
-                      const updated = CRMDataStore.updateCase(selectedCase.id, {
+                      const success = await updateCase(selectedCase.id, {
                         documents: [...selectedCase.documents, ...newDocs],
                       });
-                      if (updated) {
-                        setSelectedCase(updated);
+                      if (success) {
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                        if (refreshed) setSelectedCase(refreshed);
                         newDocs.forEach(d => AuditLogService.logDocumentAction(adminName, "admin", "document_uploaded", selectedCase.id, d.name));
                         DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `${newDocs.length} document(s) uploaded`);
                         NotificationService.addNotification({
@@ -1524,13 +1528,15 @@ export function AdminCaseManagement() {
                         loadCases();
                       }
                     }}
-                    onDocumentVerify={(docId, status) => {
+                    onDocumentVerify={async (docId, status) => {
                       const updatedDocs = selectedCase.documents.map(d =>
                         d.id === docId ? { ...d, status } : d
                       );
-                      const updated = CRMDataStore.updateCase(selectedCase.id, { documents: updatedDocs });
-                      if (updated) {
-                        setSelectedCase(updated);
+                      const success = await updateCase(selectedCase.id, { documents: updatedDocs });
+                      if (success) {
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                        if (refreshed) setSelectedCase(refreshed);
                         const doc = selectedCase.documents.find(d => d.id === docId);
                         AuditLogService.logDocumentAction(adminName, "admin", status === "verified" ? "document_verified" : "document_rejected", selectedCase.id, doc?.name || docId);
                         DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `Document ${status}`);
@@ -1897,17 +1903,18 @@ export function AdminCaseManagement() {
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      const ids = Array.from(bulkSelected);
                       let updated = 0;
-                      bulkSelected.forEach(cid => {
-                        const result = CRMDataStore.updateCaseStatus(cid, bulkTargetStatus);
+                      for (const cid of ids) {
+                        const result = await updateCaseStatus(cid, bulkTargetStatus);
                         if (result) updated++;
-                      });
-                      setCases(CRMDataStore.getCases());
+                      }
                       toast.success(`${updated} cases updated to ${getStageLabel(bulkTargetStatus)}`);
                       setShowBulkStatusModal(false);
                       setBulkSelected(new Set());
                       setBulkMode(false);
+                      loadCases();
                     }}
                     className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold text-sm"
                   >
@@ -1935,9 +1942,10 @@ export function AdminCaseManagement() {
           userName={adminName}
           userId={isMasterAdmin ? "master_admin" : "admin"}
           onClose={() => setShowCancelModal(false)}
-          onUpdate={() => {
-            loadCases();
-            const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+          onUpdate={async () => {
+            await loadCases();
+            const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+            const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
             if (refreshed) setSelectedCase(refreshed);
           }}
         />

@@ -4,7 +4,10 @@ import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CRMDataStore, Case } from "../../lib/mockData";
+import { Case } from "../../lib/mockData";
+import { updateCase } from "../../lib/caseApi";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { AuditLogService } from "../../lib/auditLog";
 import { DataSyncService } from "../../lib/dataSync";
 import { NotificationService } from "../../lib/notifications";
@@ -14,7 +17,6 @@ import { CustomerMobileMenu } from "../../components/CustomerMobileMenu";
 import { ImageLightbox } from "../../components/ImageLightbox";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
-import { supabase } from "../../lib/supabase";
 
 export function CustomerDocuments() {
   const { insideUnifiedLayout } = useUnifiedLayout();
@@ -231,15 +233,17 @@ export function CustomerDocuments() {
       updatedDocs = [...myCase.documents, newDoc];
     }
 
-    const updated = CRMDataStore.updateCase(myCase.id, { documents: updatedDocs });
+    const ok = await updateCase(myCase.id, { documents: updatedDocs });
     toast.dismiss(lt);
 
-    if (updated) {
-      setMyCase(updated);
+    if (ok) {
+      const { data } = await supabase.from('cases').select('*').eq('id', myCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data, profile) : null;
+      if (refreshed) setMyCase(refreshed);
 
       // Audit log
       AuditLogService.logDocumentAction(customerName, "customer", "document_uploaded", myCase.id, file.name);
-      DataSyncService.markModified(myCase.id, session?.userId || "customer", customerName, "customer", "case", `Document "${file.name}" uploaded by customer`);
+      DataSyncService.markModified(myCase.id, profile?.id || "customer", customerName, "customer", "case", `Document "${file.name}" uploaded by customer`);
 
       // Notify admin/agent
       NotificationService.addNotification({

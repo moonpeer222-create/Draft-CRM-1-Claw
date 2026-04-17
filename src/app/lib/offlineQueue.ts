@@ -15,6 +15,7 @@ const DB_STORE = "mutations";
 // ── Service Worker Registration ────────────────────────────────────────
 export async function registerServiceWorker(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
+  if ((window as any).__skip_sw__) return;
 
   // In sandboxed iframe environments (e.g. Figma preview) the SW script is
   // served as text/html (404 page) which causes a SecurityError. Detect this

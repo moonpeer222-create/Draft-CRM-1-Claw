@@ -1,4 +1,5 @@
-import { CRMDataStore, Case, getOverdueInfo, getDelayReasonLabel, DELAY_REASONS, getStageLabel } from "../../lib/mockData";
+import { Case, getOverdueInfo, getDelayReasonLabel, DELAY_REASONS, getStageLabel } from "../../lib/mockData";
+import { createCase } from "../../lib/caseApi";
 import { AdminHeader } from "../../components/AdminHeader";
 import { AdminSidebar } from "../../components/AdminSidebar";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
@@ -117,11 +118,15 @@ export function AdminDashboard() {
   // Load live data on mount and set up refresh
   useEffect(() => {
     seedPassportDemoData();
-    const allCases = CRMDataStore.getCases();
-    DataSyncService.seedFromCases(allCases.map(c => ({
-      id: c.id, agentId: c.agentId, agentName: c.agentName, updatedDate: c.updatedDate,
-    })));
-    loadLiveData();
+    const init = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const allCases = (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
+      DataSyncService.seedFromCases(allCases.map(c => ({
+        id: c.id, agentId: c.agentId, agentName: c.agentName, updatedDate: c.updatedDate,
+      })));
+      loadLiveData();
+    };
+    init();
     const interval = setInterval(loadLiveData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -183,8 +188,8 @@ export function AdminDashboard() {
     };
     const resolvedAgentId = agentNameToId[newCase.agent] || "AGENT-1";
 
-    setTimeout(() => {
-      const created = CRMDataStore.addCase({
+    setTimeout(async () => {
+      const created = await createCase({
         customerName: newCase.customerName,
         phone: newCase.phone,
         country: newCase.country,
@@ -202,10 +207,12 @@ export function AdminDashboard() {
         passport: "",
       });
       toast.dismiss(loadingToast);
-      toast.success(`${t("cases.newCase")} ${created.id} ${t("dashboard.caseCreated")} ${newCase.customerName}`);
-      NotificationService.notifyCaseCreated(created.id, newCase.customerName, newCase.agent);
-      AuditLogService.logCaseCreated("Imran Khan", "admin", created.id, newCase.customerName);
-      DataSyncService.markModified(created.id, "admin", "Imran Khan", "admin", "case", "Case created by admin");
+      if (created) {
+        toast.success(`${t("cases.newCase")} ${created.id} ${t("dashboard.caseCreated")} ${newCase.customerName}`);
+        NotificationService.notifyCaseCreated(created.id, newCase.customerName, newCase.agent);
+        AuditLogService.logCaseCreated("Imran Khan", "admin", created.id, newCase.customerName);
+        DataSyncService.markModified(created.id, "admin", "Imran Khan", "admin", "case", "Case created by admin");
+      }
       setShowNewCaseModal(false);
       setNewCase({ customerName: "", phone: "", country: "Saudi Arabia", jobType: "Driver", agent: "Faizan" });
       setIsLoading(false);

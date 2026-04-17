@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { AdminHeader } from "../../components/AdminHeader";
 import { AdminSidebar } from "../../components/AdminSidebar";
-import { CRMDataStore } from "../../lib/mockData";
+
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "../../lib/toast";
 import { staggerContainer, staggerItem, modalVariants } from "../../lib/animations";
@@ -13,6 +13,8 @@ import {
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/ThemeContext";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 
 const PROFILE_KEY = "crm_admin_profile";
 
@@ -94,6 +96,7 @@ export function AdminProfile() {
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
   const [agents, setAgents] = useState<any[]>([]);
+  const [cases, setCases] = useState<any[]>([]);
 
   useEffect(() => {
     setProfile(getAdminProfile(sbProfile));
@@ -108,30 +111,37 @@ export function AdminProfile() {
     fetchAgents();
   }, []);
 
-  // Live stats from CRMDataStore
-  const cases = CRMDataStore.getCases();
+  useEffect(() => {
+    const fetchCases = async () => {
+      const { data, error } = await supabase.from('cases').select('*');
+      if (!error && data) setCases(data.map((r: any) => mapSupabaseCaseToLocal(r)));
+    };
+    fetchCases();
+  }, []);
+
+  // Live stats from Supabase
   const totalCases = cases.length;
-  const completedCases = cases.filter(c => c.status === "completed").length;
-  const totalRevenue = cases.reduce((sum, c) => sum + c.paidAmount, 0);
+  const completedCases = cases.filter((c: any) => c.status === "completed").length;
+  const totalRevenue = cases.reduce((sum, c: any) => sum + c.paidAmount, 0);
   const activeAgents = agents.length;
 
   // Activity log from live data
   const recentActivity = [
-    ...cases.slice(0, 3).map(c => ({
+    ...cases.slice(0, 3).map((c: any) => ({
       id: `case-${c.id}`,
       icon: FileText,
       text: `Case ${c.id} created for ${c.customerName}`,
       time: new Date(c.createdDate).toLocaleDateString(),
       color: "text-blue-500",
     })),
-    ...cases.filter(c => c.payments.length > 0).slice(0, 3).map(c => ({
+    ...cases.filter((c: any) => c.payments.length > 0).slice(0, 3).map((c: any) => ({
       id: `pay-${c.id}`,
       icon: CreditCard,
       text: `PKR ${c.payments[c.payments.length - 1].amount.toLocaleString()} received from ${c.customerName}`,
       time: new Date(c.payments[c.payments.length - 1].date).toLocaleDateString(),
       color: "text-blue-500",
     })),
-    ...cases.filter(c => c.status === "completed").slice(0, 2).map(c => ({
+    ...cases.filter((c: any) => c.status === "completed").slice(0, 2).map((c: any) => ({
       id: `complete-${c.id}`,
       icon: CheckCircle,
       text: `Case ${c.id} completed for ${c.customerName}`,
@@ -148,7 +158,6 @@ export function AdminProfile() {
       setIsEditing(false);
       toast.dismiss(lt);
       toast.success(isUrdu ? "پروفائل کامیابی سے اپ ڈیٹ ہو گئی!" : "Profile updated successfully!");
-      pushAdminProfile();
     }, 800);
   };
 

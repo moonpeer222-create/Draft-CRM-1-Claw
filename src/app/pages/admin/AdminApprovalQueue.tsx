@@ -3,7 +3,9 @@ import { AdminSidebar } from "../../components/AdminSidebar";
 import { AdminHeader } from "../../components/AdminHeader";
 import { useTheme } from "../../lib/ThemeContext";
 import { NotificationService, type Notification } from "../../lib/notifications";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { updateCase } from "../../lib/caseApi";
 import { AuditLogService } from "../../lib/auditLog";
 import { DataSyncService } from "../../lib/dataSync";
 import { toast } from "../../lib/toast";
@@ -41,10 +43,20 @@ export function AdminApprovalQueue() {
   const [typeFilter, setTypeFilter] = useState<"all" | "payment_approval" | "payment_history" | "document_review">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [lastSync, setLastSync] = useState(new Date());
+  const [allCases, setAllCases] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      const { data, error } = await supabase.from('cases').select('*');
+      if (!error && data) setAllCases(data.map((r: any) => mapSupabaseCaseToLocal(r)));
+    };
+    fetchCases();
+    const iv = setInterval(fetchCases, 15000);
+    return () => clearInterval(iv);
+  }, []);
 
   const loadItems = useCallback(() => {
     const notifications = NotificationService.getNotificationsForRole("admin");
-    const allCases = CRMDataStore.getCases();
 
     const approvalItems: ApprovalItem[] = [];
 
@@ -137,11 +149,24 @@ export function AdminApprovalQueue() {
       }
       // Actually credit paidAmount by approving the pending payment in CRMDataStore
       if (item.caseId) {
-        const c = CRMDataStore.getCases().find(cs => cs.id === item.caseId);
+        const c = allCases.find((cs: any) => cs.id === item.caseId);
         if (c) {
-          const pendingPay = c.payments.find(p => p.approvalStatus === "pending" && p.amount === item.amount);
+          const pendingPay = c.payments.find((p: any) => p.approvalStatus === "pending" && p.amount === item.amount);
           if (pendingPay) {
-            CRMDataStore.approvePayment(item.caseId, pendingPay.id);
+            pendingPay.approvalStatus = "approved";
+            const timelineEntry = {
+              id: `TL-${Date.now()}`,
+              date: new Date().toISOString(),
+              title: "Payment Approved",
+              description: `PKR ${pendingPay.amount.toLocaleString()} payment approved by Admin (Receipt: ${pendingPay.receiptNumber})`,
+              type: "payment" as any,
+              user: "Admin",
+            };
+            updateCase(item.caseId, {
+              payments: c.payments,
+              paidAmount: (c.paidAmount || 0) + pendingPay.amount,
+              timeline: [...c.timeline, timelineEntry],
+            });
           }
         }
       }
@@ -162,13 +187,12 @@ export function AdminApprovalQueue() {
       AuditLogService.logApproval("Imran Khan", "approval_granted", `Payment history for ${item.caseId}`);
       toast.success(isUrdu ? "درخواست منظور" : "Request approved & shared");
     } else if (item.type === "document_review" && item.caseId && item.metadata?.documentId) {
-      const cases = CRMDataStore.getCases();
-      const c = cases.find(cs => cs.id === item.caseId);
+      const c = allCases.find((cs: any) => cs.id === item.caseId);
       if (c) {
-        const doc = c.documents.find(d => d.id === item.metadata?.documentId);
+        const doc = c.documents.find((d: any) => d.id === item.metadata?.documentId);
         if (doc) {
           doc.status = "verified";
-          CRMDataStore.saveCases(cases);
+          updateCase(item.caseId, { documents: c.documents });
         }
       }
       AuditLogService.logDocumentAction("Imran Khan", "admin", "document_verified", item.caseId, item.metadata?.documentName);
@@ -187,13 +211,25 @@ export function AdminApprovalQueue() {
         notif.read = true;
         NotificationService.saveNotifications(all);
       }
-      // Mark the pending payment as rejected in CRMDataStore
+      // Mark the pending payment as rejected
       if (item.caseId) {
-        const c = CRMDataStore.getCases().find(cs => cs.id === item.caseId);
+        const c = allCases.find((cs: any) => cs.id === item.caseId);
         if (c) {
-          const pendingPay = c.payments.find(p => p.approvalStatus === "pending" && p.amount === item.amount);
+          const pendingPay = c.payments.find((p: any) => p.approvalStatus === "pending" && p.amount === item.amount);
           if (pendingPay) {
-            CRMDataStore.rejectPayment(item.caseId, pendingPay.id);
+            pendingPay.approvalStatus = "rejected";
+            const timelineEntry = {
+              id: `TL-${Date.now()}`,
+              date: new Date().toISOString(),
+              title: "Payment Rejected",
+              description: `PKR ${pendingPay.amount.toLocaleString()} payment rejected by Admin (Receipt: ${pendingPay.receiptNumber})`,
+              type: "payment" as any,
+              user: "Admin",
+            };
+            updateCase(item.caseId, {
+              payments: c.payments,
+              timeline: [...c.timeline, timelineEntry],
+            });
           }
         }
       }
@@ -213,13 +249,12 @@ export function AdminApprovalQueue() {
       AuditLogService.logApproval("Imran Khan", "approval_denied", `Payment history for ${item.caseId}`);
       toast.info(isUrdu ? "درخواست مسترد" : "Request declined");
     } else if (item.type === "document_review" && item.caseId && item.metadata?.documentId) {
-      const cases = CRMDataStore.getCases();
-      const c = cases.find(cs => cs.id === item.caseId);
+      const c = allCases.find((cs: any) => cs.id === item.caseId);
       if (c) {
-        const doc = c.documents.find(d => d.id === item.metadata?.documentId);
+        const doc = c.documents.find((d: any) => d.id === item.metadata?.documentId);
         if (doc) {
           doc.status = "rejected";
-          CRMDataStore.saveCases(cases);
+          updateCase(item.caseId, { documents: c.documents });
         }
       }
       AuditLogService.logDocumentAction("Imran Khan", "admin", "document_rejected", item.caseId, item.metadata?.documentName);

@@ -1,4 +1,5 @@
-import { CRMDataStore } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -25,7 +26,13 @@ export function MasterHeader() {
 
   const session = UserDB.getMasterSession();
 
-  const cases = CRMDataStore.getCases();
+  const [cases, setCases] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('cases').select('*').then(({ data }) => {
+      setCases((data || []).map(mapSupabaseCaseToLocal));
+    });
+  }, []);
+
   const stats = {
     total: cases.length,
     agents: new Set(cases.map(c => c.agentId)).size,

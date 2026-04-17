@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { AdminHeader } from "../../components/AdminHeader";
 import { AdminSidebar } from "../../components/AdminSidebar";
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { TrendingUp, TrendingDown, DollarSign, FileText, Users, BarChart3, PieChart } from "lucide-react";
 
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
@@ -25,8 +26,9 @@ export function AdminAnalytics() {
     loadAnalytics();
   }, [timeRange]);
 
-  const loadAnalytics = () => {
-    const cases = CRMDataStore.getCases();
+  const loadAnalytics = async () => {
+    const { data, error } = await supabase.from('cases').select('*');
+    const cases = error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
     const now = new Date();
     
     // Filter based on time range

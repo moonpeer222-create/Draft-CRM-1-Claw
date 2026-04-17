@@ -8,7 +8,10 @@ import {
   CheckCircle2, XCircle, Clock,
 } from "lucide-react";
 import { pipelineApi } from "../lib/api";
-import { CRMDataStore, Case } from "../lib/mockData";
+import { Case } from "../lib/mockData";
+import { updateCase } from "../lib/caseApi";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { AuditLogService } from "../lib/auditLog";
 import { toast } from "../lib/toast";
 
@@ -76,13 +79,18 @@ export function CancellationReopenModal({ caseData, darkMode: dc, isUrdu, userNa
 
     // Local update
     const cancelStatus = caseData.pipelineType === "lead" ? "lead_cancelled" : "visa_cancelled";
-    CRMDataStore.updateCase(caseData.id, {
+    await updateCase(caseData.id, {
       status: cancelStatus,
       pipelineStageKey: cancelStatus,
       cancellationReason: reason,
       cancelledAt: new Date().toISOString(),
       cancelledBy: userName,
     });
+    const { data: cancelData } = await supabase.from('cases').select('*').eq('id', caseData.id).single();
+    const refreshedCancel = cancelData ? mapSupabaseCaseToLocal(cancelData) : null;
+    if (refreshedCancel) {
+      // continue
+    }
 
     AuditLogService.log({
       userId,
@@ -115,7 +123,7 @@ export function CancellationReopenModal({ caseData, darkMode: dc, isUrdu, userNa
 
     // Reopen to the stage before cancellation
     const reopenStage = caseData.reopenedFromStage || (caseData.pipelineType === "lead" ? "new_lead" : "new_entry");
-    CRMDataStore.updateCase(caseData.id, {
+    await updateCase(caseData.id, {
       status: reopenStage,
       pipelineStageKey: reopenStage,
       cancellationReason: undefined,
@@ -125,6 +133,11 @@ export function CancellationReopenModal({ caseData, darkMode: dc, isUrdu, userNa
       reopenedBy: userName,
       reopenedFromStage: caseData.pipelineStageKey || caseData.status,
     });
+    const { data: reopenData } = await supabase.from('cases').select('*').eq('id', caseData.id).single();
+    const refreshedReopen = reopenData ? mapSupabaseCaseToLocal(reopenData) : null;
+    if (refreshedReopen) {
+      // continue
+    }
 
     AuditLogService.log({
       userId,

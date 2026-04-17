@@ -9,7 +9,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../lib/ThemeContext";
 import { UserDB } from "../lib/userDatabase";
 import { AuditLogService } from "../lib/auditLog";
-import { CRMDataStore, getOverdueInfo } from "../lib/mockData";
+import { getOverdueInfo } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import {
   LayoutDashboard, Users, DollarSign, Settings, Briefcase, Shield,
   UserCircle, AlertTriangle, Key, Award, Clock, BarChart3, FileText,
@@ -41,8 +43,12 @@ export function MasterMobileMenu({ isOpen, onClose }: MasterMobileMenuProps) {
 
   const [overdueCount, setOverdueCount] = useState(0);
   useEffect(() => {
-    const cases = CRMDataStore.getCases();
-    setOverdueCount(cases.filter(c => getOverdueInfo(c).isOverdue).length);
+    const fetchCases = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      setOverdueCount(cases.filter(c => getOverdueInfo(c).isOverdue).length);
+    };
+    fetchCases();
   }, [isOpen]);
 
   useEffect(() => { if (isOpen) onClose(); }, [location.pathname]);

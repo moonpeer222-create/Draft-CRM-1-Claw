@@ -1,6 +1,6 @@
 import { AgentHeader } from "../../components/AgentHeader";
 import { AgentSidebar } from "../../components/AgentSidebar";
-import { CRMDataStore, Case } from "../../lib/mockData";
+import { Case } from "../../lib/mockData";
 import { useState, useEffect, useMemo } from "react";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
 import { useNavigate } from "react-router";

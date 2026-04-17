@@ -8,7 +8,7 @@ import { NotificationBell } from "../../components/NotificationPanel";
 import { DocumentChecklist } from "../../components/DocumentChecklist";
 import { MobileBottomNav } from "../../components/MobileBottomNav";
 import { CustomerMobileMenu } from "../../components/CustomerMobileMenu";
-import { CRMDataStore, Case, WORKFLOW_STAGES, getStageLabel, getOverdueInfo, getDelayReasonLabel, getStageNumber } from "../../lib/mockData";
+import { Case, WORKFLOW_STAGES, getStageLabel, getOverdueInfo, getDelayReasonLabel, getStageNumber } from "../../lib/mockData";
 import { NotificationService } from "../../lib/notifications";
 import { AuditLogService } from "../../lib/auditLog";
 import { useState, useEffect, useMemo, useCallback } from "react";

@@ -11,7 +11,7 @@ import { useLocation, useParams, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
-import { Case, Payment, CRMDataStore, WORKFLOW_STAGES, getStageLabel, getStageNumber, DELAY_REASONS, getOverdueInfo, getDelayReasonLabel, reportDelay, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES, getPipelineStages, shouldAutoMigrateToVisa } from "../../lib/mockData";
+import { Case, Payment, WORKFLOW_STAGES, getStageLabel, getStageNumber, DELAY_REASONS, getOverdueInfo, getDelayReasonLabel, reportDelay, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES, getPipelineStages, shouldAutoMigrateToVisa } from "../../lib/mockData";
 import { ALL_COUNTRIES, POPULAR_COUNTRIES } from "../../constants/countries";
 import { SearchableCountrySelect } from "../../components/SearchableCountrySelect";
 import { pipelineApi } from "../../lib/api";
@@ -36,6 +36,7 @@ import { EditableCaseFields } from "../../components/EditableCaseFields";
 import { LiveDocumentThumbnail } from "../../components/LiveDocumentThumbnail";
 import { VisualTimelineStepper } from "../../components/VisualTimelineStepper";
 import { documentUploadApi } from "../../lib/api";
+import { createCase, updateCase, updateCaseStatus, addPayment, addNote } from "../../lib/caseApi";
 
 // Agent-to-name mapping
 const AGENT_MAP: Record<string, string> = {
@@ -289,22 +290,24 @@ export function AgentCases() {
     const tab = searchParams.get("tab") || state?.openTab;
     const fromNotification = searchParams.get("from") === "notification" || state?.fromNotification;
     if (targetCaseId) {
-      const allCases = CRMDataStore.getCases();
-      const target = allCases.find(c => c.id === targetCaseId);
-      if (target) {
-        setSelectedCase(target);
-        setActiveTab(tab || "info");
-        if (fromNotification) {
-          setDeepLinked(true);
-          setTimeout(() => setDeepLinked(false), 3200);
-          const tabLabel = tab ? ` → ${tab.charAt(0).toUpperCase() + tab.slice(1)}` : "";
-          toast.success(`Opened ${target.id} (${target.customerName})${tabLabel}`);
+      (async () => {
+        const { data, error } = await supabase.from('cases').select('*').eq('id', targetCaseId).single();
+        if (!error && data) {
+          const target = mapSupabaseCaseToLocal(data);
+          setSelectedCase(target);
+          setActiveTab(tab || "info");
+          if (fromNotification) {
+            setDeepLinked(true);
+            setTimeout(() => setDeepLinked(false), 3200);
+            const tabLabel = tab ? ` → ${tab.charAt(0).toUpperCase() + tab.slice(1)}` : "";
+            toast.success(`Opened ${target.id} (${target.customerName})${tabLabel}`);
+          } else {
+            toast.info(`Navigated to case ${target.id}`);
+          }
         } else {
-          toast.info(`Navigated to case ${target.id}`);
+          toast.error(`Case ${targetCaseId} not found`);
         }
-      } else {
-        toast.error(`Case ${targetCaseId} not found`);
-      }
+      })();
       // Clear query params and state so refresh doesn't re-open
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -357,12 +360,10 @@ export function AgentCases() {
   }, [selectedCase, isUrdu]);
 
   // Document verification handler
-  const handleDocVerification = useCallback((docId: string, newStatus: "verified" | "rejected", reason?: string) => {
+  const handleDocVerification = useCallback(async (docId: string, newStatus: "verified" | "rejected", reason?: string) => {
     if (!selectedCase) return;
-    const theCase = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
-    if (!theCase) return;
     const now = new Date().toISOString();
-    const updatedDocs = (theCase.documents || []).map(d => {
+    const updatedDocs = (selectedCase.documents || []).map(d => {
       if (d.id !== docId) return d;
       const historyEntry = { action: newStatus, by: agentName, at: now, ...(reason ? { reason } : {}) };
       return {
@@ -375,10 +376,10 @@ export function AgentCases() {
       };
     });
     const docName = updatedDocs.find(d => d.id === docId)?.name || docId;
-    const updated = CRMDataStore.updateCase(selectedCase.id, {
+    const success = await updateCase(selectedCase.id, {
       documents: updatedDocs,
       timeline: [
-        ...theCase.timeline,
+        ...selectedCase.timeline,
         {
           id: `TL-${Date.now()}`,
           date: now,
@@ -389,8 +390,10 @@ export function AgentCases() {
         },
       ],
     });
-    if (updated) {
-      setSelectedCase({ ...updated });
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase({ ...refreshed });
       toast.success(isUrdu
         ? (newStatus === "verified" ? "دستاویز کی تصدیق ہو گئی" : "دستاویز مسترد ہو گئی")
         : `Document ${newStatus} successfully`
@@ -407,13 +410,11 @@ export function AgentCases() {
   }, [selectedCase, agentId, agentName, isUrdu]);
 
   // Bulk verification handler
-  const handleBulkVerification = useCallback((newStatus: "verified" | "rejected", reason?: string) => {
+  const handleBulkVerification = useCallback(async (newStatus: "verified" | "rejected", reason?: string) => {
     if (!selectedCase || selectedDocIds.size === 0) return;
-    const theCase = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
-    if (!theCase) return;
     const now = new Date().toISOString();
     const names: string[] = [];
-    const updatedDocs = (theCase.documents || []).map(d => {
+    const updatedDocs = (selectedCase.documents || []).map(d => {
       if (!selectedDocIds.has(d.id) || d.status !== "pending") return d;
       names.push(d.name);
       const historyEntry = { action: newStatus, by: agentName, at: now, ...(reason ? { reason } : {}) };
@@ -427,10 +428,10 @@ export function AgentCases() {
       };
     });
     if (names.length === 0) { toast.error(isUrdu ? "کوئی زیر التوا دستاویز منتخب نہیں" : "No pending documents selected"); return; }
-    const updated = CRMDataStore.updateCase(selectedCase.id, {
+    const success = await updateCase(selectedCase.id, {
       documents: updatedDocs,
       timeline: [
-        ...theCase.timeline,
+        ...selectedCase.timeline,
         {
           id: `TL-${Date.now()}`,
           date: now,
@@ -441,8 +442,10 @@ export function AgentCases() {
         },
       ],
     });
-    if (updated) {
-      setSelectedCase({ ...updated });
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase({ ...refreshed });
       setSelectedDocIds(new Set());
       toast.success(isUrdu
         ? `${names.length} دستاویزات ${newStatus === "verified" ? "تصدیق" : "مسترد"} ہو گئیں`
@@ -585,7 +588,7 @@ export function AgentCases() {
     }
   };
 
-  const handleCreateCase = () => {
+  const handleCreateCase = async () => {
     if (!newCase.customerName.trim() || !newCase.phone.trim()) {
       toast.error(isUrdu ? "براہ کرم تمام مطلوبہ فیلڈز بھریں" : "Please fill all required fields (Name & Phone)");
       return;
@@ -598,79 +601,79 @@ export function AgentCases() {
     setIsLoading(true);
     const lt = toast.loading(isUrdu ? "نیا کیس بنایا جا رہا ہے..." : "Creating new case...");
 
-    setTimeout(() => {
-      const created = CRMDataStore.addCase({
-        customerName: newCase.customerName.trim(),
-        fatherName: newCase.fatherName.trim(),
-        phone: newCase.phone.trim(),
-        email: newCase.email.trim(),
-        cnic: newCase.cnic.trim(),
-        passport: newCase.passport.trim(),
-        dateOfBirth: newCase.dateOfBirth,
-        maritalStatus: newCase.maritalStatus,
-        address: newCase.address.trim(),
-        city: newCase.city,
-        country: newCase.country,
-        jobType: newCase.jobType,
-        jobDescription: newCase.jobDescription.trim(),
-        education: newCase.education,
-        experience: newCase.experience.trim(),
-        emergencyContact: {
-          name: newCase.emergencyContactName.trim(),
-          phone: newCase.emergencyContactPhone.trim(),
-          relationship: newCase.emergencyContactRelation,
+    const created = await createCase({
+      customerName: newCase.customerName.trim(),
+      fatherName: newCase.fatherName.trim(),
+      phone: newCase.phone.trim(),
+      email: newCase.email.trim(),
+      cnic: newCase.cnic.trim(),
+      passport: newCase.passport.trim(),
+      dateOfBirth: newCase.dateOfBirth,
+      maritalStatus: newCase.maritalStatus,
+      address: newCase.address.trim(),
+      city: newCase.city,
+      country: newCase.country,
+      jobType: newCase.jobType,
+      jobDescription: newCase.jobDescription.trim(),
+      education: newCase.education,
+      experience: newCase.experience.trim(),
+      emergencyContact: {
+        name: newCase.emergencyContactName.trim(),
+        phone: newCase.emergencyContactPhone.trim(),
+        relationship: newCase.emergencyContactRelation,
+      },
+      agentId: agentId,
+      agentName: agentName,
+      assignedStaffId: agentId,
+      assignedStaffName: agentName,
+      assignedAt: new Date().toISOString(),
+      totalFee: newCase.totalFee,
+      priority: newCase.priority,
+      // Dual pipeline — new cases start in Lead Pipeline
+      pipelineType: "lead" as const,
+      pipelineStageKey: "new_lead",
+      status: "new_lead",
+      currentStage: 1,
+      stageStartedAt: new Date().toISOString(),
+      stageDeadlineAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      isOverdue: false,
+      documentChecklist: {},
+      documentChecklistFiles: {},
+      documents: [
+        // Checklist-marked documents
+        ...newCase.uploadedDocs.map((doc, i) => ({
+          id: `DOC-${Date.now()}-${i}`,
+          name: doc,
+          type: doc.toLowerCase().replace(/[^a-z]/g, "_"),
+          uploadDate: new Date().toISOString(),
+          status: "pending" as const,
+          url: "#",
+        })),
+        // Actually uploaded files
+        ...uploadedFiles.map((uf, i) => ({
+          id: `DOC-UPLOAD-${Date.now()}-${i}`,
+          name: `${uf.category}: ${uf.file.name}`,
+          type: uf.file.type || "unknown",
+          uploadDate: new Date().toISOString(),
+          status: "pending" as const,
+          url: uf.preview || "#",
+          notes: `Size: ${formatFileSize(uf.file.size)} | Category: ${uf.category}`,
+        })),
+      ],
+      timeline: [
+        {
+          id: `TL-${Date.now()}`,
+          date: new Date().toISOString(),
+          title: "Case Created",
+          description: `New case created by agent ${agentName}`,
+          type: "status" as const,
+          user: agentName,
         },
-        agentId: agentId,
-        agentName: agentName,
-        assignedStaffId: agentId,
-        assignedStaffName: agentName,
-        assignedAt: new Date().toISOString(),
-        totalFee: newCase.totalFee,
-        priority: newCase.priority,
-        // Dual pipeline — new cases start in Lead Pipeline
-        pipelineType: "lead" as const,
-        pipelineStageKey: "new_lead",
-        status: "new_lead",
-        currentStage: 1,
-        stageStartedAt: new Date().toISOString(),
-        stageDeadlineAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        isOverdue: false,
-        documentChecklist: {},
-        documentChecklistFiles: {},
-        documents: [
-          // Checklist-marked documents
-          ...newCase.uploadedDocs.map((doc, i) => ({
-            id: `DOC-${Date.now()}-${i}`,
-            name: doc,
-            type: doc.toLowerCase().replace(/[^a-z]/g, "_"),
-            uploadDate: new Date().toISOString(),
-            status: "pending" as const,
-            url: "#",
-          })),
-          // Actually uploaded files
-          ...uploadedFiles.map((uf, i) => ({
-            id: `DOC-UPLOAD-${Date.now()}-${i}`,
-            name: `${uf.category}: ${uf.file.name}`,
-            type: uf.file.type || "unknown",
-            uploadDate: new Date().toISOString(),
-            status: "pending" as const,
-            url: uf.preview || "#",
-            notes: `Size: ${formatFileSize(uf.file.size)} | Category: ${uf.category}`,
-          })),
-        ],
-        timeline: [
-          {
-            id: `TL-${Date.now()}`,
-            date: new Date().toISOString(),
-            title: "Case Created",
-            description: `New case created by agent ${agentName}`,
-            type: "status" as const,
-            user: agentName,
-          },
-        ],
-      });
+      ],
+    });
 
-      toast.dismiss(lt);
+    toast.dismiss(lt);
+    if (created) {
       toast.success(
         isUrdu
           ? `کیس ${created.id} کامیابی سے بنایا گیا!`
@@ -701,8 +704,10 @@ export function AgentCases() {
       setShowNewCaseModal(false);
       resetNewCaseForm();
       loadCases();
-      setIsLoading(false);
-    }, 1200);
+    } else {
+      toast.error(isUrdu ? "کیس بنانے میں ناکامی" : "Failed to create case");
+    }
+    setIsLoading(false);
   };
 
   const handleRecordPayment = async () => {
@@ -712,11 +717,8 @@ export function AgentCases() {
     }
 
     setIsLoading(true);
-    const snapshot = localStorage.getItem("crm_cases");
-
-    // Apply locally first (optimistic)
     const receiptNumber = `REC-${Math.floor(100000 + Math.random() * 900000)}`;
-    CRMDataStore.addPayment(selectedCase.id, {
+    const success = await addPayment(selectedCase.id, {
       amount: newPaymentAmount,
       method: newPaymentMethod as Payment["method"],
       date: new Date().toISOString(),
@@ -726,31 +728,28 @@ export function AgentCases() {
       approvalStatus: "pending",
       submittedByRole: "agent",
     });
-    const updated = CRMDataStore.getCases().find((c) => c.id === selectedCase.id);
-    if (updated) setSelectedCase(updated);
 
-    toast.success(
-      isUrdu
-        ? `PKR ${newPaymentAmount.toLocaleString()} جمع کرایا گیا! ایڈمن منظوری کا انتظار — رسید: ${receiptNumber}`
-        : `PKR ${newPaymentAmount.toLocaleString()} submitted! Pending Admin Approval — Receipt: ${receiptNumber}`
-    );
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
 
-    AuditLogService.logPaymentAction(agentName, "agent", "payment_added", selectedCase.id, newPaymentAmount);
-    DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
-    NotificationService.notifyPaymentPendingApproval(agentName, selectedCase.id, selectedCase.customerName, newPaymentAmount);
+      toast.success(
+        isUrdu
+          ? `PKR ${newPaymentAmount.toLocaleString()} جمع کرایا گیا! ایڈمن منظوری کا انتظار — رسید: ${receiptNumber}`
+          : `PKR ${newPaymentAmount.toLocaleString()} submitted! Pending Admin Approval — Receipt: ${receiptNumber}`
+      );
 
-    setNewPaymentAmount(0);
-    setNewPaymentMethod("cash");
-    setNewPaymentDesc("");
-    loadCases();
+      AuditLogService.logPaymentAction(agentName, "agent", "payment_added", selectedCase.id, newPaymentAmount);
+      DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
+      NotificationService.notifyPaymentPendingApproval(agentName, selectedCase.id, selectedCase.customerName, newPaymentAmount);
 
-    // Push to server in background with rollback on failure
-    try {
-      await pushCases();
-    } catch (err) {
-      if (snapshot) localStorage.setItem("crm_cases", snapshot);
+      setNewPaymentAmount(0);
+      setNewPaymentMethod("cash");
+      setNewPaymentDesc("");
       loadCases();
-      toast.error(`Server sync failed — payment reverted. ${err}`);
+    } else {
+      toast.error(isUrdu ? "ادائیگی ریکارڈ نہیں ہو سکی" : "Failed to record payment");
     }
     setIsLoading(false);
   };
@@ -760,39 +759,34 @@ export function AgentCases() {
       toast.error(isUrdu ? "نوٹ درج کریں" : "Enter a note");
       return;
     }
-    const snapshot = localStorage.getItem("crm_cases");
-    CRMDataStore.addNote(selectedCase.id, {
+    const success = await addNote(selectedCase.id, {
       text: newNote,
       author: agentName,
       date: new Date().toISOString(),
       important: false,
     });
-    const updated = CRMDataStore.getCases().find((c) => c.id === selectedCase.id);
-    if (updated) setSelectedCase(updated);
-    AuditLogService.log({
-      userId: agentId, userName: agentName, role: "agent",
-      action: "note_added", category: "case",
-      description: `Added note to case ${selectedCase.id}`,
-      metadata: { caseId: selectedCase.id },
-    });
-    DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
-    toast.success(isUrdu ? "نوٹ شامل ہو گیا!" : "Note added!");
-    setNewNote("");
-
-    // Push to server with rollback
-    try {
-      await pushCases();
-    } catch (err) {
-      if (snapshot) localStorage.setItem("crm_cases", snapshot);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
+      AuditLogService.log({
+        userId: agentId, userName: agentName, role: "agent",
+        action: "note_added", category: "case",
+        description: `Added note to case ${selectedCase.id}`,
+        metadata: { caseId: selectedCase.id },
+      });
+      DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
+      toast.success(isUrdu ? "نوٹ شامل ہو گیا!" : "Note added!");
+      setNewNote("");
       loadCases();
-      toast.error(`Server sync failed — note reverted. ${err}`);
+    } else {
+      toast.error(isUrdu ? "نوٹ شامل نہیں ہو سکا" : "Failed to add note");
     }
   };
 
   const handleUpdateStatus = async (status: Case["status"]) => {
     if (!selectedCase) return;
     const old = selectedCase.status;
-    const snapshot = localStorage.getItem("crm_cases");
 
     // Use pipelineApi for stage advancement (server validates hard-locks)
     try {
@@ -811,46 +805,41 @@ export function AgentCases() {
       // Fallback to local update if server unavailable
     }
 
-    // Apply locally
-    CRMDataStore.updateCaseStatus(selectedCase.id, status);
-    const updated = CRMDataStore.getCases().find((c) => c.id === selectedCase.id);
-    if (updated) setSelectedCase(updated);
-    AuditLogService.logCaseStageChanged(agentName, "agent", selectedCase.id, old, status);
-    DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
-    toast.success(isUrdu ? `حالت ${status} میں تبدیل ہو گئی` : `Status updated to ${status}`);
-    NotificationService.notifyCaseStatusChanged(selectedCase.id, selectedCase.customerName, old, status);
-    const { customerEmail, agentEmail } = extractEmailsFromCase(selectedCase);
-    sendCaseStatusEmail({
-      caseId: selectedCase.id,
-      customerName: selectedCase.customerName,
-      customerEmail,
-      agentName: selectedCase.agentName,
-      agentEmail,
-      oldStatus: old,
-      newStatus: status,
-      phone: selectedCase.phone,
-      country: selectedCase.country,
-    });
+    const success = await updateCaseStatus(selectedCase.id, status);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
+      AuditLogService.logCaseStageChanged(agentName, "agent", selectedCase.id, old, status);
+      DataSyncService.markModified(selectedCase.id, agentId, agentName, "agent");
+      toast.success(isUrdu ? `حالت ${status} میں تبدیل ہو گئی` : `Status updated to ${status}`);
+      NotificationService.notifyCaseStatusChanged(selectedCase.id, selectedCase.customerName, old, status);
+      const { customerEmail, agentEmail } = extractEmailsFromCase(selectedCase);
+      sendCaseStatusEmail({
+        caseId: selectedCase.id,
+        customerName: selectedCase.customerName,
+        customerEmail,
+        agentName: selectedCase.agentName,
+        agentEmail,
+        oldStatus: old,
+        newStatus: status,
+        phone: selectedCase.phone,
+        country: selectedCase.country,
+      });
 
-    // Auto-migrate lead to visa pipeline when hitting "agreement"
-    if (shouldAutoMigrateToVisa(status)) {
-      try {
-        await pipelineApi.migrateToVisa(selectedCase.id);
-        toast.success(isUrdu ? "کیس خودکار طور پر ویزا پائپ لائن میں منتقل ہو گیا" : "Case auto-migrated to Visa Pipeline!");
-      } catch (err) {
-        console.error("Auto-migration failed:", err);
+      // Auto-migrate lead to visa pipeline when hitting "agreement"
+      if (shouldAutoMigrateToVisa(status)) {
+        try {
+          await pipelineApi.migrateToVisa(selectedCase.id);
+          toast.success(isUrdu ? "کیس خودکار طور پر ویزا پائپ لائن میں منتقل ہو گیا" : "Case auto-migrated to Visa Pipeline!");
+        } catch (err) {
+          console.error("Auto-migration failed:", err);
+        }
       }
-    }
 
-    loadCases();
-
-    // Push to server with rollback
-    try {
-      await pushCases();
-    } catch (err) {
-      if (snapshot) localStorage.setItem("crm_cases", snapshot);
       loadCases();
-      toast.error(`Server sync failed — status change reverted. ${err}`);
+    } else {
+      toast.error(isUrdu ? "حالت اپڈیٹ نہیں ہو سکی" : "Failed to update status");
     }
   };
 
@@ -1530,9 +1519,10 @@ export function AgentCases() {
                       )}
                     </div>
                     <div className="flex flex-col gap-1.5 flex-shrink-0">
-                      <button onClick={() => {
+                      <button onClick={async () => {
                         conflictState.refresh();
-                        const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
                         if (refreshed) setSelectedCase({ ...refreshed });
                         toast.success(isUrdu ? "تازہ ترین ڈیٹا لوڈ ہو گیا" : "Latest data loaded");
                       }}
@@ -1615,306 +1605,33 @@ export function AgentCases() {
                         userRole="agent"
                         userName={agentName}
                         userId={agentId}
-                        onUpdate={() => {
-                          loadCases();
-                          const refreshed = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
+                        onUpdate={async () => {
+                          await loadCases();
+                          const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
                           if (refreshed) setSelectedCase(refreshed);
                         }}
                       />
                     )}
 
-                    {/* Existing Documents - Read Only */}
-                    {selectedCase.documents && selectedCase.documents.length > 0 && (
+                    {/* Privacy notice — agents cannot view existing documents */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex items-start gap-3 p-4 rounded-xl border ${dc ? "bg-amber-900/20 border-amber-700/30" : "bg-amber-50 border-amber-200"}`}
+                    >
+                      <ShieldCheck className={`w-5 h-5 mt-0.5 flex-shrink-0 ${dc ? "text-amber-400" : "text-amber-600"}`} />
                       <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className={`text-sm font-semibold flex items-center gap-2 ${txt}`}>
-                            <Paperclip className="w-4 h-4 text-blue-500" />
-                            {isUrdu ? "موجودہ دستاویزات" : "Existing Documents"} ({selectedCase.documents.length})
-                          </h4>
-                          {selectedCase.documents.some(d => DocumentFileStore.hasFile(d.id)) && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={handleDownloadAll}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                dc ? "bg-blue-900/30 text-blue-400 hover:bg-blue-900/50" : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                              }`}
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              {isUrdu ? "سب ڈاؤن لوڈ" : "Download All"}
-                            </motion.button>
-                          )}
-                        </div>
-                        {/* Missing files alert banner */}
-                        {(() => {
-                          const missingCount = selectedCase.documents.filter(d => !DocumentFileStore.hasFile(d.id)).length;
-                          if (missingCount === 0) return null;
-                          return (
-                            <motion.div
-                              initial={{ opacity: 0, y: -5 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className={`flex items-center gap-3 p-3 rounded-xl border mb-3 ${dc ? "bg-amber-900/20 border-amber-700/30" : "bg-amber-50 border-amber-200"}`}
-                            >
-                              <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${dc ? "text-amber-400" : "text-amber-600"}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-semibold ${dc ? "text-amber-300" : "text-amber-800"}`}>
-                                  {isUrdu ? `${missingCount} دستاویزات میں فائلیں غائب ہیں` : `${missingCount} document${missingCount > 1 ? "s" : ""} missing file${missingCount > 1 ? "s" : ""}`}
-                                </p>
-                                <p className={`text-xs ${dc ? "text-amber-400/70" : "text-amber-700/70"}`}>
-                                  {isUrdu ? "دوبارہ اپ لوڈ کرنے کے لیے اپ لوڈ بٹن دبائیں" : "Use the upload button on each document to re-upload"}
-                                </p>
-                              </div>
-                            </motion.div>
-                          );
-                        })()}
-                        {/* Bulk action bar */}
-                        {(() => {
-                          const pendingDocs = selectedCase.documents.filter(d => d.status === "pending");
-                          const selectedPendingCount = pendingDocs.filter(d => selectedDocIds.has(d.id)).length;
-                          if (pendingDocs.length === 0) return null;
-                          return (
-                            <div className={`flex flex-wrap items-center gap-2 p-2.5 rounded-xl border mb-2 ${dc ? "bg-gray-800/50 border-gray-600" : "bg-white border-gray-200"}`}>
-                              <label className={`flex items-center gap-1.5 text-xs cursor-pointer ${sub}`}>
-                                <input
-                                  type="checkbox"
-                                  className="rounded accent-blue-500"
-                                  checked={pendingDocs.length > 0 && pendingDocs.every(d => selectedDocIds.has(d.id))}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedDocIds(new Set(pendingDocs.map(d => d.id)));
-                                    } else {
-                                      setSelectedDocIds(new Set());
-                                    }
-                                  }}
-                                />
-                                {isUrdu ? "سب منتخب" : "Select all pending"} ({pendingDocs.length})
-                              </label>
-                              {selectedPendingCount > 0 && (
-                                <>
-                                  <div className={`w-px h-5 ${dc ? "bg-gray-600" : "bg-gray-300"}`} />
-                                  <span className={`text-xs font-medium ${txt}`}>{selectedPendingCount} {isUrdu ? "منتخب" : "selected"}</span>
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleBulkVerification("verified")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                      dc ? "bg-green-900/30 text-green-400 hover:bg-green-900/50" : "bg-green-50 text-green-700 hover:bg-green-100"
-                                    }`}
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    {isUrdu ? "سب تصدیق" : "Approve All"}
-                                  </motion.button>
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => { setRejectModalDocId("__bulk__"); setRejectionReason(""); }}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                      dc ? "bg-red-900/30 text-red-400 hover:bg-red-900/50" : "bg-red-50 text-red-700 hover:bg-red-100"
-                                    }`}
-                                  >
-                                    <XCircle className="w-3 h-3" />
-                                    {isUrdu ? "سب مسترد" : "Reject All"}
-                                  </motion.button>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        <div className="space-y-2">
-                          {selectedCase.documents.map((doc, idx) => {
-                            const hasFile = DocumentFileStore.hasFile(doc.id);
-                            const stored = DocumentFileStore.getFile(doc.id);
-                            const localPreview = DocumentFileStore.getPreviewUrl(doc.id);
-                            const cloudUrl = cloudPreviews[doc.id];
-                            const previewUrl = localPreview || cloudUrl || null;
-                            const isPdf = stored?.mimeType?.includes("pdf");
-                            const isCloudLoading = !localPreview && !cloudUrl && stored?.isCloudStored && stored?.mimeType?.startsWith("image/") && loadingCloudIds.has(doc.id);
-                            const history = (doc as any).verificationHistory as Array<{ action: string; by: string; at: string; reason?: string }> | undefined;
-                            const isHistoryExpanded = expandedHistoryIds.has(doc.id);
-                            return (
-                              <motion.div
-                                key={doc.id}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.04 }}
-                                className={`p-3 rounded-xl border ${dc ? "bg-gray-700/30 border-gray-600" : "bg-gray-50 border-gray-100"}`}
-                              >
-                                <div className="flex items-center gap-3">
-                                {/* Checkbox for pending docs */}
-                                {doc.status === "pending" && (
-                                  <input
-                                    type="checkbox"
-                                    className="rounded accent-blue-500 flex-shrink-0"
-                                    checked={selectedDocIds.has(doc.id)}
-                                    onChange={(e) => {
-                                      const next = new Set(selectedDocIds);
-                                      e.target.checked ? next.add(doc.id) : next.delete(doc.id);
-                                      setSelectedDocIds(next);
-                                    }}
-                                  />
-                                )}
-                                {/* Real document thumbnail from Supabase Storage */}
-                                <LiveDocumentThumbnail
-                                  docId={doc.id}
-                                  fileName={doc.name}
-                                  fileType={doc.type}
-                                  storagePath={(doc as any).storagePath}
-                                  darkMode={dc}
-                                  size="sm"
-                                  onClick={(url) => { setLightboxSrc(url); setLightboxAlt(doc.name); }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium truncate ${txt}`}>{doc.name}</p>
-                                  <p className={`text-xs ${sub}`}>
-                                    {doc.type.replace(/_/g, " ")} | {new Date(doc.uploadDate).toLocaleDateString()}
-                                    {stored && ` | ${stored.size < 1024 ? stored.size + " B" : stored.size < 1024 * 1024 ? Math.round(stored.size / 1024) + " KB" : (stored.size / (1024 * 1024)).toFixed(1) + " MB"}`}
-                                    {doc.notes && ` | ${doc.notes}`}
-                                  </p>
-                                  {/* Verified/rejected by info */}
-                                  {doc.status !== "pending" && (doc as any).verifiedBy && (
-                                    <p className={`text-[10px] mt-0.5 ${doc.status === "verified" ? (dc ? "text-green-400/70" : "text-green-600/70") : (dc ? "text-red-400/70" : "text-red-600/70")}`}>
-                                      {doc.status === "verified" ? "✓" : "✕"} {(doc as any).verifiedBy} · {new Date((doc as any).verifiedAt).toLocaleString()}
-                                      {(doc as any).rejectionReason && ` · "${(doc as any).rejectionReason}"`}
-                                    </p>
-                                  )}
-                                </div>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  doc.status === "verified"
-                                    ? dc ? "bg-green-900/30 text-green-400 border-green-700/30" : "bg-green-50 text-green-700 border-green-200"
-                                    : doc.status === "rejected"
-                                    ? dc ? "bg-red-900/30 text-red-400 border-red-700/30" : "bg-red-50 text-red-700 border-red-200"
-                                    : dc ? "bg-yellow-900/30 text-yellow-400 border-yellow-700/30" : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                                }`}>
-                                  {doc.status === "verified" ? (isUrdu ? "تصدیق" : "Verified") : doc.status === "rejected" ? (isUrdu ? "مسترد" : "Rejected") : (isUrdu ? "زیر التوا" : "Pending")}
-                                </span>
-                                {/* History toggle */}
-                                {history && history.length > 0 && (
-                                  <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => setExpandedHistoryIds(prev => {
-                                      const next = new Set(prev);
-                                      next.has(doc.id) ? next.delete(doc.id) : next.add(doc.id);
-                                      return next;
-                                    })}
-                                    className={`p-1.5 rounded-lg ${dc ? "hover:bg-gray-600 text-gray-400" : "hover:bg-gray-200 text-gray-500"}`}
-                                    title={isUrdu ? "تاریخچہ" : "History"}
-                                  >
-                                    <History className="w-3.5 h-3.5" />
-                                  </motion.button>
-                                )}
-                                <div className="flex items-center gap-1">
-                                  {hasFile && (
-                                    <motion.button
-                                      whileHover={{ scale: 1.1 }}
-                                      whileTap={{ scale: 0.9 }}
-                                      onClick={() => DocumentFileStore.downloadFile(doc.id)}
-                                      className={`p-1.5 rounded-lg ${dc ? "hover:bg-gray-600 text-gray-400" : "hover:bg-gray-200 text-gray-500"}`}
-                                      title={isUrdu ? "ڈاؤن لوڈ" : "Download"}
-                                    >
-                                      <Download className="w-3.5 h-3.5" />
-                                    </motion.button>
-                                  )}
-                                  {!hasFile && (
-                                    <motion.button
-                                      whileHover={{ scale: 1.1 }}
-                                      whileTap={{ scale: 0.9 }}
-                                      onClick={() => {
-                                        const input = document.createElement("input");
-                                        input.type = "file";
-                                        input.accept = ".pdf,.jpg,.jpeg,.png";
-                                        input.onchange = async (ev) => {
-                                          const f = (ev.target as HTMLInputElement).files?.[0];
-                                          if (!f) return;
-                                          if (f.size > 5 * 1024 * 1024) { toast.error(isUrdu ? "فائل 5MB سے بڑی ہے" : "File exceeds 5MB"); return; }
-                                          const lt = toast.loading(isUrdu ? "اپ لوڈ ہو رہا ہے..." : "Re-uploading...");
-                                          try {
-                                            await documentUploadApi.uploadForm(f, selectedCase.id, doc.id, {
-                                              uploadedBy: agentName, uploadedByRole: "agent",
-                                            });
-                                          } catch { await DocumentFileStore.storeFile(doc.id, f, agentName); }
-                                          toast.dismiss(lt);
-                                          toast.success(isUrdu ? "فائل اپ لوڈ ہو گئی!" : "File re-uploaded!");
-                                          const updated = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
-                                          if (updated) setSelectedCase({ ...updated });
-                                        };
-                                        input.click();
-                                      }}
-                                      className={`p-1.5 rounded-lg ${dc ? "hover:bg-amber-900/30 text-amber-400" : "hover:bg-amber-50 text-amber-600"}`}
-                                      title={isUrdu ? "فائل دوبارہ اپ لوڈ کریں" : "Re-upload file"}
-                                    >
-                                      <Upload className="w-3.5 h-3.5" />
-                                    </motion.button>
-                                  )}
-                                </div>
-                                </div>
-                                {/* Verification actions for pending documents */}
-                                {doc.status === "pending" && (
-                                  <div className={`flex items-center gap-2 mt-2 pt-2 border-t ${dc ? "border-gray-600/50" : "border-gray-200"}`}>
-                                    <span className={`text-xs ${sub} flex-1`}>
-                                      {isUrdu ? "تصدیق کریں:" : "Verify this document:"}
-                                    </span>
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => handleDocVerification(doc.id, "verified")}
-                                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                        dc ? "bg-green-900/30 text-green-400 hover:bg-green-900/50" : "bg-green-50 text-green-700 hover:bg-green-100"
-                                      }`}
-                                    >
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      {isUrdu ? "تصدیق" : "Approve"}
-                                    </motion.button>
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => { setRejectModalDocId(doc.id); setRejectionReason(""); }}
-                                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                        dc ? "bg-red-900/30 text-red-400 hover:bg-red-900/50" : "bg-red-50 text-red-700 hover:bg-red-100"
-                                      }`}
-                                    >
-                                      <XCircle className="w-3 h-3" />
-                                      {isUrdu ? "مسترد" : "Reject"}
-                                    </motion.button>
-                                  </div>
-                                )}
-                                {/* Verification history changelog */}
-                                {isHistoryExpanded && history && history.length > 0 && (
-                                  <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className={`mt-2 pt-2 border-t ${dc ? "border-gray-600/50" : "border-gray-200"}`}
-                                  >
-                                    <div className={`flex items-center gap-1.5 mb-1.5`}>
-                                      <History className={`w-3 h-3 ${sub}`} />
-                                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${sub}`}>
-                                        {isUrdu ? "تاریخچہ" : "Verification History"}
-                                      </span>
-                                    </div>
-                                    <div className="space-y-1">
-                                      {history.map((h, hi) => (
-                                        <div key={hi} className={`flex items-start gap-2 text-[11px] ${dc ? "text-gray-400" : "text-gray-500"}`}>
-                                          <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${h.action === "verified" ? "bg-green-500" : "bg-red-500"}`} />
-                                          <div>
-                                            <span className="font-medium">{h.by}</span>{" "}
-                                            <span className={h.action === "verified" ? (dc ? "text-green-400" : "text-green-600") : (dc ? "text-red-400" : "text-red-600")}>
-                                              {h.action === "verified" ? (isUrdu ? "تصدیق کی" : "approved") : (isUrdu ? "مسترد کیا" : "rejected")}
-                                            </span>{" "}
-                                            <span className={dc ? "text-gray-500" : "text-gray-400"}>· {new Date(h.at).toLocaleString()}</span>
-                                            {h.reason && <span className={`block italic ${dc ? "text-gray-500" : "text-gray-400"}`}>"{h.reason}"</span>}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </motion.div>
-                            );
-                          })}
-                        </div>
+                        <p className={`text-sm font-semibold ${dc ? "text-amber-300" : "text-amber-800"}`}>
+                          {isUrdu ? "سیکیورٹی پالیسی" : "Security Policy"}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${dc ? "text-amber-400/80" : "text-amber-700/80"}`}>
+                          {isUrdu
+                            ? "موجودہ دستاویزات دیکھنے کی اجازت نہیں۔ آپ صرف نئی دستاویزات اپ لوڈ کر سکتے ہیں جو ایڈمن کی منظوری کے لیے قطار میں جائیں گی۔"
+                            : "You do not have access to view existing documents. You may only upload new documents, which will enter a queue for Admin approval."}
+                        </p>
                       </div>
-                    )}
+                    </motion.div>
 
                     {/* Upload New Documents */}
                     <div>
@@ -2043,42 +1760,41 @@ export function AgentCases() {
                               notes: `Size: ${formatFileSize(uf.file.size)} | Uploaded by: ${agentName}`,
                             });
                           }
-                          const theCase = CRMDataStore.getCases().find(c => c.id === selectedCase.id);
-                          if (theCase) {
-                            const updated = CRMDataStore.updateCase(selectedCase.id, {
-                              documents: [...(theCase.documents || []), ...newDocs],
-                              timeline: [
-                                ...theCase.timeline,
-                                {
-                                  id: `TL-${Date.now()}`,
-                                  date: new Date().toISOString(),
-                                  title: `${newDocs.length} document(s) uploaded by agent`,
-                                  description: `${agentName} uploaded: ${newDocs.map(d => d.name).join(", ")}`,
-                                  type: "document" as const,
-                                  user: agentName,
-                                },
-                              ],
+                          const success = await updateCase(selectedCase.id, {
+                            documents: [...(selectedCase.documents || []), ...newDocs],
+                            timeline: [
+                              ...selectedCase.timeline,
+                              {
+                                id: `TL-${Date.now()}`,
+                                date: new Date().toISOString(),
+                                title: `${newDocs.length} document(s) uploaded by agent`,
+                                description: `${agentName} uploaded: ${newDocs.map(d => d.name).join(", ")}`,
+                                type: "document" as const,
+                                user: agentName,
+                              },
+                            ],
+                          });
+                          if (success) {
+                            const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                            const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                            if (refreshed) setSelectedCase(refreshed);
+                            // Notify admin
+                            newDocs.forEach(doc => {
+                              NotificationService.notifyDocumentUploaded(
+                                selectedCase.id,
+                                doc.name,
+                                selectedCase.customerName
+                              );
                             });
-                            if (updated) {
-                              setSelectedCase(updated);
-                              // Notify admin
-                              newDocs.forEach(doc => {
-                                NotificationService.notifyDocumentUploaded(
-                                  selectedCase.id,
-                                  doc.name,
-                                  selectedCase.customerName
-                                );
-                              });
-                              AuditLogService.log({
-                                userId: agentId,
-                                userName: agentName,
-                                role: "agent",
-                                action: "document_uploaded",
-                                category: "document",
-                                description: `Uploaded ${newDocs.length} document(s) for case ${selectedCase.id}: ${newDocs.map(d => d.name).join(", ")}`,
-                                metadata: { caseId: selectedCase.id, customerName: selectedCase.customerName, docCount: newDocs.length },
-                              });
-                            }
+                            AuditLogService.log({
+                              userId: agentId,
+                              userName: agentName,
+                              role: "agent",
+                              action: "document_uploaded",
+                              category: "document",
+                              description: `Uploaded ${newDocs.length} document(s) for case ${selectedCase.id}: ${newDocs.map(d => d.name).join(", ")}`,
+                              metadata: { caseId: selectedCase.id, customerName: selectedCase.customerName, docCount: newDocs.length },
+                            });
                           }
                           toast.dismiss(lt);
                           toast.success(

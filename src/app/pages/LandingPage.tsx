@@ -299,6 +299,19 @@ export function LandingPage() {
         >
           <p>{t("contact.address")}</p>
           <p>{t("contact.phone")}</p>
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <button onClick={() => navigate("/pricing")} className="hover:underline">
+              {isUrdu ? "قیمتیں" : "Pricing"}
+            </button>
+            <span>•</span>
+            <button onClick={() => navigate("/terms")} className="hover:underline">
+              {isUrdu ? "شرائط" : "Terms"}
+            </button>
+            <span>•</span>
+            <button onClick={() => navigate("/privacy")} className="hover:underline">
+              {isUrdu ? "رازداری" : "Privacy"}
+            </button>
+          </div>
         </motion.div>
       </div>
     </div>

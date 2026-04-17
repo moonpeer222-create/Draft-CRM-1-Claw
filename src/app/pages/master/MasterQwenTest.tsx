@@ -189,7 +189,7 @@ export function MasterQwenTest() {
     // ── Test 6: CRM action execution ──────────────────────────────────
     setResult(5, { status: "running", detail: "Executing get_stats + list_overdue actions..." });
     try {
-      const results6 = executeAllActions([
+      const results6 = await executeAllActions([
         { type: "get_stats" },
         { type: "list_overdue" },
       ]);

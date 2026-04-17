@@ -3,45 +3,47 @@ import { Copy, RefreshCw, Check, Key, Users, User, ShieldCheck, ShieldOff, Chevr
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "../lib/toast";
 import { useTheme } from "../lib/ThemeContext";
-import { AccessCodeService, AgentAccessCode } from "../lib/accessCode";
+import { AccessCodeService } from "../lib/accessCode";
+import { getAgentCodesFromSupabase, AgentCodeInfo } from "../lib/agentAuth";
 import { copyToClipboard } from "../lib/clipboard";
 
 export function AccessCodeGenerator() {
   const { darkMode, t, isUrdu } = useTheme();
   const dc = darkMode;
 
-  const [agentCodes, setAgentCodes] = useState<AgentAccessCode[]>([]);
+  const [agentCodes, setAgentCodes] = useState<AgentCodeInfo[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
-  const loadCodes = useCallback(() => {
-    const codes = AccessCodeService.initializeAgentCodes();
+  const loadCodes = useCallback(async () => {
+    const codes = await getAgentCodesFromSupabase();
     setAgentCodes(codes);
   }, []);
 
   useEffect(() => {
     loadCodes();
+    // Refresh every 30 seconds so codes update as the TOTP window rotates
+    const iv = setInterval(() => loadCodes(), 30000);
+    return () => clearInterval(iv);
   }, [loadCodes]);
 
-  const handleGenerateForAgent = (agentId: string) => {
+  const handleGenerateForAgent = async (agentId: string) => {
     setGeneratingId(agentId);
-    setTimeout(() => {
-      const updated = AccessCodeService.generateAgentCode(agentId);
-      if (updated) {
-        setAgentCodes(AccessCodeService.getAllAgentCodes());
-        toast.success(`${t("auth.newCodeGenerated")} ${updated.agentName}`);
-      }
+    // TOTP codes are deterministic — "refresh" just re-fetches from Supabase
+    setTimeout(async () => {
+      await loadCodes();
+      const agent = agentCodes.find(a => a.agentId === agentId);
+      toast.success(`${t("auth.newCodeGenerated")} ${agent?.agentName || agentId}`);
       setGeneratingId(null);
     }, 400);
   };
 
   const handleGenerateAll = () => {
     setGeneratingAll(true);
-    setTimeout(() => {
-      AccessCodeService.generateAllAgentCodes();
-      setAgentCodes(AccessCodeService.getAllAgentCodes());
+    setTimeout(async () => {
+      await loadCodes();
       toast.success(t("auth.allCodesGenerated"));
       setGeneratingAll(false);
     }, 600);

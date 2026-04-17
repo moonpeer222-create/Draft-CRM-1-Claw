@@ -79,6 +79,9 @@ const CustomerAIChatbot = lazy(() => lazyRetry(() => import("./pages/customer/Cu
 const CustomerVoiceAssistant = lazy(() => lazyRetry(() => import("./pages/customer/CustomerVoiceAssistant").then(m => ({ default: m.CustomerVoiceAssistant }))));
 const OperatorLogin = lazy(() => lazyRetry(() => import("./pages/operator/OperatorLogin").then(m => ({ default: m.OperatorLogin }))));
 const UpdatePassword = lazy(() => lazyRetry(() => import("./pages/UpdatePassword").then(m => ({ default: m.UpdatePassword }))));
+const TermsOfService = lazy(() => lazyRetry(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService }))));
+const PrivacyPolicy = lazy(() => lazyRetry(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy }))));
+const PricingPage = lazy(() => lazyRetry(() => import("./pages/PricingPage").then(m => ({ default: m.PricingPage }))));
 const OperatorOperations = lazy(() => lazyRetry(() => import("./pages/operator/OperatorOperations").then(m => ({ default: m.OperatorOperations }))));
 const OperatorAIChatbot = lazy(() => lazyRetry(() => import("./pages/operator/OperatorAIChatbot").then(m => ({ default: m.OperatorAIChatbot }))));
 const OperatorVoiceAssistant = lazy(() => lazyRetry(() => import("./pages/operator/OperatorVoiceAssistant").then(m => ({ default: m.OperatorVoiceAssistant }))));
@@ -325,6 +328,9 @@ const routeConfig = [
       },
 
       { path: "update-password", element: <SuspenseWrap><UpdatePassword /></SuspenseWrap> },
+      { path: "terms", element: <SuspenseWrap><TermsOfService /></SuspenseWrap> },
+      { path: "privacy", element: <SuspenseWrap><PrivacyPolicy /></SuspenseWrap> },
+      { path: "pricing", element: <SuspenseWrap><PricingPage /></SuspenseWrap> },
       // 404
       { path: "*", element: <SuspenseWrap><NotFound /></SuspenseWrap> },
     ],

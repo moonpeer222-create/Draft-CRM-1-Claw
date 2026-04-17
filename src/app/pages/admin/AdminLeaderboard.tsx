@@ -4,7 +4,8 @@ import { AdminSidebar } from "../../components/AdminSidebar";
 import { useNavigate } from "react-router";
 import { usePortalPrefix } from "../../lib/usePortalPrefix";
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { Trophy, Award, Star, TrendingUp, Clock, CheckCircle, Target } from "lucide-react";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
@@ -31,8 +32,9 @@ export function AdminLeaderboard() {
     loadLeaderboard();
   }, [sortBy]);
 
-  const loadLeaderboard = () => {
-    const cases = CRMDataStore.getCases();
+  const loadLeaderboard = async () => {
+    const { data, error } = await supabase.from('cases').select('*');
+    const cases = error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
     const agentMap = new Map<string, AgentStats>();
 
     cases.forEach(c => {

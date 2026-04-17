@@ -1,4 +1,7 @@
-import { CRMDataStore, Case, Payment } from "../../lib/mockData";
+import { Case, Payment } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { addPayment } from "../../lib/caseApi";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AdminSidebar } from "../../components/AdminSidebar";
@@ -22,7 +25,15 @@ export function AdminFinancials() {
   const inputCls = `w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${dc ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "border-gray-300"}`;
   const labelCls = `block text-sm font-medium mb-1.5 ${dc ? "text-gray-300" : "text-gray-700"}`;
 
-  const [cases] = useState<Case[]>(() => CRMDataStore.getCases());
+  const [cases, setCases] = useState<Case[]>([]);
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      const { data, error } = await supabase.from('cases').select('*');
+      if (!error && data) setCases(data.map((r: any) => mapSupabaseCaseToLocal(r)));
+    };
+    fetchCases();
+  }, []);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
@@ -45,13 +56,13 @@ export function AdminFinancials() {
   const outstanding = totalFees - totalRevenue;
   const avgTransaction = allTransactions.length > 0 ? totalRevenue / allTransactions.length : 0;
 
-  const handleRecordPayment = () => {
+  const handleRecordPayment = async () => {
     if (!selectedCaseId) { toast.error("Please select a case"); return; }
     if (newPayment.amount <= 0) { toast.error("Please enter a valid amount"); return; }
     const lt = toast.loading("Recording payment...");
-    setTimeout(() => {
+    setTimeout(async () => {
       const receipt = `REC-${Math.floor(100000 + Math.random() * 900000)}`;
-      CRMDataStore.addPayment(selectedCaseId, {
+      await addPayment(selectedCaseId, {
         ...newPayment,
         receiptNumber: receipt,
         date: new Date().toISOString(),

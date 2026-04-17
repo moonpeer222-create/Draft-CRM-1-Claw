@@ -13,7 +13,8 @@ import { useTheme } from "../lib/ThemeContext";
 import { useUnifiedLayout } from "./UnifiedLayout";
 import { useSupabaseAuth } from "../context/SupabaseAuthContext";
 import { supabase } from "../lib/supabase";
-import { CRMDataStore, Case, getStageLabel, getStageNumber, getOverdueInfo, WORKFLOW_STAGES } from "../lib/mockData";
+import { Case, getStageLabel, getStageNumber, getOverdueInfo, WORKFLOW_STAGES } from "../lib/mockData";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { AuditLogService } from "../lib/auditLog";
 import { toast } from "../lib/toast";
 import {
@@ -66,29 +67,10 @@ export function CustomerMobileMenu({ isOpen, onClose }: Props) {
     const load = async () => {
       const { data } = await supabase.from('cases').select('*').eq('client_id', profile.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (data) {
-        const mapped: Case = {
-          id: data.id,
-          clientName: profile.full_name || profile.email || "Customer",
-          clientPhone: "-",
-          clientEmail: profile.email || "-",
-          country: data.destination_country || "",
-          jobType: data.visa_type || "",
-          status: (data.status as any) || "submitted",
-          stage: (data.status as any) || "submitted",
-          agentId: data.agent_id || "",
-          totalFee: data.metadata?.totalFee ?? 0,
-          paidAmount: data.metadata?.paidAmount ?? 0,
-          submittedAt: data.created_at,
-          updatedAt: data.updated_at,
-          documents: data.metadata?.documents || [],
-          stages: data.metadata?.stages || [],
-          priority: data.priority || "normal",
-          notes: data.metadata?.notes || "",
-        };
-        setMyCase(mapped);
+        setMyCase(mapSupabaseCaseToLocal(data, profile));
       } else {
-        const allCases = CRMDataStore.getCases();
-        const found = allCases.find(c => c.clientEmail === profile.email);
+        const { data: allData } = await supabase.from('cases').select('*');
+        const found = (allData || []).map((r: any) => mapSupabaseCaseToLocal(r, profile)).find((c: Case) => c.email === profile.email);
         setMyCase(found || null);
       }
     };
@@ -99,6 +81,8 @@ export function CustomerMobileMenu({ isOpen, onClose }: Props) {
   useEffect(() => {
     if (!isOpen) setSearchQuery("");
   }, [isOpen]);
+
+  const caseId = myCase?.id || "";
 
   if (insideUnifiedLayout) return null;
 

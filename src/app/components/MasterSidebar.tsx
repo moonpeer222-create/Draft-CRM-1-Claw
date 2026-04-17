@@ -13,7 +13,9 @@ import { useTheme } from "../lib/ThemeContext";
 import { useUnifiedLayout } from "./UnifiedLayout";
 import { UserDB } from "../lib/userDatabase";
 import { AuditLogService } from "../lib/auditLog";
-import { CRMDataStore, getOverdueInfo } from "../lib/mockData";
+import { getOverdueInfo } from "../lib/mockData";
+import { supabase } from "../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 
 interface MenuItem {
   name: string;
@@ -37,8 +39,9 @@ export function MasterSidebar() {
 
   const [overdueCount, setOverdueCount] = useState(0);
   useEffect(() => {
-    const updateCount = () => {
-      const cases = CRMDataStore.getCases();
+    const updateCount = async () => {
+      const { data } = await supabase.from('cases').select('*');
+      const cases = (data || []).map(mapSupabaseCaseToLocal);
       setOverdueCount(cases.filter(c => getOverdueInfo(c).isOverdue).length);
     };
     updateCount();

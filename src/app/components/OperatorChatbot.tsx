@@ -137,16 +137,16 @@ export function OperatorChatbot() {
     const history: ChatMessage[] = messages
       .filter(m => m.id !== 0)
       .map(m => ({ text: m.text, isBot: m.isBot }));
-    const crmCtx = buildCRMContext(msg) + "\n" + CRM_ACTION_INSTRUCTIONS;
+    const crmCtx = (await buildCRMContext(msg)) + "\n" + CRM_ACTION_INSTRUCTIONS;
     const botMsgId = Date.now() + 1;
     setStreamingMsgId(botMsgId);
     setMessages(prev => [...prev, { id: botMsgId, text: "", isBot: true, isAI: true }]);
 
-    const finalize = (fullText: string) => {
+    const finalize = async (fullText: string) => {
       const { actions, cleanText } = parseActions(fullText);
       let actionResultText = "";
       if (actions.length > 0) {
-        const results = executeAllActions(actions);
+        const results = await executeAllActions(actions);
         actionResultText = results.map(r =>
           r.success ? `\u2705 ${r.message}` : `\u274c ${r.message}`
         ).join("\n\n");

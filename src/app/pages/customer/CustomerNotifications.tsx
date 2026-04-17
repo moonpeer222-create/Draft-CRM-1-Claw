@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, CheckCircle, Clock, DollarSign, FileText, AlertTriangle, ArrowLeft, Filter, RefreshCw, Check, Trash2, ChevronRight, Phone } from "lucide-react";
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore, Case, getStageLabel, getOverdueInfo } from "../../lib/mockData";
+import { Case, getStageLabel, getOverdueInfo } from "../../lib/mockData";
 import { NotificationService } from "../../lib/notifications";
 import { MobileBottomNav } from "../../components/MobileBottomNav";
 import { staggerContainer, staggerItem } from "../../lib/animations";

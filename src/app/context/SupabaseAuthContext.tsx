@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, DbUser } from '../lib/supabase';
+import { validateAgentCodeAsync, getAgentPassword } from '../lib/agentAuth';
+import { AccessCodeService } from '../lib/accessCode';
 
 interface AuthContextType {
   user: User | null;
@@ -8,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInAgentWithCode: (code: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -25,43 +28,89 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
+        // 1. Try normal Supabase session first
         const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        setSession(session);
-        setUser(session?.user ?? null);
         if (session?.user) {
+          if (!mounted) return;
+          setSession(session);
+          setUser(session.user);
           await loadProfile(session.user.id);
-        } else {
+          return;
+        }
+
+        // 2. Try restore agent code session from localStorage
+        const agentSession = AccessCodeService.getAgentSession();
+        if (agentSession) {
+          // Fetch profile from Supabase using agent_id
+          const { data: agents } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('role', 'agent')
+            .eq('agent_id', agentSession.agentId)
+            .limit(1);
+          const agentProfile = agents?.[0];
+          const syntheticProfile: DbUser = {
+            id: agentProfile?.id || agentSession.agentId,
+            email: agentProfile?.email || `${agentSession.agentId}@agent.local`,
+            full_name: agentSession.agentName,
+            role: 'agent',
+            organization_id: agentProfile?.organization_id || null,
+            avatar_url: agentProfile?.avatar_url || null,
+            last_seen: new Date().toISOString(),
+            created_at: agentProfile?.created_at || new Date().toISOString(),
+            agent_id: agentSession.agentId,
+            agent_name: agentSession.agentName,
+            ...(agentProfile || {}),
+          };
+          const syntheticUser = { id: syntheticProfile.id } as User;
+          const syntheticSession = {
+            access_token: 'agent-code-session',
+            refresh_token: 'agent-code-session',
+            expires_in: Math.max(0, Math.floor((agentSession.expiresAt - Date.now()) / 1000)),
+            expires_at: Math.floor(agentSession.expiresAt / 1000),
+            token_type: 'bearer',
+            user: syntheticUser,
+          } as Session;
+          if (!mounted) return;
+          setUser(syntheticUser);
+          setProfile(syntheticProfile);
+          setSession(syntheticSession);
           setLoading(false);
+          return;
         }
       } catch {
-        setLoading(false);
+        /* ignore */
       }
+      // Delay setting loading=false so onAuthStateChange can fire first
+      // and set loading=true when a session exists. This prevents auth
+      // guards from redirecting to login during the hydration gap.
+      setTimeout(() => {
+        if (mounted) setLoading(false);
+      }, 400);
     };
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          setLoading(true);
           await loadProfile(session.user.id);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setLoading(false);
         }
+        // For INITIAL_SESSION with null session, do nothing —
+        // init() already handles agent-session restoration and will
+        // set loading false after its timeout.
       }
     );
 
-    const timeout = setTimeout(() => {
-      if (mounted && loading) setLoading(false);
-    }, 5000);
-
     return () => {
       mounted = false;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -92,15 +141,71 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signInAgentWithCode = async (code: string) => {
+    const result = await validateAgentCodeAsync(code);
+    if (!result.valid) {
+      return { error: result.error || "Invalid access code" };
+    }
+
+    // Create legacy session for timer/UI compatibility
+    AccessCodeService.createAgentSession(code, result.agentId!, result.agentName!);
+
+    // Attempt real Supabase auth login using deterministic password
+    const agentEmail = result.profile?.email;
+    if (agentEmail && result.agentId) {
+      const agentPassword = getAgentPassword(result.agentId);
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: agentEmail,
+        password: agentPassword,
+      });
+      if (!signInError && signInData.session) {
+        // Real session obtained — onAuthStateChange will update React state
+        return { error: null };
+      }
+      console.warn('[Auth] Real agent sign-in failed, falling back to synthetic session:', signInError?.message);
+    }
+
+    // Fallback: synthetic session (cases may fail RLS if DB requires authenticated)
+    const syntheticProfile: DbUser = {
+      id: result.profile?.id || result.agentId!,
+      email: result.profile?.email || `${result.agentId}@agent.local`,
+      full_name: result.agentName!,
+      role: 'agent',
+      organization_id: result.profile?.organization_id || null,
+      avatar_url: result.profile?.avatar_url || null,
+      last_seen: new Date().toISOString(),
+      created_at: result.profile?.created_at || new Date().toISOString(),
+      agent_id: result.agentId || null,
+      agent_name: result.agentName || null,
+      ...(result.profile || {}),
+    };
+
+    const syntheticUser = { id: syntheticProfile.id } as User;
+    const syntheticSession = {
+      access_token: 'agent-code-session',
+      refresh_token: 'agent-code-session',
+      expires_in: 6 * 60 * 60,
+      expires_at: Math.floor(Date.now() / 1000) + 6 * 60 * 60,
+      token_type: 'bearer',
+      user: syntheticUser,
+    } as Session;
+
+    setUser(syntheticUser);
+    setProfile(syntheticProfile);
+    setSession(syntheticSession);
+    return { error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
+    AccessCodeService.agentLogout();
     setUser(null);
     setProfile(null);
     setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, signIn, signInAgentWithCode, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

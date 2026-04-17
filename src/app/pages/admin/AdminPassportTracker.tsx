@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
-import { CRMDataStore, Case } from "../../lib/mockData";
+import { Case } from "../../lib/mockData";
+import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import {
   PassportTracker, PassportTracking, PassportLocation, LOCATIONS,
   getLocationLabel, getLocationIcon
@@ -60,8 +62,9 @@ export function AdminPassportTracker() {
     applyFilters();
   }, [searchTerm, locationFilter, passports]);
 
-  const loadData = () => {
-    const allCases = CRMDataStore.getCases();
+  const loadData = async () => {
+    const { data, error } = await supabase.from('cases').select('*');
+    const allCases = error ? [] : (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
     setCases(allCases);
     const checked = PassportTracker.getCheckedOut();
     setPassports(checked);

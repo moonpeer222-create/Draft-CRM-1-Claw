@@ -1,5 +1,5 @@
 import { useTheme } from "../../lib/ThemeContext";
-import { CRMDataStore, getOverdueInfo, getPipelineStages, getSLAStatus } from "../../lib/mockData";
+import { getOverdueInfo, getPipelineStages, getSLAStatus } from "../../lib/mockData";
 import { generateSalaryReport, SALARY_CONFIG } from "../../lib/salaryCalculator";
 import { motion } from "motion/react";
 import {
@@ -16,6 +16,8 @@ import { MasterDataReset } from "../../components/MasterDataReset";
 import { useState, useEffect, useMemo } from "react";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
 import { supabase } from "../../lib/supabase";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 
 export function MasterDashboard() {
   const { darkMode, isUrdu, fontClass } = useTheme();
@@ -26,7 +28,7 @@ export function MasterDashboard() {
   const brd = dc ? "border-gray-700" : "border-gray-200";
   const cardBg = dc ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200";
 
-  const [cases, setCases] = useState(CRMDataStore.getCases());
+  const [cases, setCases] = useState<any[]>([]);
   const [expandSLA, setExpandSLA] = useState(true);
   const [expandSalary, setExpandSalary] = useState(true);
   const [salaryMonth] = useState(new Date().getMonth());
@@ -34,17 +36,24 @@ export function MasterDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const { profile } = useSupabaseAuth();
 
-  // Fetch users from Supabase
+  // Fetch cases and users from Supabase
   useEffect(() => {
+    const fetchCases = async () => {
+      const { data, error } = await supabase.from("cases").select("*");
+      if (!error && data) {
+        setCases(data.map(mapSupabaseCaseToLocal));
+      }
+    };
     const fetchUsers = async () => {
       const { data, error } = await supabase.from("profiles").select("*");
       if (!error && data) {
         setUsers(data.map((u: any) => ({ ...u, fullName: u.full_name, status: "active" })));
       }
     };
+    fetchCases();
     fetchUsers();
     const iv = setInterval(() => {
-      setCases(CRMDataStore.getCases());
+      fetchCases();
       fetchUsers();
     }, 30000);
     return () => clearInterval(iv);
@@ -462,7 +471,10 @@ export function MasterDashboard() {
           <MasterDataReset
             darkMode={dc}
             isUrdu={isUrdu}
-            onDataReset={() => setCases(CRMDataStore.getCases())}
+            onDataReset={async () => {
+              const { data } = await supabase.from("cases").select("*");
+              setCases((data || []).map(mapSupabaseCaseToLocal));
+            }}
           />
         </main>
       </div>
