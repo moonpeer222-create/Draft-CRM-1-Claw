@@ -29,7 +29,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         // 1. Try normal Supabase session first
-        const { data: { session } } = await supabase.auth.getSession();
+        // Safety: getSession() can deadlock if onAuthStateChange callbacks are
+        // async and hold the gotrue-js lock. Use a 5s timeout as fallback.
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 5000)
+        );
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
         if (session?.user) {
           if (!mounted) return;
           setSession(session);
@@ -92,13 +98,17 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
           setLoading(true);
-          await loadProfile(session.user.id);
+          // CRITICAL: Do NOT await loadProfile() here. The gotrue-js lock is held
+          // while this callback runs, and loadProfile() may internally need the
+          // same lock (via getSession). Awaiting here causes a deadlock on page
+          // refresh when _initialize() holds the lock and waits for callbacks.
+          loadProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setLoading(false);
