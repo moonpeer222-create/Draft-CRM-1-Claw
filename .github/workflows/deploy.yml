@@ -1,127 +1,57 @@
-name: Build, Stage & Deploy
+name: Deploy to Hostinger VPS
 
 on:
   push:
-    branches: [main]
-    tags: ['v*.*.*']
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+    branches:
+      - main
 
 jobs:
-  build-pages:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: '18'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Dependencies & Build
+        run: |
+          npm install
+          npm run build
 
-      - name: Build for GitHub Pages (HashRouter)
-        run: VITE_USE_HASH_ROUTER=true npx vite build --base=/Draft-CRM-1-Claw/
-
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
         with:
-          name: dist-pages
-          path: ./dist
-
-  build-hostinger:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build for Hostinger (HashRouter for Nginx compatibility)
-        run: VITE_USE_HASH_ROUTER=true npm run build
-
-      - name: Verify dist contents
-        run: ls -la ./dist && cat ./dist/index.html | head -n 5
-
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-hostinger
-          path: ./dist
-
-  deploy-pages:
-    needs: build-pages
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-pages
-          path: ./dist
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-
-  deploy-hostinger:
-    needs: build-hostinger
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-hostinger
-          path: ./dist
-
-      - name: Deploy to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          server-dir: /
-          local-dir: ./dist/
-          dangerous-clean-slate: true
-
-  release:
-    needs: build-hostinger
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-hostinger
-          path: ./dist
-
-      - name: Zip dist for release
-        run: cd dist && zip -r ../dist.zip .
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist.zip
-          generate_release_notes: true
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # 1. Sync files (using a directory in home first for safety)
+            mkdir -p ~/emerald-crm/dist
+            
+            # Note: We'll use SCP in the next step or just git pull for now
+            # For simplicity in this first version, we'll git pull and build ON server
+            # because SCPing thousands of files is slow.
+            
+            cd ~/emerald-crm || git clone https://github.com/moonpeer222-create/Draft-CRM-1-Claw.git ~/emerald-crm
+            cd ~/emerald-crm
+            git pull origin main
+            
+            # Setup .env
+            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
+            echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+            
+            # Install & Build
+            npm install
+            npm run build
+            
+            # Start or Restart with PM2
+            pm2 delete emerald-crm || true
+            pm2 start "npx serve -s dist -p 3001" --name emerald-crm
+            
+            # Save PM2 state
+            pm2 save
