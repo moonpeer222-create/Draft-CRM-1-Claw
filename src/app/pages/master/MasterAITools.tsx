@@ -142,7 +142,7 @@ export function MasterAITools() {
                 <p className={`text-sm md:text-base ${dc ? "text-purple-200" : "text-white/80"}`}>
                   {isUrdu
                     ? "ایمرالڈ ویزا CRM کے لیے مصنوعی ذہانت سے تقویت یافتہ ٹولز — چیٹ بوٹ اور آواز اسسٹنٹ دونوں ہر صفحے پر دستیاب ہیں"
-                    : "AI-powered tools for Emerald Visa CRM — both the chatbot and voice assistant are available on every page via floating buttons"}
+                    : "AI-powered tools for Emerald Tech Partner — both the chatbot and voice assistant are available on every page via floating buttons"}
                 </p>
               </div>
               <div className="flex gap-2">

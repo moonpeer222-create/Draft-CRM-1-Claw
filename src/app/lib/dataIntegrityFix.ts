@@ -13,64 +13,7 @@ export class DataIntegrityFix {
    * Fix notifications storage format
    */
   static fixNotificationsStorage(): void {
-    try {
-      const notifStr = localStorage.getItem('crm_notifications');
-      
-      if (!notifStr) {
-        // Initialize with empty array
-        localStorage.setItem('crm_notifications', JSON.stringify([]));
-        console.log('[DataIntegrityFix] Initialized empty notifications array');
-        return;
-      }
-
-      const parsed = JSON.parse(notifStr);
-
-      // Check if it's an object (old format) instead of array
-      if (!Array.isArray(parsed)) {
-        console.warn('[DataIntegrityFix] Notifications was stored as object, converting to array...');
-        console.log('[DataIntegrityFix] Object structure:', Object.keys(parsed));
-        
-        // Convert object to array
-        const notifications: any[] = [];
-        
-        if (typeof parsed === 'object' && parsed !== null) {
-          // Extract notifications from object format
-          Object.keys(parsed).forEach(key => {
-            const value = parsed[key];
-            
-            if (Array.isArray(value)) {
-              // Key contains array of notifications
-              console.log(`[DataIntegrityFix] Found ${value.length} notifications in key "${key}"`);
-              notifications.push(...value);
-            } else if (typeof value === 'object' && value !== null && value.id) {
-              // Key contains single notification object
-              console.log(`[DataIntegrityFix] Found single notification in key "${key}"`);
-              notifications.push(value);
-            }
-          });
-        }
-
-        // Save as array
-        localStorage.setItem('crm_notifications', JSON.stringify(notifications));
-        console.log('[DataIntegrityFix] ✅ Converted notifications to array format:', notifications.length, 'items');
-        
-        // Verify the fix worked
-        const verified = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
-        if (Array.isArray(verified)) {
-          console.log('[DataIntegrityFix] ✅ Verification passed - notifications is now an array');
-        } else {
-          console.error('[DataIntegrityFix] ❌ Verification failed - still not an array!');
-        }
-      } else {
-        console.log('[DataIntegrityFix] ✅ Notifications format is correct (array)');
-      }
-      
-    } catch (error) {
-      console.error('[DataIntegrityFix] Failed to fix notifications:', error);
-      // Reset to empty array on error
-      localStorage.setItem('crm_notifications', JSON.stringify([]));
-      console.log('[DataIntegrityFix] Reset to empty array due to error');
-    }
+    console.log('[DataIntegrityFix] Notifications are now handled securely via Zustand memory cache.');
   }
 
   /**

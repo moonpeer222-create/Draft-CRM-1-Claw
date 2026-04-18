@@ -63,7 +63,7 @@ function getAgentProfile(agentName: string): AgentProfileData {
     address: "Office #25 Faisal Shopping Mall, GPO Saddar",
     city: "Lahore",
     joinDate: "2024-03-01T00:00:00Z",
-    bio: `Visa processing agent at Emerald Visa Consultancy. Specializing in Gulf country visa processing.`,
+    bio: `Technology solutions agent at Emerald Tech Partner. Specializing in client support and digital services.`,
     specialization: "Gulf Countries",
     notifications: { email: true, sms: true, push: true },
   };

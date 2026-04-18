@@ -85,7 +85,7 @@ export function UnifiedSidebar() {
         {(!sidebarCollapsed || isMobile) && (
           <div className="min-w-0 flex-1">
             <h1 className={`text-sm font-bold truncate ${dc ? "text-white" : "text-gray-900"}`}>
-              {isUrdu ? "ایمرالڈ ویزا" : "Emerald Visa"}
+              {isUrdu ? "ایمرالڈ ٹیک پارٹنر" : "Emerald Tech Partner"}
             </h1>
             <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 ${
               dc ? "bg-white/8 text-gray-400" : "bg-gray-100 text-gray-500"

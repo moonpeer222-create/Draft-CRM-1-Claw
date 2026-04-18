@@ -466,7 +466,7 @@ export function AgentMobileMenu({ isOpen, onClose }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   onClick={() => {
-                    const msg = encodeURIComponent("Assalamualaikum, I need a new access code for the Emerald Visa CRM Agent Portal.");
+                    const msg = encodeURIComponent("Assalamualaikum, I need a new access code for the Emerald Tech Partner Agent Portal.");
                     window.open(`https://wa.me/923186986259?text=${msg}`, "_blank");
                   }}
                   className="flex-shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-green-500/8 border border-green-500/15 active:bg-green-500/15 transition-colors min-w-[110px]"

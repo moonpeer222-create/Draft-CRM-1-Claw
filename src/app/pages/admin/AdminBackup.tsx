@@ -50,7 +50,7 @@ const DEFAULT_SETTINGS: BackupSettings = {
   enabled: true,
   time: "02:00",
   format: "json",
-  recipients: ["moonpeer222@gmail.com", "wasimazhar404@gmail.com"],
+  recipients: ["moonpeer222@gmail.com"],
   selectedContent: ["cases", "payments", "documents", "activity", "attendance"],
   autoDelete90Days: true,
 };

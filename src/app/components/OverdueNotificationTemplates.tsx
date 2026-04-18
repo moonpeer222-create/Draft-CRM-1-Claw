@@ -40,8 +40,8 @@ function generateTemplates(c: Case): Template[] {
       nameUrdu: "کسٹمر یاد دہانی (واٹس ایپ)",
       audience: "customer",
       channel: "whatsapp",
-      body: `Assalamualaikum ${c.customerName},\n\nThis is a reminder from *Emerald Visa Consultancy* regarding your case *${c.id}*.\n\nYour application is currently at the *${stage}* stage${oi.isOverdue ? ` and is *${oi.timeLabel}*` : ""}.\n\n${reason ? `Delay reason: ${reason}\n\n` : ""}${c.status === "payment_confirmation" || c.status === "remaining_amount" ? `Outstanding amount: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\n` : ""}Please contact us if you need any assistance.\n\nThank you,\nEmerald Visa Team\n📞 +92 318 6986259`,
-      bodyUrdu: `السلام علیکم ${c.customerName},\n\nیہ *ایمرالڈ ویزا کنسلٹنسی* کی طرف سے آپ کے کیس *${c.id}* کے حوالے سے یاد دہانی ہے۔\n\nآپ کی درخواست ابھی *${stageUrdu}* مرحلے پر ہے${oi.isOverdue ? ` اور *${oi.timeLabel}* تاخیر ہو چکی ہے` : ""}۔\n\n${reasonUrdu ? `تاخیر کی وجہ: ${reasonUrdu}\n\n` : ""}مزید مدد کے لیے رابطہ کریں۔\n\nشکریہ،\nایمرالڈ ویزا ٹیم\n📞 +92 318 6986259`,
+      body: `Assalamualaikum ${c.customerName},\n\nThis is a reminder from *Emerald Tech Partner* regarding your case *${c.id}*.\n\nYour application is currently at the *${stage}* stage${oi.isOverdue ? ` and is *${oi.timeLabel}*` : ""}.\n\n${reason ? `Delay reason: ${reason}\n\n` : ""}${c.status === "payment_confirmation" || c.status === "remaining_amount" ? `Outstanding amount: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\n` : ""}Please contact us if you need any assistance.\n\nThank you,\nEmerald Tech Partner Team\n📞 +92 318 6986259`,
+      bodyUrdu: `السلام علیکم ${c.customerName},\n\nیہ *ایمرالڈ ٹیک پارٹنر* کی طرف سے آپ کے کیس *${c.id}* کے حوالے سے یاد دہانی ہے۔\n\nآپ کی درخواست ابھی *${stageUrdu}* مرحلے پر ہے${oi.isOverdue ? ` اور *${oi.timeLabel}* تاخیر ہو چکی ہے` : ""}۔\n\n${reasonUrdu ? `تاخیر کی وجہ: ${reasonUrdu}\n\n` : ""}مزید مدد کے لیے رابطہ کریں۔\n\nشکریہ،\nایمرالڈ ٹیک پارٹنر ٹیم\n📞 +92 318 6986259`,
     },
     // Customer SMS
     {
@@ -50,8 +50,8 @@ function generateTemplates(c: Case): Template[] {
       nameUrdu: "کسٹمر یاد دہانی (ایس ایم ایس)",
       audience: "customer",
       channel: "sms",
-      body: `Emerald Visa: Dear ${c.customerName}, your case ${c.id} is at ${stage} stage${oi.isOverdue ? ` (${oi.timeLabel})` : ""}. ${c.totalFee - c.paidAmount > 0 ? `Pending: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}. ` : ""}Call +92 318 6986259 for help.`,
-      bodyUrdu: `ایمرالڈ ویزا: ${c.customerName}، آپ کا کیس ${c.id} ${stageUrdu} مرحلے پر ہے${oi.isOverdue ? ` (${oi.timeLabel})` : ""}۔ ${c.totalFee - c.paidAmount > 0 ? `واجب: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}۔ ` : ""}مدد: +92 318 6986259`,
+      body: `Emerald Tech Partner: Dear ${c.customerName}, your case ${c.id} is at ${stage} stage${oi.isOverdue ? ` (${oi.timeLabel})` : ""}. ${c.totalFee - c.paidAmount > 0 ? `Pending: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}. ` : ""}Call +92 318 6986259 for help.`,
+      bodyUrdu: `ایمرالڈ ٹیک پارٹنر: ${c.customerName}، آپ کا کیس ${c.id} ${stageUrdu} مرحلے پر ہے${oi.isOverdue ? ` (${oi.timeLabel})` : ""}۔ ${c.totalFee - c.paidAmount > 0 ? `واجب: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}۔ ` : ""}مدد: +92 318 6986259`,
     },
     // Customer Email
     {
@@ -60,9 +60,9 @@ function generateTemplates(c: Case): Template[] {
       nameUrdu: "کسٹمر ای میل یاد دہانی",
       audience: "customer",
       channel: "email",
-      subject: `[Emerald Visa] Case ${c.id} Update — ${stage}`,
-      body: `Dear ${c.customerName},\n\nWe are writing to provide you with an update on your visa application (Case ID: ${c.id}).\n\nCurrent Stage: ${stage}\n${oi.isOverdue ? `Status: Delayed — ${oi.timeLabel}\n` : ""}${reason ? `Reason for Delay: ${reason}\n` : ""}Agent Assigned: ${c.agentName}\n\nPayment Summary:\n  Total Fee: PKR ${c.totalFee.toLocaleString()}\n  Paid: PKR ${c.paidAmount.toLocaleString()}\n  Remaining: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\n${oi.isOverdue ? "We sincerely apologize for the delay and assure you that our team is working diligently to move your application forward.\n\n" : ""}If you have any questions, please don't hesitate to contact us:\n  Phone: +92 318 6986259\n  WhatsApp: wa.me/923186986259\n\nBest Regards,\nEmerald Visa Consultancy Service\nLahore, Pakistan`,
-      bodyUrdu: `محترم ${c.customerName},\n\nآپ کی ویزا درخواست (کیس: ${c.id}) کے حوالے سے اپ ڈیٹ:\n\nموجودہ مرحلہ: ${stageUrdu}\n${oi.isOverdue ? `حالت: تاخیر — ${oi.timeLabel}\n` : ""}${reasonUrdu ? `تاخیر کی وجہ: ${reasonUrdu}\n` : ""}ایجنٹ: ${c.agentName}\n\nادائیگی:\n  کل فیس: PKR ${c.totalFee.toLocaleString()}\n  ادا شدہ: PKR ${c.paidAmount.toLocaleString()}\n  باقی: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\nرابطہ: +92 318 6986259\n\nایمرالڈ ویزا کنسلٹنسی`,
+      subject: `[Emerald Tech Partner] Case ${c.id} Update — ${stage}`,
+      body: `Dear ${c.customerName},\n\nWe are writing to provide you with an update on your visa application (Case ID: ${c.id}).\n\nCurrent Stage: ${stage}\n${oi.isOverdue ? `Status: Delayed — ${oi.timeLabel}\n` : ""}${reason ? `Reason for Delay: ${reason}\n` : ""}Agent Assigned: ${c.agentName}\n\nPayment Summary:\n  Total Fee: PKR ${c.totalFee.toLocaleString()}\n  Paid: PKR ${c.paidAmount.toLocaleString()}\n  Remaining: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\n${oi.isOverdue ? "We sincerely apologize for the delay and assure you that our team is working diligently to move your application forward.\n\n" : ""}If you have any questions, please don't hesitate to contact us:\n  Phone: +92 318 6986259\n  WhatsApp: wa.me/923186986259\n\nBest Regards,\nEmerald Tech Partner\nLahore, Pakistan`,
+      bodyUrdu: `محترم ${c.customerName},\n\nآپ کی ویزا درخواست (کیس: ${c.id}) کے حوالے سے اپ ڈیٹ:\n\nموجودہ مرحلہ: ${stageUrdu}\n${oi.isOverdue ? `حالت: تاخیر — ${oi.timeLabel}\n` : ""}${reasonUrdu ? `تاخیر کی وجہ: ${reasonUrdu}\n` : ""}ایجنٹ: ${c.agentName}\n\nادائیگی:\n  کل فیس: PKR ${c.totalFee.toLocaleString()}\n  ادا شدہ: PKR ${c.paidAmount.toLocaleString()}\n  باقی: PKR ${(c.totalFee - c.paidAmount).toLocaleString()}\n\nرابطہ: +92 318 6986259\n\nایمرالڈ ٹیک پارٹنر`,
     },
     // Agent WhatsApp
     {
@@ -71,8 +71,8 @@ function generateTemplates(c: Case): Template[] {
       nameUrdu: "ایجنٹ فالو اپ (واٹس ایپ)",
       audience: "agent",
       channel: "whatsapp",
-      body: `*⚠️ OVERDUE CASE ALERT*\n\nHi ${c.agentName},\n\nCase *${c.id}* (${c.customerName}) is *${oi.timeLabel}* at stage *${stage}*.\n\n${reason ? `Reported reason: ${reason}\n` : ""}Customer phone: ${c.phone}\n\n*Action Required:* Please follow up immediately and update the case status.\n\n— Emerald Visa Admin`,
-      bodyUrdu: `*⚠️ تاخیر شدہ کیس الرٹ*\n\n${c.agentName}،\n\nکیس *${c.id}* (${c.customerName}) *${oi.timeLabel}* — مرحلہ: *${stageUrdu}*\n\n${reasonUrdu ? `وجہ: ${reasonUrdu}\n` : ""}کسٹمر فون: ${c.phone}\n\n*ایکشن:* فوری فالو اپ کریں اور کیس اپ ڈیٹ کریں۔\n\n— ایمرالڈ ویزا ایڈمن`,
+      body: `*⚠️ OVERDUE CASE ALERT*\n\nHi ${c.agentName},\n\nCase *${c.id}* (${c.customerName}) is *${oi.timeLabel}* at stage *${stage}*.\n\n${reason ? `Reported reason: ${reason}\n` : ""}Customer phone: ${c.phone}\n\n*Action Required:* Please follow up immediately and update the case status.\n\n— Emerald Tech Partner Admin`,
+      bodyUrdu: `*⚠️ تاخیر شدہ کیس الرٹ*\n\n${c.agentName}،\n\nکیس *${c.id}* (${c.customerName}) *${oi.timeLabel}* — مرحلہ: *${stageUrdu}*\n\n${reasonUrdu ? `وجہ: ${reasonUrdu}\n` : ""}کسٹمر فون: ${c.phone}\n\n*ایکشن:* فوری فالو اپ کریں اور کیس اپ ڈیٹ کریں۔\n\n— ایمرالڈ ٹیک پارٹنر ایڈمن`,
     },
     // Agent SMS
     {

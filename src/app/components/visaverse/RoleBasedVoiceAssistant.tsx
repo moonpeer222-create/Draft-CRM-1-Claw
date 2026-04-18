@@ -89,7 +89,7 @@ const VOICE_COMMANDS = {
         ur: "پاسپورٹ سٹاک کا انتظام: مقام عمران کے گھر محفوظ ذخیرہ ہے۔ میڈیکل کے بعد پاسپورٹ سٹاک میں بھجوائیں۔ ای نمبر جاری ہونے پر کلائنٹ آنے سے پہلے منگوائیں۔ کمپیوٹر آپریٹر ضرورت کے مطابق سٹاک سے طلب کرے۔ تمام نقل و حرکت سسٹم میں ٹریک ہو۔ پاسپورٹ کبھی بے نشان نہ چھوڑیں۔"
       },
       roleResponsibilities: {
-        en: "Role responsibilities: Sales representative handles lead qualification, WhatsApp follow-up, office visit scheduling, target 5 mature clients per day. Computer operator handles document scanning, PDF preparation, CRM plus manual register entry, payment logging with owner confirmation. Owner Sir Atif or Wasi handles payment confirmations, vendor communication, E-Number visa protector handling, and final approvals. Expert or main person handles client consultation, answering questions professionally, and closing deals.",
+        en: "Role responsibilities: Sales representative handles lead qualification, WhatsApp follow-up, office visit scheduling, target 5 mature clients per day. Computer operator handles document scanning, PDF preparation, CRM plus manual register entry, payment logging with owner confirmation. Owner handles payment confirmations, vendor communication, E-Number visa protector handling, and final approvals. Expert or main person handles client consultation, answering questions professionally, and closing deals.",
         ur: "رول ذمہ داریاں: سیلز ریپریزنٹیٹو لیڈ کوالیفکیشن، واٹس ایپ فالو اپ، آفس وزٹ شیڈولنگ، ٹارگٹ روزانہ 5 میچور کلائنٹس۔ کمپیوٹر آپریٹر دستاویزات سکیننگ، PDF تیاری، CRM اور مینول رجسٹر میں اندراج، ادائیگی لاگنگ مالک کی تصدیق سے۔ مالک سر عاطف یا وسی ادائیگی کی تصدیقات، وینڈر سے بات چیت، ای نمبر ویزا پروٹیکٹر ہینڈلنگ، اور فائنل منظوریاں۔ ایکسپرٹ شخص کلائنٹ مشاورت، سوالات کا پیشہ ورانہ جواب، اور ڈیل کلوز کرنا۔"
       },
       login: {
@@ -105,8 +105,8 @@ const VOICE_COMMANDS = {
         ur: "کلائنٹ ڈھونڈنے کے لیے ٹاپ نیویگیشن میں سرچ بار استعمال کریں۔ نام، فون نمبر، کیس آئی ڈی، یا پاسپورٹ نمبر ٹائپ کریں۔ نتائج فوراً ظاہر ہوں گے۔ آپ Cases پھر All Cases جا کر فلٹرز بھی لگا سکتے ہیں۔"
       },
       companyInfo: {
-        en: "Emerald Visa Consultancy Service. Office number 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine. Email info at emeraldvisaconsultancy dot com. Licensed recruitment agency for Gulf countries.",
-        ur: "ایمرالڈ ویزا کنسلٹنسی سروس۔ آفس نمبر 25، فیصل شاپنگ مال، جی پی او صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ای میل info@emeraldvisaconsultancy.com۔ خلیجی ممالک کے لیے لائسنس یافتہ ریکروٹمنٹ ایجنسی۔"
+        en: "Emerald Tech Partner. Office number 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine. Email info at emeraldvisaconsultancy dot com. Licensed recruitment agency for Gulf countries.",
+        ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس نمبر 25، فیصل شاپنگ مال، جی پی او صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ای میل info@emeraldvisaconsultancy.com۔ خلیجی ممالک کے لیے لائسنس یافتہ ریکروٹمنٹ ایجنسی۔"
       },
       troubleshoot: {
         en: "If system is not working: Step 1, refresh the page with F5. Step 2, check internet connection. Step 3, clear browser cache. Step 4, try mobile app. If still broken, take screenshot, note what you were doing, and contact Admin immediately at zero three one eight six nine eight six two five nine.",
@@ -163,8 +163,8 @@ const VOICE_COMMANDS = {
         ur: "ایجنٹ کے لیے میڈیکل گامکا پراسیس: گامکا ٹوکن آن لائن بک کروائیں، فیس 4500 روپے کلائنٹ دیتا ہے۔ کلائنٹ کو واٹس ایپ پر لیب کا ایڈریس اور راستہ گائیڈ کریں۔ کلائنٹ پاسپورٹ کی کاپی اور تصاویر ساتھ لے جائے۔ میڈیکل سینٹر فیس 25000 سے 35000 روپے کلائنٹ براہ راست ادا کرے۔ 36 گھنٹوں میں نتیجہ۔ میڈیکل کے بعد پاسپورٹ اور رسید وصول کریں۔ رسید فائل میں، پاسپورٹ سٹاک عمران کے گھر بھجوائیں۔ انفٹ تو کیس کینسل۔ فٹ تو فوراً ویزا پراسیسنگ شروع۔"
       },
       payment: {
-        en: "Payment reminder sent to client via WhatsApp. Template: Assalamu Alaikum, this is Emerald Visa. Your payment of amount is pending. Pay via EasyPaisa zero three one eight six nine eight six two five nine, JazzCash, or Bank Transfer. Cash payment gets receipt. Online payment needs screenshot then owner confirmation before entry. Remember, no entry without owner confirmation.",
-        ur: "ادائیگی کی یاد دہانی کلائنٹ کو واٹس ایپ سے بھیجیں۔ ٹیمپلیٹ: السلام علیکم، یہ ایمرالڈ ویزا ہے۔ آپ کی رقم کی ادائیگی باقی ہے۔ ایزی پیسہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو، جاز کیش، یا بینک ٹرانسفر سے ادا کریں۔ کیش ادائیگی پر رسید دیں۔ آن لائن ادائیگی پر سکرین شاٹ لیں پھر مالک سے کنفرمیشن پھر اندراج۔ یاد رکھیں، مالک کی تصدیق کے بغیر کوئی اندراج نہیں۔"
+        en: "Payment reminder sent to client via WhatsApp. Template: Assalamu Alaikum, this is Emerald Tech Partner. Your payment of amount is pending. Pay via EasyPaisa zero three one eight six nine eight six two five nine, JazzCash, or Bank Transfer. Cash payment gets receipt. Online payment needs screenshot then owner confirmation before entry. Remember, no entry without owner confirmation.",
+        ur: "ادائیگی کی یاد دہانی کلائنٹ کو واٹس ایپ سے بھیجیں۔ ٹیمپلیٹ: السلام علیکم، یہ ایمرالڈ ٹیک پارٹنر ہے۔ آپ کی رقم کی ادائیگی باقی ہے۔ ایزی پیسہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو، جاز کیش، یا بینک ٹرانسفر سے ادا کریں۔ کیش ادائیگی پر رسید دیں۔ آن لائن ادائیگی پر سکرین شاٹ لیں پھر مالک سے کنفرمیشن پھر اندراج۔ یاد رکھیں، مالک کی تصدیق کے بغیر کوئی اندراج نہیں۔"
       },
       performance: {
         en: "Your performance this month: Cases completed: 12. Success rate: 95 percent. Target: 15 cases. Commission earned: 36 thousand rupees. You are number 1 on the leaderboard.",
@@ -187,8 +187,8 @@ const VOICE_COMMANDS = {
         ur: "ایجنٹ کے لیے پروٹیکٹر گائیڈ: کلائنٹ سے نومینی کا نام اور اکاؤنٹ نمبر لیں۔ تفصیلات سیو کریں اور مالک کو بھیجیں۔ مالک وینڈر سے پروٹیکٹر پیپر دے گا۔ کلائنٹ کو صبح 8 بجے پروٹیکٹر آفس بھجوائیں۔ سٹمپ لگوائے، اوریجنل پیپر اور 200 روپے اسٹامپ جمع کروائے۔ سائن اور انگوٹھا لگوائیں۔ سکین کر کے مالک کو دیں۔ وینڈر آن لائن مکمل کرے۔ ہمیشہ صبح 8 بجے شیڈول کریں۔"
       },
       agreementGuide: {
-        en: "Agreement guide: The retainer agreement is between client and Emerald Visa Consultancy Services. It is a written agreement that primarily benefits the client. Must be signed before starting any process. Ensures transparency and protects both parties. Keep signed copy in client file. Never skip the agreement step.",
-        ur: "اقرار نامہ گائیڈ: اقرار نامہ کلائنٹ اور ایمرالڈ ویزا کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے۔ اس کا زیادہ فائدہ کلائنٹ کو ہے۔ کوئی بھی عمل شروع کرنے سے پہلے سائن کروائیں۔ شفافیت یقینی بناتا ہے اور دونوں فریقوں کی حفاظت کرتا ہے۔ سائن شدہ کاپی فائل میں رکھیں۔ اقرار نامے کا مرحلہ کبھی نہ چھوڑیں۔"
+        en: "Agreement guide: The retainer agreement is between client and Emerald Tech Partners. It is a written agreement that primarily benefits the client. Must be signed before starting any process. Ensures transparency and protects both parties. Keep signed copy in client file. Never skip the agreement step.",
+        ur: "اقرار نامہ گائیڈ: اقرار نامہ کلائنٹ اور ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے۔ اس کا زیادہ فائدہ کلائنٹ کو ہے۔ کوئی بھی عمل شروع کرنے سے پہلے سائن کروائیں۔ شفافیت یقینی بناتا ہے اور دونوں فریقوں کی حفاظت کرتا ہے۔ سائن شدہ کاپی فائل میں رکھیں۔ اقرار نامے کا مرحلہ کبھی نہ چھوڑیں۔"
       },
       login: {
         en: "Agent login: Open CRM login page. Enter your 6 digit access code from WhatsApp. Click Activate Session. Session valid for 6 hours, then auto-logout. Code not received? Call Admin at zero three one eight six nine eight six two five nine.",
@@ -199,8 +199,8 @@ const VOICE_COMMANDS = {
         ur: "آپ کا ڈیش بورڈ آج کے کام دکھاتا ہے۔ فالو اپس، اپ لوڈز، ادائیگی یاد دہانیاں اور اپائنٹمنٹس شامل ہیں۔ کام پر کلک کریں تو کیس کھلے گا۔ پہلے تاخیر والے آئٹمز سے شروع کریں۔"
       },
       companyInfo: {
-        en: "Emerald Visa Consultancy Service. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine.",
-        ur: "ایمرالڈ ویزا کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
+        en: "Emerald Tech Partner. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine.",
+        ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
       },
       troubleshoot: {
         en: "Quick fixes: Refresh page with F5, check internet, clear cache, try mobile. Still broken? Call Admin at zero three one eight six nine eight six two five nine.",
@@ -265,16 +265,16 @@ const VOICE_COMMANDS = {
         ur: "پروٹیکٹر کی معلومات: ویزا منظوری کے بعد آپ کو ایک نومینی کا نام اور کوئی بینک اکاؤنٹ نمبر چاہیے۔ صبح 8 بجے پروٹیکٹر آفس جائیں، پیپر پر سٹمپ لگوائیں، اوریجنل پیپر اور 200 روپے اسٹامپ ہمارے آفس جمع کروائیں، سائن اور انگوٹھا لگائیں۔ باقی کام ہم آن لائن کر دیں گے۔ سوالات؟ کال کریں صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
       },
       agreement: {
-        en: "Agreement information: The retainer agreement is between you and Emerald Visa Consultancy Services. It is primarily for your benefit. It outlines services, fees, and responsibilities. Protects your rights as a client. Must be signed before process starts. You can request a copy anytime.",
-        ur: "معاہدے کی معلومات: اقرار نامہ آپ اور ایمرالڈ ویزا کنسلٹنسی سروسیز کے مابین ہے۔ اس کا زیادہ فائدہ آپ کو ہے۔ خدمات، فیس اور ذمہ داریاں واضح کرتا ہے۔ بطور کلائنٹ آپ کے حقوق کی حفاظت کرتا ہے۔ عمل شروع سے پہلے سائن ہونا ضروری ہے۔ آپ کسی بھی وقت کاپی کی درخواست کر سکتے ہیں۔"
+        en: "Agreement information: The retainer agreement is between you and Emerald Tech Partners. It is primarily for your benefit. It outlines services, fees, and responsibilities. Protects your rights as a client. Must be signed before process starts. You can request a copy anytime.",
+        ur: "معاہدے کی معلومات: اقرار نامہ آپ اور ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروسیز کے مابین ہے۔ اس کا زیادہ فائدہ آپ کو ہے۔ خدمات، فیس اور ذمہ داریاں واضح کرتا ہے۔ بطور کلائنٹ آپ کے حقوق کی حفاظت کرتا ہے۔ عمل شروع سے پہلے سائن ہونا ضروری ہے۔ آپ کسی بھی وقت کاپی کی درخواست کر سکتے ہیں۔"
       },
       login: {
         en: "Customer portal access: Your visa journey is tracked through our portal. Contact your agent at zero three one eight six nine eight six two five nine for access. WhatsApp updates are sent automatically at each stage.",
         ur: "کسٹمر پورٹل: آپ کا ویزا سفر ہمارے پورٹل سے ٹریک ہوتا ہے۔ رسائی کے لیے ایجنٹ سے رابطہ کریں صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ہر مرحلے پر واٹس ایپ اپ ڈیٹ خودکار بھیجی جاتی ہے۔"
       },
       companyInfo: {
-        en: "Emerald Visa Consultancy Service. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. We help Pakistani workers get jobs in Gulf countries including Saudi Arabia, UAE, Qatar, Kuwait and Oman. Contact zero three one eight six nine eight six two five nine.",
-        ur: "ایمرالڈ ویزا کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ ہم پاکستانی کارکنوں کو خلیجی ممالک سعودی عرب، یو اے ای، قطر، کویت اور عمان میں ملازمت دلاتے ہیں۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
+        en: "Emerald Tech Partner. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. We help Pakistani workers get jobs in Gulf countries including Saudi Arabia, UAE, Qatar, Kuwait and Oman. Contact zero three one eight six nine eight six two five nine.",
+        ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ ہم پاکستانی کارکنوں کو خلیجی ممالک سعودی عرب، یو اے ای، قطر، کویت اور عمان میں ملازمت دلاتے ہیں۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
       },
       troubleshoot: {
         en: "Having problems? Refresh your page, check internet, or try on mobile. If still having issues, call us at zero three one eight six nine eight six two five nine or email info at emeraldvisaconsultancy dot com.",
@@ -718,8 +718,8 @@ export function RoleBasedVoiceAssistant({ role }: RoleBasedVoiceAssistantProps) 
 
             <p className="text-[10px] text-center text-gray-400 pb-3">
               {speechSupported
-                ? (isUrdu ? "🎤 لائیو اسپیچ • ایمرالڈ ویزا • 03186986259" : "🎤 Live Speech · Emerald Visa · 03186986259")
-                : (isUrdu ? "⌨️ ٹیکسٹ موڈ • ایمرالڈ ویزا • 03186986259" : "⌨️ Text Mode · Emerald Visa · 03186986259")}
+                ? (isUrdu ? "🎤 لائیو اسپیچ • ایمرالڈ ٹیک پارٹنر • 03186986259" : "🎤 Live Speech · Emerald Tech Partner · 03186986259")
+                : (isUrdu ? "⌨️ ٹیکسٹ موڈ • ایمرالڈ ٹیک پارٹنر • 03186986259" : "⌨️ Text Mode · Emerald Tech Partner · 03186986259")}
             </p>
           </motion.div>
         )}

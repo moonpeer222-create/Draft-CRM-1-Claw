@@ -1,5 +1,5 @@
 /**
- * Supabase Realtime Service — Emerald Visa CRM
+ * Supabase Realtime Service — Emerald Tech Partner
  *
  * Handles:
  * - Live postgres_changes subscriptions on cases, documents, payments, notes

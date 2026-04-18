@@ -40,8 +40,8 @@ export function TermsOfService() {
               <h2 className={h2}>{isUrdu ? "1. قبولیت" : "1. Acceptance"}</h2>
               <p className={p}>
                 {isUrdu
-                  ? "ایمرلڈ ویزا CRM تک رسئی اور استعمال ان شرائط کی پابندی پر مشروط ہے۔ لاگ ان کرکے آپ ان شرائط سے اتفاق کرتے ہیں۔"
-                  : "Access to and use of Emerald Visa CRM is conditional upon acceptance of these terms. By logging in, you agree to be bound by them."}
+                  ? "ایمرلڈ ٹیک پارٹنر تک رسئی اور استعمال ان شرائط کی پابندی پر مشروط ہے۔ لاگ ان کرکے آپ ان شرائط سے اتفاق کرتے ہیں۔"
+                  : "Access to and use of Emerald Tech Partner is conditional upon acceptance of these terms. By logging in, you agree to be bound by them."}
               </p>
             </section>
 

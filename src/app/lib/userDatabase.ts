@@ -1,4 +1,4 @@
-// Unified User Database for Emerald Visa CRM
+// Unified User Database for Emerald Tech Partner
 // Stores admin, agent, and customer users in localStorage with sync to KV store
 // All authentication is handled locally — passwords are SHA-256 hashed
 
@@ -61,8 +61,6 @@ function notifySync() {
 // These are the PLAINTEXT passwords — they get hashed during seeding.
 // Share these with staff securely (in person or WhatsApp), then have them change on first login.
 const STAFF_CREDENTIALS = {
-  atif:     { email: "atif@emeraldvisa.com",     password: "Emr@ld$MD#2024!" },
-  wasi:     { email: "wasi@emeraldvisa.com",     password: "W@si$Mstr#2024!" },
   husnain:  { email: "husnain@emeraldvisa.com",  password: "Husn@!n$Adm#24" },
   faizan:   { email: "faizan@emeraldvisa.com",   password: "F@iz@n$Agt#24!" },
   imran:    { email: "imran@emeraldvisa.com",    password: "Imr@n$Agt#2024" },
@@ -75,22 +73,6 @@ const STAFF_CREDENTIALS = {
 async function seedDefaults(): Promise<CRMUser[]> {
   const now = new Date().toISOString();
   return [
-    {
-      id: "U-001", email: STAFF_CREDENTIALS.atif.email, phone: "+92 300 1234567",
-      fullName: "Sir Atif", password: await hashPassword(STAFF_CREDENTIALS.atif.password),
-      role: "master_admin", status: "active",
-      createdAt: "2024-01-01T00:00:00Z", updatedAt: now, lastLogin: null,
-      passwordChangedAt: now, mustChangePassword: false,
-      meta: { title: "Managing Director", department: "Executive" },
-    },
-    {
-      id: "U-002", email: STAFF_CREDENTIALS.wasi.email, phone: "+92 318 6986259",
-      fullName: "Wasi", password: await hashPassword(STAFF_CREDENTIALS.wasi.password),
-      role: "master_admin", status: "active",
-      createdAt: "2024-01-15T00:00:00Z", updatedAt: now, lastLogin: null,
-      passwordChangedAt: now, mustChangePassword: false,
-      meta: { title: "Master Admin", department: "Operations" },
-    },
     {
       id: "U-003", email: STAFF_CREDENTIALS.husnain.email, phone: "+92 301 2345678",
       fullName: "Husnain", password: await hashPassword(STAFF_CREDENTIALS.husnain.password),

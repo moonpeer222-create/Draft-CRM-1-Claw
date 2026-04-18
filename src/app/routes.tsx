@@ -55,6 +55,9 @@ const AdminSyncHistory = lazy(() => lazyRetry(() => import("./pages/admin/AdminS
 const AdminAIChatbot = lazy(() => lazyRetry(() => import("./pages/admin/AdminAIChatbot").then(m => ({ default: m.AdminAIChatbot }))));
 const AdminVoiceAssistant = lazy(() => lazyRetry(() => import("./pages/admin/AdminVoiceAssistant").then(m => ({ default: m.AdminVoiceAssistant }))));
 const MasterLogin = lazy(() => lazyRetry(() => import("./pages/master/MasterLogin").then(m => ({ default: m.MasterLogin }))));
+const MasterTenantsList = lazy(() => lazyRetry(() => import("./pages/master/MasterTenantsList").then(m => ({ default: m.MasterTenantsList }))));
+const TenantSignup = lazy(() => lazyRetry(() => import("./pages/TenantSignup").then(m => ({ default: m.TenantSignup }))));
+const OnboardingWizard = lazy(() => lazyRetry(() => import("./pages/OnboardingWizard").then(m => ({ default: m.OnboardingWizard }))));
 const MasterDashboard = lazy(() => lazyRetry(() => import("./pages/master/MasterDashboard").then(m => ({ default: m.MasterDashboard }))));
 const MasterAIChatbot = lazy(() => lazyRetry(() => import("./pages/master/MasterAIChatbot").then(m => ({ default: m.MasterAIChatbot }))));
 const MasterVoiceAssistant = lazy(() => lazyRetry(() => import("./pages/master/MasterVoiceAssistant").then(m => ({ default: m.MasterVoiceAssistant }))));
@@ -133,7 +136,7 @@ function RouteErrorFallback() {
             </div>
           </div>
           <div className="bg-gray-50 px-6 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-400">Emerald Visa CRM | If this persists, contact 03186986259</p>
+            <p className="text-xs text-gray-400">Emerald Tech Partner | If this persists, contact 03186986259</p>
           </div>
         </div>
       </div>
@@ -148,6 +151,12 @@ function AdminGuard({ children }: { children: ReactNode }) {
   if (!profile || !['admin', 'master_admin'].includes(profile.role)) {
     return <Navigate to="/admin/login" replace />;
   }
+  
+  // Force onboarding if owner hasn't completed it
+  if (profile.role === 'master_admin' && profile.tenants && !profile.tenants.onboarding_completed) {
+     return <Navigate to="/onboarding" replace />;
+  }
+  
   return <>{children}</>;
 }
 
@@ -258,6 +267,7 @@ const routeConfig = [
           { path: "ai-tools", element: <SuspenseWrap><MasterAITools /></SuspenseWrap> },
           { path: "stepfun-test", element: <SuspenseWrap><MasterQwenTest /></SuspenseWrap> },
           { path: "qwen-test", element: <Navigate to="/master/stepfun-test" replace /> },
+          { path: "tenants", element: <SuspenseWrap><MasterTenantsList /></SuspenseWrap> },
           { path: "audit-dashboard", element: <SuspenseWrap><MasterAuditDashboard /></SuspenseWrap> },
           // Master admin reuses admin pages for shared functionality
           { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
@@ -327,6 +337,8 @@ const routeConfig = [
         ],
       },
 
+      { path: "signup", element: <SuspenseWrap><TenantSignup /></SuspenseWrap> },
+      { path: "onboarding", element: <SuspenseWrap><OnboardingWizard /></SuspenseWrap> },
       { path: "update-password", element: <SuspenseWrap><UpdatePassword /></SuspenseWrap> },
       { path: "terms", element: <SuspenseWrap><TermsOfService /></SuspenseWrap> },
       { path: "privacy", element: <SuspenseWrap><PrivacyPolicy /></SuspenseWrap> },

@@ -1,6 +1,6 @@
 /**
  * Push Notification Permission & Cross-Portal Notification Bridge
- * for Emerald Visa CRM
+ * for Emerald Tech Partner
  * 
  * Handles:
  * - Browser push notification permission
@@ -104,7 +104,7 @@ export function pushBridgeNotification(notification: Omit<BridgeNotification, "i
   // Also send browser notification if enabled
   if (isPushEnabled()) {
     sendBrowserNotification(
-      "Emerald Visa CRM",
+      "Emerald Tech Partner",
       notification.messageEn,
     );
   }

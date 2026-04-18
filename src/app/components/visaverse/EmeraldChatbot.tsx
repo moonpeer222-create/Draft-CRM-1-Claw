@@ -239,7 +239,7 @@ export function EmeraldChatbot() {
                 </button>
               </div>
               <p className="text-[10px] text-center text-gray-400 mt-1.5">
-                Emerald Visa · 03186986259
+                Emerald Tech Partner · 03186986259
               </p>
             </div>
           </motion.div>

@@ -1,5 +1,5 @@
 /**
- * Dual Pipeline Configuration — Emerald Visa Consultancy
+ * Dual Pipeline Configuration — Emerald Tech Partner
  * 
  * Pipeline 1: Lead Tracking Pipeline (pre-agreement)
  * Pipeline 2: Main Visa Process Pipeline (post-agreement)

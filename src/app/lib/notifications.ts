@@ -1,5 +1,6 @@
 // Advanced Notification & Alert System — with Supabase sync hooks
 import { CRMDataStore } from "./mockData";
+import { useNotificationStore } from "../store/notificationStore";
 export interface Notification {
   id: string;
   type: "case" | "payment" | "document" | "system" | "deadline" | "agent" | "customer" | "attendance" | "alert";
@@ -33,7 +34,6 @@ export interface Alert {
 }
 
 export class NotificationService {
-  private static NOTIFICATIONS_KEY = "crm_notifications";
   private static ALERTS_KEY = "crm_alerts";
   private static _pushNotifications: (() => void) | null = null;
 
@@ -48,12 +48,8 @@ export class NotificationService {
 
   // Get all notifications
   static getNotifications(): Notification[] {
-    const stored = localStorage.getItem(this.NOTIFICATIONS_KEY);
-    if (stored) {
-      try { return JSON.parse(stored); } catch { /* fall through */ }
-    }
-    // Production: start with empty notifications — no seed data
-    return [];
+    // Use the Zustand memory store instead of blocking the main thread with localStorage
+    return useNotificationStore.getState().notifications;
   }
 
   // Get notifications for a specific role
@@ -68,7 +64,9 @@ export class NotificationService {
 
   // Save notifications
   static saveNotifications(notifications: Notification[]): void {
-    localStorage.setItem(this.NOTIFICATIONS_KEY, JSON.stringify(notifications));
+    // Persist to Zustand memory cache
+    useNotificationStore.getState().setNotifications(notifications);
+    // Fire cloud sync hook
     this.notifySync();
   }
 

@@ -59,9 +59,9 @@ export function InvoiceGenerator({ caseData, onClose }: InvoiceGeneratorProps) {
           {/* Company Header */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-blue-600">Emerald Visa Consultancy</h1>
+              <h1 className="text-3xl font-bold text-blue-600">Emerald Tech Partner</h1>
               <p className={`text-sm mt-2 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                Professional Visa & Immigration Services
+                Professional Technology & Digital Services
               </p>
               <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                 📍 Main Office, Islamabad, Pakistan
@@ -158,7 +158,7 @@ export function InvoiceGenerator({ caseData, onClose }: InvoiceGeneratorProps) {
           {/* Footer */}
           <div className="text-center">
             <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-              Thank you for choosing Emerald Visa Consultancy Service!
+              Thank you for choosing Emerald Tech Partner!
             </p>
             <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
               For queries, contact us at info@emeraldvisa.pk

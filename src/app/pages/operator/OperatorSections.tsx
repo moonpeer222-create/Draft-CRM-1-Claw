@@ -2947,7 +2947,7 @@ export function ProfileSection({ u, dc, card, txt, sub, bigBtn, session, syncSta
           </div>
           <div className="flex-1">
             <h2 className={`text-xl font-bold ${txt}`}>{session?.full_name || session?.fullName || "Operator"}</h2>
-            <p className={`text-sm ${sub}`}>{u("Computer Operator", "کمپیوٹر آپریٹر")} — Emerald Visa</p>
+            <p className={`text-sm ${sub}`}>{u("Computer Operator", "کمپیوٹر آپریٹر")} — Emerald Tech Partner</p>
             <p className={`text-xs mt-1 ${sub}`}>
               {u("Role", "کردار")}: <span className="text-emerald-500 font-medium">{u("Operator", "آپریٹر")}</span>
             </p>

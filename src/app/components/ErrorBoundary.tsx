@@ -116,7 +116,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {/* Footer */}
             <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
               <p className="text-xs text-slate-400">
-                Emerald Visa CRM v2.0 | If this persists, contact admin at 03186986259
+                Emerald Tech Partner v2.0 | If this persists, contact admin at 03186986259
               </p>
             </div>
           </div>

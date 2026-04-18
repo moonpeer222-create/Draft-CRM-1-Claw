@@ -205,7 +205,7 @@ export function AgentLeaderboardWidget({ isUrdu = false }: { isUrdu?: boolean })
                 <button
                   onClick={() => {
                     setShowUnlock(false);
-                    const text = `I earned the "${unlockBadge.name}" badge on Emerald Visa CRM! ${unlockBadge.icon}`;
+                    const text = `I earned the "${unlockBadge.name}" badge on Emerald Tech Partner! ${unlockBadge.icon}`;
                     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
                     window.open(url, "_blank");
                   }}

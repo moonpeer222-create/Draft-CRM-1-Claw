@@ -1,4 +1,4 @@
-// CRM Data Store for Emerald Visa Consultancy
+// CRM Data Store for Emerald Tech Partner
 import type { PipelineType } from "./pipelineConfig";
 import { LEAD_PIPELINE_STAGES as _LEAD, VISA_PIPELINE_STAGES as _VISA } from "./pipelineConfig";
 

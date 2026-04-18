@@ -154,7 +154,7 @@ export class AuthService {
         user_id: authData.user.id,
         type: 'system',
         priority: 'medium',
-        title: 'Welcome to Emerald Visa CRM',
+        title: 'Welcome to Emerald Tech Partner',
         message: `Your account has been created successfully. Please change your password on first login.`,
         read: false,
         actionable: false,

@@ -1,5 +1,5 @@
 /**
- * Salary Calculator — Emerald Visa Consultancy
+ * Salary Calculator — Emerald Tech Partner
  * 
  * Rules:
  * - Target: 20 entries/month (26 working days)

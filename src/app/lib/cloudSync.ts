@@ -18,6 +18,10 @@ import { DataSyncService } from './dataSync';
 import { AuditLogService } from './auditLog';
 import { toast } from './toast';
 import { DataIntegrityFix } from './dataIntegrityFix';
+import { useNotificationStore } from '../store/notificationStore';
+import * as RealtimeService from "./realtimeService";
+import { RealtimeChangePayload } from "./realtimeService";
+
 
 export interface SyncStatus {
   lastSyncAt: string | null;
@@ -518,17 +522,8 @@ export class CloudSyncService {
         console.log('[CloudSync] No notifications extracted from cloud object');
     }
 
-    const localNotifStr = localStorage.getItem('crm_notifications');
-    console.log('[CloudSync] Local notifications raw:', localNotifStr ? localNotifStr.substring(0, 100) + '...' : 'null');
-    
-    let localNotif: any[];
-    
-    try {
-      localNotif = localNotifStr ? JSON.parse(localNotifStr) : [];
-    } catch (error) {
-      console.error('[CloudSync] Failed to parse local notifications, resetting to empty array:', error);
-      localNotif = [];
-    }
+    // Pull from Zustand store
+    let localNotif = [...useNotificationStore.getState().notifications];
 
     // Ensure local is an array
     if (!Array.isArray(localNotif)) {
@@ -573,12 +568,9 @@ export class CloudSyncService {
       console.log(`[CloudSync] Trimmed ${removed} old notifications (keeping last 100)`);
     }
 
-    localStorage.setItem('crm_notifications', JSON.stringify(localNotif));
+    useNotificationStore.getState().setNotifications(localNotif);
     console.log('[CloudSync] ✅ Merged notifications:', localNotif.length, 'total,', addedCount, 'added from cloud');
     
-    // Verify
-    const verify = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
-    console.log('[CloudSync] Verification: Is array?', Array.isArray(verify), 'Count:', verify.length);
   }
 
   // ============================================================
@@ -658,15 +650,36 @@ export class CloudSyncService {
   // ============================================================
 
   private static subscribeToRealtimeUpdates(): void {
-    console.log('[CloudSync] Real-time updates: Subscribing to Supabase Realtime...');
+    console.log('[CloudSync] Real-time updates: Initializing Supabase Realtime...');
 
     try {
-      const { subscribeToAllTables } = require('./realtimeService');
-      this.realtimeSubscription = subscribeToAllTables();
-      console.log('[CloudSync] Real-time updates: Subscribed to all tables');
+      // Subscribe to core tables
+      const tables: RealtimeService.RealtimeTable[] = ["cases", "documents", "payments", "notes"];
+      
+      tables.forEach(table => {
+        RealtimeService.onRealtimeChange(table, (payload: RealtimeChangePayload) => {
+          this.handleRealtimeChange(payload);
+        });
+      });
+
+      console.log('[CloudSync] Real-time engine active for all core tables.');
     } catch (e) {
       console.warn('[CloudSync] Realtime subscription failed, falling back to polling:', e);
     }
+  }
+
+  private static handleRealtimeChange(payload: RealtimeChangePayload): void {
+    console.log(`[CloudSync] Real-time ${payload.event} received for ${payload.table}:${payload.new.id || payload.old.id}`);
+    
+    // Trigger a targeted refresh or re-fetch depending on the table
+    if (payload.table === 'cases') {
+      // In a more advanced version, we'd deep-merge the single record into LocalStorage
+      // For now, we trigger a "light sync" to ensure consistency
+      this.performFullSync(); 
+    }
+    
+    // Notify UI that data has changed
+    window.dispatchEvent(new CustomEvent('crm-data-refreshed', { detail: payload }));
   }
 
   // ============================================================

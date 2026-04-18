@@ -50,8 +50,8 @@ Your medical appointment has been scheduled:
 
 📞 For queries: [Your Office Number]
 
-*Emerald Visa Consultancy*
-Your trusted visa partner 🌟`,
+*Emerald Tech Partner*
+Your trusted technology partner 🌟`,
     getMessageTextUrdu: (data) => `🏥 *میڈیکل اپائنٹمنٹ - ایمرلڈ ویزا*
 
 محترم ${data.customerName || 'کسٹمر'},
@@ -111,7 +111,7 @@ Please clear the payment to proceed with your visa process.
 📍 Office Address: [Your Address]
 📞 Contact: [Your Number]
 
-*Emerald Visa Consultancy*`,
+*Emerald Tech Partner*`,
     getMessageTextUrdu: (data) => `💰 *ادائیگی یاد دہانی - ایمرلڈ ویزا*
 
 محترم ${data.customerName || 'کسٹمر'},
@@ -175,8 +175,8 @@ Job: *${data.jobType || ''}*
 
 *Congratulations once again!* 🎊
 
-*Emerald Visa Consultancy*
-Your dreams, our mission 🌟`,
+*Emerald Tech Partner*
+Your success, our mission 🌟`,
     getMessageTextUrdu: (data) => `🎉 *مبارک ہو! ویزا منظور*
 
 محترم ${data.customerName || 'کسٹمر'},
@@ -251,7 +251,7 @@ After completion, immediately bring documents to our office.
 
 📞 Questions? Call: [Your Number]
 
-*Emerald Visa Consultancy*`,
+*Emerald Tech Partner*`,
     getMessageTextUrdu: (data) => `📋 *پروٹیکٹر اپائنٹمنٹ - ایمرلڈ ویزا*
 
 محترم ${data.customerName || 'کسٹمر'},
@@ -320,7 +320,7 @@ ${data.requiredDocs || '📋 Passport copy\n📋 CNIC copy\n📋 Educational cer
 
 Please submit ASAP to avoid delays.
 
-*Emerald Visa Consultancy*`,
+*Emerald Tech Partner*`,
     getMessageTextUrdu: (data) => `📄 *دستاویزات کی درخواست - ایمرلڈ ویزا*
 
 محترم ${data.customerName || 'کسٹمر'},
@@ -389,7 +389,7 @@ Case ID: *${data.id || 'N/A'}*
 
 Best wishes for your new journey! 🌟
 
-*Emerald Visa Consultancy*
+*Emerald Tech Partner*
 We're with you every step 💚`,
     getMessageTextUrdu: (data) => `✈️ *ٹکٹ بک - ایمرلڈ ویزا*
 

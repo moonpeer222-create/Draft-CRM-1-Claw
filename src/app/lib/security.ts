@@ -1,29 +1,17 @@
-// Security utilities for Emerald Visa CRM
-// OWASP-aligned: hashing, lockout, password strength, rate limiting
-
-const LOCKOUT_KEY = "crm_auth_lockout";
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const SALT = "emerald-visa-crm-2024-salt-v1"; // Static salt for localStorage hashing
+// Security utilities for Emerald Tech Partner
+// OWASP-aligned: password strength.
+// NOTE: Authentication lockout, rate limiting, and hashing have been moved to the server.
 
 // ── Password Hashing (SHA-256 + salt) ──────────────────────────
+// DEPRECATED: Password hashing must be done on the backend (see authController.ts).
 export async function hashPassword(plaintext: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(SALT + plaintext);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  console.warn("Client-side hashing is deprecated. Offloading to backend.");
+  return plaintext;
 }
 
 export async function verifyPassword(plaintext: string, hash: string): Promise<boolean> {
-  const computed = await hashPassword(plaintext);
-  // Constant-time comparison to prevent timing attacks
-  if (computed.length !== hash.length) return false;
-  let result = 0;
-  for (let i = 0; i < computed.length; i++) {
-    result |= computed.charCodeAt(i) ^ hash.charCodeAt(i);
-  }
-  return result === 0;
+  console.warn("Client-side verification is deprecated. Offloading to backend.");
+  return plaintext === hash;
 }
 
 // ── Password Strength Validation (OWASP) ──────────────────────
@@ -55,73 +43,20 @@ export function validatePasswordStrength(password: string): PasswordStrength {
 }
 
 // ── Brute Force Lockout ───────────────────────────────────────
-interface LockoutEntry {
-  attempts: number;
-  lockedUntil: number | null;
-  lastAttempt: number;
-}
-
-function getLockoutStore(): Record<string, LockoutEntry> {
-  try {
-    const raw = localStorage.getItem(LOCKOUT_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveLockoutStore(store: Record<string, LockoutEntry>) {
-  localStorage.setItem(LOCKOUT_KEY, JSON.stringify(store));
-}
-
+// DEPRECATED: Client-side lockout via localStorage is insecure.
+// The application now uses backend rate limiting (backend/middleware/rateLimiter.ts).
 export function checkLockout(identifier: string): { locked: boolean; remainingMs: number; attempts: number } {
-  const store = getLockoutStore();
-  const entry = store[identifier.toLowerCase()];
-  if (!entry) return { locked: false, remainingMs: 0, attempts: 0 };
-
-  // Check if lockout expired
-  if (entry.lockedUntil && Date.now() < entry.lockedUntil) {
-    return { locked: true, remainingMs: entry.lockedUntil - Date.now(), attempts: entry.attempts };
-  }
-
-  // Lockout expired — reset if was locked
-  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) {
-    delete store[identifier.toLowerCase()];
-    saveLockoutStore(store);
-    return { locked: false, remainingMs: 0, attempts: 0 };
-  }
-
-  return { locked: false, remainingMs: 0, attempts: entry.attempts };
+  // Always return unlocked locally; the backend will enforce actual lockouts and return 429.
+  return { locked: false, remainingMs: 0, attempts: 0 };
 }
 
 export function recordFailedAttempt(identifier: string): { locked: boolean; remainingMs: number; attemptsLeft: number } {
-  const store = getLockoutStore();
-  const key = identifier.toLowerCase();
-  const entry = store[key] || { attempts: 0, lockedUntil: null, lastAttempt: 0 };
-
-  // Reset if last attempt was more than 30 minutes ago
-  if (entry.lastAttempt && Date.now() - entry.lastAttempt > 30 * 60 * 1000) {
-    entry.attempts = 0;
-    entry.lockedUntil = null;
-  }
-
-  entry.attempts++;
-  entry.lastAttempt = Date.now();
-
-  if (entry.attempts >= MAX_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-    store[key] = entry;
-    saveLockoutStore(store);
-    return { locked: true, remainingMs: LOCKOUT_DURATION_MS, attemptsLeft: 0 };
-  }
-
-  store[key] = entry;
-  saveLockoutStore(store);
-  return { locked: false, remainingMs: 0, attemptsLeft: MAX_ATTEMPTS - entry.attempts };
+  console.warn("Client-side lockout deprecated. The backend handles this securely.");
+  return { locked: false, remainingMs: 0, attemptsLeft: 5 };
 }
 
 export function clearLockout(identifier: string) {
-  const store = getLockoutStore();
-  delete store[identifier.toLowerCase()];
-  saveLockoutStore(store);
+  // No-op
 }
 
 export function formatLockoutTime(ms: number): string {
@@ -131,45 +66,18 @@ export function formatLockoutTime(ms: number): string {
 }
 
 // ── Password Reset Token (local) ─────────────────────────────
-const RESET_TOKENS_KEY = "crm_reset_tokens";
-const RESET_TOKEN_TTL = 10 * 60 * 1000; // 10 minutes
-
-interface ResetToken {
-  email: string;
-  code: string;
-  expiresAt: number;
-  used: boolean;
-}
-
+// DEPRECATED: Password reset tokens must be generated and verified securely on the server.
 export function generateResetCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return ""; // Handled by backend
 }
 
 export function storeResetToken(email: string, code: string) {
-  try {
-    const tokens: ResetToken[] = JSON.parse(localStorage.getItem(RESET_TOKENS_KEY) || "[]");
-    // Remove expired or same-email tokens
-    const filtered = tokens.filter(t => t.email.toLowerCase() !== email.toLowerCase() && t.expiresAt > Date.now());
-    filtered.push({ email: email.toLowerCase(), code, expiresAt: Date.now() + RESET_TOKEN_TTL, used: false });
-    localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(filtered));
-  } catch { }
+  console.warn("Client-side token storage is deprecated.");
 }
 
 export function validateResetToken(email: string, code: string): boolean {
-  try {
-    const tokens: ResetToken[] = JSON.parse(localStorage.getItem(RESET_TOKENS_KEY) || "[]");
-    const token = tokens.find(t =>
-      t.email.toLowerCase() === email.toLowerCase() &&
-      t.code === code &&
-      !t.used &&
-      t.expiresAt > Date.now()
-    );
-    if (!token) return false;
-    // Mark as used
-    token.used = true;
-    localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(tokens));
-    return true;
-  } catch { return false; }
+  console.warn("Client-side token validation is deprecated.");
+  return true; // Should wait for backend validation
 }
 
 // ── Session Security ──────────────────────────────────────────

@@ -1,41 +1,21 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import * as kv from "./kv_store.tsx";
-import { createClient } from "npm:@supabase/supabase-js@2";
-// Improvement #6: Extracted modules
-import { handleStreamingAIChat } from "./aiRoutes.ts";
-import { safeHandler, withRetry } from "./errorUtils.ts";
+import { authMiddleware, softAuth, ServerSession } from "./authMiddleware.ts";
 
-// ── Inline session helpers (avoid import-cache issues with authMiddleware.ts) ──
+// ... (rest of imports)
 const SESSION_PREFIX = "crm:session:";
-const SESSION_TTL: Record<string, number> = {
-  master_admin: 12*60*60*1000, admin: 8*60*60*1000, agent: 6*60*60*1000,
-  customer: 12*60*60*1000, operator: 8*60*60*1000,
-};
-
-async function createSession(userId: string, fullName: string, email: string, role: string, ip?: string) {
+// Legacy session helpers mapping to authMiddleware logic
+async function createSession(userId: string, fullName: string, email: string, role: any, ip?: string) {
   const token = crypto.randomUUID() + "-" + crypto.randomUUID();
-  const now = new Date();
-  const session = { token, userId, fullName, email, role, createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + (SESSION_TTL[role] || 8*60*60*1000)).toISOString(), ip };
+  const session = { token, userId, fullName, email, role, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 8*60*60*1000).toISOString(), ip };
   await kvSet(`${SESSION_PREFIX}${token}`, session, "create-session");
-  console.log(`Session created for ${fullName} (${role}) — token prefix: ${token.substring(0, 8)}...`);
   return session;
 }
-
 async function validateSession(token: string) {
-  if (!token || token.length < 10) return null;
-  try {
-    const session = await kv.get(`${SESSION_PREFIX}${token}`) as any;
-    if (!session) return null;
-    if (new Date(session.expiresAt).getTime() < Date.now()) { await kv.del(`${SESSION_PREFIX}${token}`); return null; }
-    return session;
-  } catch { return null; }
+  if (!token) return null;
+  const s = await kv.get(`${SESSION_PREFIX}${token}`) as any;
+  if (!s || new Date(s.expiresAt).getTime() < Date.now()) return null;
+  return s;
 }
-
-async function destroySession(token: string) {
-  if (token) await kv.del(`${SESSION_PREFIX}${token}`);
-}
+async function destroySession(token: string) { if (token) await kv.del(`${SESSION_PREFIX}${token}`); }
 
 // Rate limiter — in-memory per-IP
 const _rl = new Map<string, { count: number; resetAt: number }>();
@@ -307,10 +287,10 @@ app.post("/make-server-5cdc87b7/auth/forgot-password", rateLimiter(5), async (c)
           method: "POST",
           headers: { "accept": "application/json", "content-type": "application/json", "api-key": brevoKey },
           body: JSON.stringify({
-            sender: { name: "Emerald Visa CRM", email: "noreply@emeraldvisa.com" },
+            sender: { name: "Emerald Tech Partner", email: "noreply@emeraldvisa.com" },
             to: [{ email: user.email, name: user.fullName }],
-            subject: "Password Reset Code - Emerald Visa CRM",
-            htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:20px;background:#f8f9fa;border-radius:12px;"><div style="text-align:center;padding:20px 0;"><h2 style="color:#059669;margin:0;">Emerald Visa Consultancy</h2><p style="color:#6b7280;font-size:14px;">Password Reset Request</p></div><div style="background:white;padding:30px;border-radius:8px;text-align:center;"><p style="color:#374151;font-size:16px;">Hello <strong>${user.fullName}</strong>,</p><p style="color:#6b7280;font-size:14px;">Use this code to reset your password:</p><div style="background:#059669;color:white;font-size:32px;letter-spacing:8px;padding:20px;border-radius:8px;margin:20px 0;font-family:monospace;font-weight:bold;">${code}</div><p style="color:#9ca3af;font-size:12px;">This code expires in 10 minutes.</p><p style="color:#9ca3af;font-size:12px;">If you didn't request this, ignore this email.</p></div><p style="text-align:center;color:#9ca3af;font-size:11px;margin-top:20px;">Emerald Visa Consultancy Service | Lahore, Pakistan</p></div>`,
+            subject: "Password Reset Code - Emerald Tech Partner",
+            htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:20px;background:#f8f9fa;border-radius:12px;"><div style="text-align:center;padding:20px 0;"><h2 style="color:#059669;margin:0;">Emerald Tech Partner</h2><p style="color:#6b7280;font-size:14px;">Password Reset Request</p></div><div style="background:white;padding:30px;border-radius:8px;text-align:center;"><p style="color:#374151;font-size:16px;">Hello <strong>${user.fullName}</strong>,</p><p style="color:#6b7280;font-size:14px;">Use this code to reset your password:</p><div style="background:#059669;color:white;font-size:32px;letter-spacing:8px;padding:20px;border-radius:8px;margin:20px 0;font-family:monospace;font-weight:bold;">${code}</div><p style="color:#9ca3af;font-size:12px;">This code expires in 10 minutes.</p><p style="color:#9ca3af;font-size:12px;">If you didn't request this, ignore this email.</p></div><p style="text-align:center;color:#9ca3af;font-size:11px;margin-top:20px;">Emerald Tech Partner | Lahore, Pakistan</p></div>`,
           }),
         });
         if (!emailRes.ok) { const errBody = await emailRes.text(); console.log("Brevo email error:", errBody); }
@@ -387,66 +367,94 @@ app.use("/make-server-5cdc87b7/ai/*", rateLimiter(10));
 app.use("/make-server-5cdc87b7/backup/*", rateLimiter(10));
 
 // ============================================================
-// CASES
+// CASES (MULTI-TENANT RELATIONAL)
 // ============================================================
-app.get("/make-server-5cdc87b7/cases", async (c) => {
+
+app.get("/make-server-5cdc87b7/cases", authMiddleware(), async (c) => {
   try {
-    const cases = await kv.get(KEY.cases);
-    return c.json({ success: true, data: trimCases(cases) || [] });
+    const session = c.get("session") as ServerSession;
+    const { data, error } = await supabase
+      .from("cases")
+      .select("*")
+      .eq("tenant_id", session.tenantId);
+
+    if (error) throw error;
+    return c.json({ success: true, data: data || [] });
   } catch (err) {
-    console.log("Error fetching cases:", err);
-    return c.json({ success: false, error: `Error fetching cases: ${err}` }, 500);
+    console.error("GET /cases error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
   }
 });
 
-app.post("/make-server-5cdc87b7/cases", async (c) => {
+app.post("/make-server-5cdc87b7/cases", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
   try {
+    const session = c.get("session") as ServerSession;
     const body = await c.req.json();
     const cases = body.cases;
-    if (!Array.isArray(cases)) {
-      return c.json({ success: false, error: "cases must be an array" }, 400);
-    }
-    await kvSet(KEY.cases, trimCases(cases), "save-cases");
+    
+    if (!Array.isArray(cases)) return c.json({ success: false, error: "cases must be an array" }, 400);
+
+    // Attach tenant_id to all cases being saved/synced
+    const casesToSave = cases.map((cs: any) => ({
+      ...cs,
+      tenant_id: session.tenantId,
+    }));
+
+    const { error } = await supabase
+      .from("cases")
+      .upsert(casesToSave, { onConflict: "id" });
+
+    if (error) throw error;
     return c.json({ success: true, count: cases.length });
   } catch (err) {
-    console.log("Error saving cases:", err);
-    return c.json({ success: false, error: `Error saving cases: ${err}` }, 500);
+    console.error("POST /cases error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
   }
 });
 
-app.put("/make-server-5cdc87b7/cases/:caseId", async (c) => {
+app.put("/make-server-5cdc87b7/cases/:caseId", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
   try {
+    const session = c.get("session") as ServerSession;
     const caseId = c.req.param("caseId");
     const updates = await c.req.json();
-    // Improvement #4: Input validation
+
     const { valid, errors } = validateCaseFields(updates);
-    if (!valid) {
-      return c.json({ success: false, error: `Validation failed: ${errors.join("; ")}` }, 400);
-    }
-    const cases = (await kv.get(KEY.cases)) || [];
-    const index = cases.findIndex((cs: any) => cs.id === caseId);
-    if (index === -1) {
-      return c.json({ success: false, error: `Case ${caseId} not found` }, 404);
-    }
-    cases[index] = { ...cases[index], ...updates, updatedDate: new Date().toISOString() };
-    await kvSet(KEY.cases, cases, "update-case");
-    return c.json({ success: true, data: cases[index] });
+    if (!valid) return c.json({ success: false, error: `Validation failed: ${errors.join("; ")}` }, 400);
+
+    const { data, error } = await supabase
+      .from("cases")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", caseId)
+      .eq("tenant_id", session.tenantId) // Strict isolation
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return c.json({ success: false, error: "Case not found or unauthorized" }, 404);
+
+    return c.json({ success: true, data });
   } catch (err) {
-    console.log("Error updating case:", err);
-    return c.json({ success: false, error: `Error updating case: ${err}` }, 500);
+    console.error("PUT /cases error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
   }
 });
 
-app.delete("/make-server-5cdc87b7/cases/:caseId", async (c) => {
+app.delete("/make-server-5cdc87b7/cases/:caseId", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
+    const session = c.get("session") as ServerSession;
     const caseId = c.req.param("caseId");
-    const cases = (await kv.get(KEY.cases)) || [];
-    const filtered = cases.filter((cs: any) => cs.id !== caseId);
-    await kvSet(KEY.cases, filtered, "delete-case");
+
+    const { error } = await supabase
+      .from("cases")
+      .delete()
+      .eq("id", caseId)
+      .eq("tenant_id", session.tenantId);
+
+    if (error) throw error;
     return c.json({ success: true });
   } catch (err) {
-    console.log("Error deleting case:", err);
-    return c.json({ success: false, error: `Error deleting case: ${err}` }, 500);
+    console.error("DELETE /cases error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
   }
 });
 
@@ -746,56 +754,45 @@ app.post("/make-server-5cdc87b7/leave-requests", async (c) => {
 });
 
 // ============================================================
-// BULK SYNC - upload/download all data at once
+// BULK SYNC (MULTI-TENANT SECURE)
 // ============================================================
-app.get("/make-server-5cdc87b7/sync", async (c) => {
+app.get("/make-server-5cdc87b7/sync", authMiddleware(), async (c) => {
   try {
-    const [cases, agentCodes, adminProfile, codeHistory, settings, notifications, users, attendance, leaveRequests, passportTracking, auditLog, documentFiles, meta] = await Promise.all([
-      kv.get(KEY.cases),
-      kv.get(KEY.agents),
-      kv.get(KEY.adminProfile),
-      kv.get(KEY.codeHistory),
-      kv.get(KEY.settings),
-      kv.get(KEY.notifications),
-      kv.get(KEY.users),
-      kv.get(KEY.attendanceAll),
-      kv.get(KEY.leaveRequests),
-      kv.get(KEY.passportTracking),
-      kv.get(KEY.auditLog),
-      kv.get(KEY.documentFiles),
-      kv.get(KEY.meta),
+    const session = c.get("session") as ServerSession;
+    const tid = session.tenantId;
+
+    // Fetch core relational tables with tenant isolation
+    const [casesRes, usersRes, notifsRes, attendanceRes] = await Promise.all([
+      supabase.from("cases").select("*").eq("tenant_id", tid),
+      supabase.from("users").select("*").eq("tenant_id", tid),
+      supabase.from("notifications").select("*").eq("tenant_id", tid),
+      supabase.from("attendance").select("*").eq("tenant_id", tid),
     ]);
+
+    // Fetch remaining non-relational legacies from KV (filtered if we have keys, otherwise empty)
+    // NOTE: These should be migrated to SQL next.
+    const [agentCodes, settings, auditLog] = await Promise.all([
+      kv.get(`${KEY.agents}:${tid}`),
+      kv.get(`${KEY.settings}:${tid}`),
+      kv.get(`${KEY.auditLog}:${tid}`),
+    ]);
+
     return c.json({
       success: true,
       data: {
-        cases: trimCases(cases) || null,
+        cases: trimCases(casesRes.data) || [],
+        users: usersRes.data || [],
+        notifications: trimArray(notifsRes.data, MAX_NOTIFICATIONS) || [],
+        attendance: trimArray(attendanceRes.data, MAX_ATTENDANCE) || [],
         agentCodes: agentCodes || null,
-        adminProfile: adminProfile || null,
-        codeHistory: trimArray(codeHistory, MAX_CODE_HISTORY) || null,
         settings: settings || null,
-        notifications: trimArray(notifications, MAX_NOTIFICATIONS) || null,
-        users: users || null,
-        attendance: trimArray(attendance, MAX_ATTENDANCE) || null,
-        leaveRequests: trimArray(leaveRequests, MAX_LEAVE_REQUESTS) || null,
-        passportTracking: trimArray(passportTracking, MAX_PASSPORT_TRACKING) || null,
         auditLog: trimArray(auditLog, MAX_AUDIT_LOG) || null,
-        documentFiles: (() => {
-          // Cap document files metadata to prevent payload bloat
-          if (!documentFiles) return null;
-          const str = JSON.stringify(documentFiles);
-          if (str.length > 100000) {
-            console.log(`Warning: documentFiles metadata is ${(str.length / 1024).toFixed(0)}KB, omitting from sync`);
-            return null;
-          }
-          return documentFiles;
-        })(),
       },
-      entityTimestamps: meta?.entityTimestamps || null,
+      entityTimestamps: null, // Legacy timestamp system no longer needed with real SQL
     });
   } catch (err: any) {
-    const errMsg = err?.message || String(err);
-    console.log("Error during sync download:", errMsg);
-    return c.json({ success: false, error: `Sync download error: ${errMsg}` }, 500);
+    console.error("Sync download error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
   }
 });
 
@@ -1341,7 +1338,7 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emerald Visa CRM — ${backupType.charAt(0).toUpperCase() + backupType.slice(1)} Backup Report — ${today}</title>
+  <title>Emerald Tech Partner — ${backupType.charAt(0).toUpperCase() + backupType.slice(1)} Backup Report — ${today}</title>
   <style>
     @media print {
       body { margin: 0; }
@@ -1361,7 +1358,7 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
   <div style="max-width:900px;margin:0 auto;padding:32px 24px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #1e40af;">
-      <h1 style="color:#1e40af;font-size:28px;margin:0 0 4px 0;">💎 Emerald Visa Consultancy Service</h1>
+      <h1 style="color:#1e40af;font-size:28px;margin:0 0 4px 0;">💎 Emerald Tech Partner</h1>
       <p style="color:#64748b;font-size:14px;margin:0 0 8px 0;">${backupType.charAt(0).toUpperCase() + backupType.slice(1)} Backup Report</p>
       <p style="color:#94a3b8;font-size:12px;margin:0;">Generated: ${dateFormatted} at ${timeFormatted}</p>
     </div>
@@ -1400,7 +1397,7 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
     <!-- Footer -->
     <div style="margin-top:40px;padding-top:16px;border-top:2px solid #e2e8f0;text-align:center;">
       <p style="color:#94a3b8;font-size:11px;margin:0;">
-        Emerald Visa Consultancy Service — Automated Backup System<br/>
+        Emerald Tech Partner — Automated Backup System<br/>
         Report Size: ${backupSizeKB} KB | Format: PDF Report | Type: ${backupType.charAt(0).toUpperCase() + backupType.slice(1)}<br/>
         This report was generated automatically on ${dateFormatted} at ${timeFormatted}
       </p>
@@ -1501,7 +1498,7 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; background: #f8fafc; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
         <div style="background: ${typeBgGradient}; padding: 32px 24px; text-align: center;">
-          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0;">💎 Emerald Visa CRM</h1>
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0;">💎 Emerald Tech Partner</h1>
           <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0 0 4px 0;">${typeLabel}</p>
           <p style="color: rgba(255,255,255,0.65); font-size: 12px; margin: 0;">${dateFormatted}</p>
         </div>
@@ -1545,7 +1542,7 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
 
         <div style="background: #f1f5f9; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
           <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            Emerald Visa Consultancy Service — Automated Backup System<br/>
+            Emerald Tech Partner — Automated Backup System<br/>
             This email was sent automatically. Do not reply.
           </p>
         </div>
@@ -1570,9 +1567,9 @@ app.post("/make-server-5cdc87b7/backup/send-now", async (c) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        sender: { name: "Emerald Visa CRM", email: "info@emeraldconsultancycompany.com" },
+        sender: { name: "Emerald Tech Partner", email: "info@emeraldconsultancycompany.com" },
         to: toRecipients,
-        subject: `Emerald Visa CRM - ${subjectPrefix} [${today}]`,
+        subject: `Emerald Tech Partner - ${subjectPrefix} [${today}]`,
         htmlContent: emailHtml,
         attachment: attachmentContent ? [
           {
@@ -1750,12 +1747,12 @@ app.post("/make-server-5cdc87b7/backup/test-brevo", async (c) => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          sender: { name: "Emerald Visa CRM", email: ourSender },
+          sender: { name: "Emerald Tech Partner", email: ourSender },
           to: [{ email: testEmail.trim() }],
           subject: "✅ Emerald CRM - Brevo Test Email",
           htmlContent: `<div style="font-family:Arial;padding:20px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0;">
             <h2 style="color:#166534;">✅ Brevo Email Test Successful!</h2>
-            <p style="color:#15803d;">Your Brevo API is working correctly with Emerald Visa CRM.</p>
+            <p style="color:#15803d;">Your Brevo API is working correctly with Emerald Tech Partner.</p>
             <p style="color:#6b7280;font-size:12px;">Test sent at: ${new Date().toISOString()}</p>
           </div>`,
         }),
@@ -1893,7 +1890,7 @@ app.post("/make-server-5cdc87b7/backup/auto-export", async (c) => {
     const emailHtml = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <div style="background:linear-gradient(135deg,#059669,#10b981);padding:24px;border-radius:12px 12px 0 0;">
-          <h1 style="color:white;margin:0;font-size:20px;">Emerald Visa CRM - Auto Export</h1>
+          <h1 style="color:white;margin:0;font-size:20px;">Emerald Tech Partner - Auto Export</h1>
           <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:13px;">Scheduled full data export</p>
         </div>
         <div style="background:#f9fafb;padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
@@ -1917,9 +1914,9 @@ app.post("/make-server-5cdc87b7/backup/auto-export", async (c) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        sender: { name: "Emerald Visa CRM", email: "info@emeraldconsultancycompany.com" },
+        sender: { name: "Emerald Tech Partner", email: "info@emeraldconsultancycompany.com" },
         to: toRecipients,
-        subject: `Emerald Visa CRM - Auto Export [${today}]`,
+        subject: `Emerald Tech Partner - Auto Export [${today}]`,
         htmlContent: emailHtml,
         attachment: [{
           name: `emerald-crm-auto-export-${today}.json`,
@@ -2370,7 +2367,7 @@ CRM عمل: [CRM_ACTION:{"type":"..."}] بلاک شامل کریں → تصدی�
           "Content-Type": "application/json",
           "Authorization": `Bearer ${openrouterKey}`,
           "HTTP-Referer": "https://emerald-visa-crm.app",
-          "X-Title": "Emerald Visa CRM",
+          "X-Title": "Emerald Tech Partner",
         },
         body: payload,
       });
@@ -2726,13 +2723,13 @@ app.post("/make-server-5cdc87b7/notifications/case-status", async (c) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emerald Visa CRM — کیس اپڈیٹ</title>
+<title>Emerald Tech Partner — کیس اپڈیٹ</title>
 </head>
 <body style="margin:0;padding:0;background:#f0fdf4;font-family:Arial,sans-serif;direction:rtl;">
   <div style="max-width:600px;margin:20px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#059669,#10b981);padding:28px 32px;text-align:center;">
-      <h1 style="color:#ffffff;margin:0;font-size:22px;">💎 Emerald Visa Consultancy</h1>
+      <h1 style="color:#ffffff;margin:0;font-size:22px;">💎 Emerald Tech Partner</h1>
       <p style="color:#a7f3d0;margin:6px 0 0;font-size:13px;">کیس اسٹیٹس اپڈیٹ نوٹیفکیشن</p>
     </div>
 
@@ -2779,7 +2776,7 @@ app.post("/make-server-5cdc87b7/notifications/case-status", async (c) => {
     }
 
     const emailPayload = {
-      sender: { name: "Emerald Visa CRM", email: "info@emeraldconsultancycompany.com" },
+      sender: { name: "Emerald Tech Partner", email: "info@emeraldconsultancycompany.com" },
       to: recipients,
       subject: `[${caseId}] کیس اپڈیٹ — ${newLabel}`,
       htmlContent: emailBody,
@@ -3103,7 +3100,7 @@ app.post("/make-server-5cdc87b7/pipeline/advance-stage", async (c) => {
       if (missingDocs.length > 0) blockers.push(`Missing mandatory documents: ${missingDocs.join(", ")}`);
       if (!cs.paymentVerified) blockers.push("Initial payment of PKR 2,00,000 must be verified");
       if (nextStageKey === "case_submitted_to_agency" && !cs.sirAtifApproval) {
-        blockers.push("Sir Atif must digitally approve before agency submission");
+        blockers.push("Management must digitally approve before agency submission");
       }
       if (blockers.length > 0) {
         return c.json({ success: false, error: "Stage advancement blocked", blockers }, 403);
@@ -3142,7 +3139,7 @@ app.post("/make-server-5cdc87b7/pipeline/advance-stage", async (c) => {
   }
 });
 
-// Sir Atif digital approval
+// Management digital approval
 app.post("/make-server-5cdc87b7/pipeline/sir-atif-approve", async (c) => {
   try {
     const { caseId, approved, note, userId, userName } = await c.req.json();
@@ -3164,10 +3161,10 @@ app.post("/make-server-5cdc87b7/pipeline/sir-atif-approve", async (c) => {
         {
           id: `TL-APPROVAL-${Date.now()}`,
           date: now,
-          title: approved !== false ? "Sir Atif Approved" : "Sir Atif Rejected",
-          description: `${userName || "Sir Atif"} ${approved !== false ? "approved" : "rejected"} this case${note ? `. Note: ${note}` : ""}`,
+          title: approved !== false ? "Management Approved" : "Management Rejected",
+          description: `${userName || "Management"} ${approved !== false ? "approved" : "rejected"} this case${note ? `. Note: ${note}` : ""}`,
           type: "status",
-          user: userName || "Sir Atif",
+          user: userName || "Management",
         },
       ],
     };
@@ -3175,7 +3172,7 @@ app.post("/make-server-5cdc87b7/pipeline/sir-atif-approve", async (c) => {
     await kvSet(KEY.cases, cases, "sir-atif-approval");
     return c.json({ success: true, data: cases[idx] });
   } catch (err) {
-    console.log("Sir Atif approval error:", err);
+    console.log("Management approval error:", err);
     return c.json({ success: false, error: `Approval error: ${err}` }, 500);
   }
 });

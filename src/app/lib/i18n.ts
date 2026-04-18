@@ -1,11 +1,11 @@
-// Urdu & English translations for Emerald Visa CRM
+// Urdu & English translations for Emerald Tech Partner
 export type Language = "en" | "ur";
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
     // Landing Page
-    "app.title": "Emerald Visa Consultancy Service",
-    "app.tagline": "Your Gateway to Gulf Opportunities",
+    "app.title": "Emerald Tech Partner",
+    "app.tagline": "Your Trusted Technology Partner",
     "portal.admin": "Admin Portal",
     "portal.admin.desc": "Full system access: Reports, Team Management, Financials, Settings",
     "portal.agent": "Agent Portal",
@@ -32,7 +32,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "lang.english": "English",
     "lang.urdu": "Urdu",
     "contact.address": "Office #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan",
-    "contact.phone": "Phone: 03186986259 | Email: info@emeraldvisaconsultancy.com",
+    "contact.phone": "Phone: 03186986259 | Email: info@emeraldtechpartner.com",
 
     // Admin Header
     "admin.dashboard": "Admin Dashboard",
@@ -526,8 +526,8 @@ export const translations: Record<Language, Record<string, string>> = {
   },
   ur: {
     // Landing Page
-    "app.title": "ایمرالڈ ویزا کنسلٹنسی سروس",
-    "app.tagline": "خلیجی ممالک میں روزگار کا بہترین ذریعہ",
+    "app.title": "ایمرالڈ ٹیک پارٹنر",
+    "app.tagline": "آپ کا قابل اعتماد ٹیکنالوجی پارٹنر",
     "portal.admin": "ایڈمن پورٹل",
     "portal.admin.desc": "مکمل نظام: رپورٹس، ٹیم، مالیات، سیٹنگز",
     "portal.agent": "ایجنٹ پورٹل",
@@ -554,7 +554,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "lang.english": "انگریزی",
     "lang.urdu": "اردو",
     "contact.address": "آفس نمبر 25 فیصل شاپنگ مال، جی پی او صدر، 54000، لاہور",
-    "contact.phone": "فون: 03186986259 | ای میل: info@emeraldvisaconsultancy.com",
+    "contact.phone": "فون: 03186986259 | ای میل: info@emeraldtechpartner.com",
 
     // Admin Header
     "admin.dashboard": "ایڈمن ڈیش بورڈ",

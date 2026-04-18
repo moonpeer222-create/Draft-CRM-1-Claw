@@ -261,7 +261,7 @@ export function AdminFinancials() {
               <div className={`p-6 text-center border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
                 <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mb-3">E</div>
                 <h2 className={`text-lg font-bold ${txt}`}>Payment Receipt</h2>
-                <p className={`text-xs ${sub}`}>Emerald Visa Consultancy Service</p>
+                <p className={`text-xs ${sub}`}>Emerald Tech Partner</p>
               </div>
               <div className="p-6 space-y-3">
                 {[

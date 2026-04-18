@@ -214,7 +214,7 @@ export function CustomerDashboard() {
               E
             </div>
             <div>
-              <h1 className={`text-sm sm:text-lg font-bold ${txt}`}>Emerald Visa</h1>
+              <h1 className={`text-sm sm:text-lg font-bold ${txt}`}>Emerald Tech Partner</h1>
               <span className="text-[10px] sm:text-xs text-blue-600 font-semibold">{t("customer.portal")}</span>
             </div>
           </div>

@@ -102,7 +102,7 @@ export async function handleStreamingAIChat(c: any) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${openrouterKey}`,
         "HTTP-Referer": "https://emerald-visa-crm.app",
-        "X-Title": "Emerald Visa CRM",
+        "X-Title": "Emerald Tech Partner",
       },
       body: JSON.stringify({
         model: MODEL_ID,

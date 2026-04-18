@@ -112,7 +112,7 @@ export function MasterLogin() {
             {isUrdu ? "ماسٹر ایڈمن پورٹل" : "Master Admin Portal"}
           </h1>
           <p className={`text-sm ${dc ? "text-gray-400" : "text-gray-500"}`}>
-            {isUrdu ? "ایمرالڈ ویزا کنسلٹنسی - اعلیٰ انتظامیہ" : "Emerald Visa Consultancy - Executive Access"}
+            {isUrdu ? "ایمرالڈ ٹیک پارٹنر - اعلیٰ انتظامیہ" : "Emerald Tech Partner - Executive Access"}
           </p>
           <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border ${
             dc ? "bg-purple-900/30 text-purple-400 border-purple-600" : "bg-purple-100 text-purple-700 border-purple-200"
@@ -199,7 +199,7 @@ export function MasterLogin() {
 
         {/* Footer hint */}
         <div className={`mt-4 text-center text-xs ${dc ? "text-gray-600" : "text-gray-400"}`}>
-          {isUrdu ? "صرف ماسٹر ایڈمن اکاؤنٹس کے لیے" : "Master Admin accounts only (Sir Atif / Wasi)"}
+          {isUrdu ? "صرف ماسٹر ایڈمن اکاؤنٹس کے لیے" : "Master Admin accounts only"}
         </div>
 
         {/* Back to home */}

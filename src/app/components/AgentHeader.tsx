@@ -71,7 +71,7 @@ function SparkleParticle({ index, active }: { index: number; active: boolean }) 
 
 // Tagline phrases that cycle
 const taglines = [
-  { en: "Emerald Visa Consultancy", ur: "ایمرالڈ ویزا کنسلٹنسی" },
+  { en: "Emerald Tech Partner", ur: "ایمرالڈ ٹیک پارٹنر" },
   { en: "Your Gateway to the World", ur: "دنیا کا آپ کا دروازہ" },
   { en: "Dream. Apply. Fly.", ur: "خواب۔ درخواست۔ پرواز۔" },
   { en: "Agent Excellence Portal", ur: "ایجنٹ تفوق پورٹل" },

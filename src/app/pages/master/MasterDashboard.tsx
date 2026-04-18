@@ -127,6 +127,7 @@ export function MasterDashboard() {
     { icon: Bot, label: isUrdu ? "AI چیٹ بوٹ" : "AI Chatbot", path: "/master/ai-chatbot", desc: isUrdu ? "AI اسسٹنٹ" : "AI Assistant" },
     { icon: DollarSign, label: isUrdu ? "مالیات" : "Financials", path: "/admin/financials", desc: isUrdu ? "مالی خلاصہ" : "Financial overview" },
     { icon: Shield, label: isUrdu ? "صارف انتظام" : "User Management", path: "/admin/user-management", desc: isUrdu ? "صارفین کا انتظام" : "Manage all users" },
+    { icon: Crown, label: isUrdu ? "ٹیننٹ مینجمنٹ" : "Manage Tenants", path: "/master/tenants", desc: isUrdu ? "تمام ایجنسیاں" : "All registered agencies" },
   ];
 
   const { insideUnifiedLayout } = useUnifiedLayout();
@@ -158,7 +159,7 @@ export function MasterDashboard() {
                     {isUrdu ? `خوش آمدید، ${profile?.full_name || "ماسٹر ایڈمن"}` : `Welcome, ${profile?.full_name || "Master Admin"}`}
                   </h1>
                   <p className={`text-sm mt-1 ${dc ? "text-purple-300" : "text-white/80"}`}>
-                    {isUrdu ? "ایمرالڈ ویزا کنسلٹنسی - اعلیٰ انتظامیہ ڈیش بورڈ" : "Emerald Visa Consultancy - Executive Dashboard"}
+                    {isUrdu ? "ایمرالڈ ٹیک پارٹنر - اعلیٰ انتظامیہ ڈیش بورڈ" : "Emerald Tech Partner - Executive Dashboard"}
                   </p>
                 </div>
               </div>

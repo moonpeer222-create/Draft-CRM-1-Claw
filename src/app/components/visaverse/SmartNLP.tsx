@@ -1,6 +1,6 @@
 /**
  * SmartNLP - Intelligent Natural Language Processing Engine
- * for Emerald Visa CRM AI Tools
+ * for Emerald Tech Partner AI Tools
  * 
  * Features:
  * - Intent scoring (not first-match-wins)
@@ -776,7 +776,7 @@ export function getGreetingResponse(role: UserRole, lang: "en" | "ur"): string {
       ur: "السلام علیکم! میں آپ کا ایجنٹ AI ہوں۔ کیسز، اگلا قدم، میڈیکل، پیمنٹ، کاغذات — جو پوچھنا ہو پوچھیں۔ بولیں کیا کرنا ہے؟ 💪"
     },
     customer: {
-      en: "Assalam o Alaikum! Welcome to Emerald Visa! Ask me about your visa status, documents, payments, or any step. I'm here to help! 🌍",
+      en: "Assalam o Alaikum! Welcome to Emerald Tech Partner! Ask me about your service status, documents, payments, or any step. I'm here to help! 🌍",
       ur: "السلام علیکم! ایمرالڈ ویزا میں خوش آمدید! ویزا سٹیٹس، کاغذات، پیمنٹ، یا کوئی بھی سوال — بے فکر پوچھیں۔ میں حاضر ہوں! 🌍"
     },
     master_admin: {

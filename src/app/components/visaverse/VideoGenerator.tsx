@@ -150,7 +150,7 @@ export function VideoGenerator({ customerName, stageName, nextStage, isUrdu = fa
                           👋
                         </div>
                         <div className="text-left">
-                          <p className="text-emerald-300 text-xs">Emerald Visa</p>
+                          <p className="text-emerald-300 text-xs">Emerald Tech Partner</p>
                           <p className="text-white text-sm font-medium">{customerName}</p>
                         </div>
                       </div>
@@ -186,7 +186,7 @@ export function VideoGenerator({ customerName, stageName, nextStage, isUrdu = fa
 
                 {/* Emerald branding watermark */}
                 <div className="absolute bottom-2 right-3 text-white/30 text-[10px] font-medium">
-                  Emerald Visa ✦
+                  Emerald Tech Partner ✦
                 </div>
               </div>
 

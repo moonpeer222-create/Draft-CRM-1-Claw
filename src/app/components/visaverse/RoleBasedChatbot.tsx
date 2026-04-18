@@ -122,7 +122,7 @@ const ROLE_KNOWLEDGE = {
         ur: "🔑 اہم کاروباری اصول:\n\n1. ایک بھی دستاویز غائب → ایمبیسی ویزا نہیں دے گی\n2. ہر ادائیگی اندراج کے لیے مالک کی تصدیق لازمی\n3. ڈبل انٹری: کمپیوٹر CRM + مینول رجسٹر\n4. پاسپورٹ سٹاک: عمران کے گھر (ٹریک شدہ)\n5. میڈیکل نتیجہ: 36 گھنٹے کے اندر\n6. پروٹیکٹر اپائنٹمنٹ: صبح 8 بجے\n7. روانگی سے پہلے ویڈیو اسٹیٹمنٹ لازمی\n8. ہر عمل آڈٹ ٹریل کے لیے درج\n9. سیلز ریپ ٹارگٹ: روزانہ 5 میچور کلائنٹس\n10. ہر وقت پیشہ ورانہ رویہ - کلائنٹ دیکھ رہے ہیں!"
       },
       roleResponsibilities: {
-        en: "👥 Role Responsibilities:\n\n📱 Sales Rep:\n• Lead qualification, WhatsApp follow-up\n• Office visit scheduling\n• Target: 5 mature clients/day\n\n💻 Computer Operator:\n• Document scanning, PDF preparation\n• CRM + manual register entry\n• Payment logging (Owner confirmation required)\n\n👔 Owner (Sir Atif/Wasi):\n• Payment confirmations\n• Vendor communication\n• E-Number/Visa/Protector handling\n• Final approvals\n\n🤝 Expert/Main Person:\n• Client consultation\n• Answering questions professionally\n• Closing deals",
+        en: "👥 Role Responsibilities:\n\n📱 Sales Rep:\n• Lead qualification, WhatsApp follow-up\n• Office visit scheduling\n• Target: 5 mature clients/day\n\n💻 Computer Operator:\n• Document scanning, PDF preparation\n• CRM + manual register entry\n• Payment logging (Owner confirmation required)\n\n👔 Owner:\n• Payment confirmations\n• Vendor communication\n• E-Number/Visa/Protector handling\n• Final approvals\n\n🤝 Expert/Main Person:\n• Client consultation\n• Answering questions professionally\n• Closing deals",
         ur: "👥 رول ذمہ داریاں:\n\n📱 سیلز ریپریزنٹیٹو:\n• لیڈ کوالیفکیشن، واٹس ایپ فالو اپ\n• آفس وزٹ شیڈولنگ\n• ٹارگٹ: روزانہ 5 میچور کلائنٹس\n\n💻 کمپیوٹر آپریٹر:\n• دستاویزات سکیننگ، PDF تیاری\n• CRM + مینول رجسٹر میں اندراج\n• ادائیگی لاگنگ (مالک کی تصدیق لازمی)\n\n👔 مالک (سر عاطف/وسی):\n• ادائیگی کی تصدیقات\n• وینڈر سے بات چیت\n• ای نمبر/ویزا/پروٹیکٹر ہینڈلنگ\n• فائنل منظوریاں\n\n🤝 ایکسپرٹ/مین شخص:\n• کلائنٹ مشاورت\n• سوالات کا پیشہ ورانہ جواب\n• ڈیل کلوز کرنا"
       },
       passportStock: {
@@ -162,8 +162,8 @@ const ROLE_KNOWLEDGE = {
         ur: "📤 دستاویز اپ لوڈ کیسے کریں:\n\n1. کیس ڈیٹیل → \"دستاویزات\" ٹیب\n2. چیک لسٹ میں قسم ڈھونڈیں\n3. [📤 اپ لوڈ] بٹن پر کلک\n4. فائل منتخب کریں (PDF/JPG/PNG، 5MB تک)\n5. پروگریس بار مکمل ہونے تک انتظار ✓\n6. پیش نظر → معیار تصدیق → \"سیو\"\n7. سٹیٹس: ⏳ زیر التواء → ✅ تصدیق شدہ\n\n📱 موبائل: \"AR اسکین\" استعمال کریں!"
       },
       companyInfo: {
-        en: "🏢 Emerald Visa Consultancy Service:\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 Licensed recruitment agency for Pakistani workers → Gulf countries (Saudi, UAE, Qatar, Kuwait, Oman)\n📱 WhatsApp: 03186986259",
-        ur: "🏢 ایمرالڈ ویزا کنسلٹنسی سروس:\n\n📍 آفس: #25 فیصل شاپنگ مال، جی پی او صدر، 54000، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 پاکستانی کارکنوں کے لیے لائسنس یافتہ ایجنسی → خلیجی ممالک\n📱 واٹس ایپ: 03186986259"
+        en: "🏢 Emerald Tech Partner:\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 Licensed recruitment agency for Pakistani workers → Gulf countries (Saudi, UAE, Qatar, Kuwait, Oman)\n📱 WhatsApp: 03186986259",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس:\n\n📍 آفس: #25 فیصل شاپنگ مال، جی پی او صدر، 54000، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 پاکستانی کارکنوں کے لیے لائسنس یافتہ ایجنسی → خلیجی ممالک\n📱 واٹس ایپ: 03186986259"
       },
       troubleshoot: {
         en: "🔧 Troubleshooting Guide:\n\n1. 🔄 Refresh page (F5 or Ctrl+R)\n2. 🌐 Check internet connection\n3. 🧹 Clear browser cache\n4. 📱 Try mobile app if web fails\n\n**If still broken:**\n📸 Take screenshot of error\n📝 Note what you were doing + error message\n📞 Contact Admin: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com",
@@ -205,8 +205,8 @@ const ROLE_KNOWLEDGE = {
         ur: "🏥 میڈیکل/گامکا پراسیس (ایجنٹ گائیڈ):\n\nگیمکا میڈیکل ٹوکن آن لائن بک کروائیں (فیس: 4,500 روپے - کلائنٹ دیتا ہے)۔\n\n1. کلائنٹ کو واٹس ایپ پر گائیڈ کریں: لیب کا ایڈریس اور راستہ\n2. کلائنٹ ساتھ لے جائے: پاسپورٹ کی کاپی اور تصاویر\n3. میڈیکل سینٹر کی فیس: 25,000 سے 35,000 روپے (کلائنٹ براہ راست ادا کرے)\n4. 36 گھنٹوں میں نتیجہ آتا ہے\n5. میڈیکل کے بعد: اصل پاسپورٹ + میڈیکل سینٹر کی رسید وصول کریں\n6. رسید فائل میں لگائیں، پاسپورٹ سٹاک (عمران کے گھر) بھجوائیں\n\n❌ انفٹ = کیس کینسل + پاسپورٹ واپسی\n✅ فٹ = فوری طور پر ویزا پراسیسنگ شروع!"
       },
       payment: {
-        en: "💰 Payment Collection Guide:\n\nTemplate (WhatsApp):\n'السلام علیکم! This is Emerald Visa. Your payment of PKR [amount] is pending. Please pay via:\n• EasyPaisa: 03186986259\n• JazzCash: 03186986259\n• Bank Transfer\nContact: 03186986259'\n\n📌 Cash → Give receipt + register entry\n📌 Online → Screenshot → Owner confirmation → entry\n📌 Always remind Owner about deal rate & amount paid\n⚠️ No entry without Owner confirmation!",
-        ur: "💰 ادائیگی وصولی گائیڈ:\n\nٹیمپلیٹ (واٹس ایپ):\n'السلام علیکم! یہ ایمرالڈ ویزا ہے۔ آپ کی [رقم] روپے کی ادائیگی باقی ہے۔ براہ کرم ادا کریں:\n• ایزی پیسہ: 03186986259\n• جاز کیش: 03186986259\n• بینک ٹرانسفر\nرابطہ: 03186986259'\n\n📌 کیش → رسید دیں + رجسٹر میں اندراج\n📌 آن لائن → سکرین شاٹ → مالک سے کنفرمیشن → اندراج\n📌 مالک کو ہمیشہ ڈیل ریٹ اور ادا شدہ رقم یاد کروائیں\n⚠️ مالک کی تصدیق کے بغیر کوئی اندراج نہیں!"
+        en: "💰 Payment Collection Guide:\n\nTemplate (WhatsApp):\n'السلام علیکم! This is Emerald Tech Partner. Your payment of PKR [amount] is pending. Please pay via:\n• EasyPaisa: 03186986259\n• JazzCash: 03186986259\n• Bank Transfer\nContact: 03186986259'\n\n📌 Cash → Give receipt + register entry\n📌 Online → Screenshot → Owner confirmation → entry\n📌 Always remind Owner about deal rate & amount paid\n⚠️ No entry without Owner confirmation!",
+        ur: "💰 ادائیگی وصولی گائیڈ:\n\nٹیمپلیٹ (واٹس ایپ):\n'السلام علیکم! یہ ایمرالڈ ٹیک پارٹنر ہے۔ آپ کی [رقم] روپے کی ادائیگی باقی ہے۔ براہ کرم ادا کریں:\n• ایزی پیسہ: 03186986259\n• جاز کیش: 03186986259\n• بینک ٹرانسفر\nرابطہ: 03186986259'\n\n📌 کیش → رسید دیں + رجسٹر میں اندراج\n📌 آن لائن → سکرین شاٹ → مالک سے کنفرمیشن → اندراج\n📌 مالک کو ہمیشہ ڈیل ریٹ اور ادا شدہ رقم یاد کروائیں\n⚠️ مالک کی تصدیق کے بغیر کوئی اندراج نہیں!"
       },
       documents: {
         en: "📄 Required Documents (Complete Checklist):\n\n✅ Passport (valid 6+ months) - all pages scanned\n✅ CNIC copy (front & back)\n✅ 4 passport-size photos + full body photo\n✅ FRC (Family Registration Certificate) - ORIGINAL\n✅ PCC (Police Clearance Certificate) - ORIGINAL\n✅ 2 Biometric slips - ORIGINAL\n✅ Medical Report - ORIGINAL\n✅ License (if Driver/Operator) - ORIGINAL\n\n⚠️ ALL originals required! One missing = Embassy rejects!\n📌 Scan everything + save properly with client name + date",
@@ -229,8 +229,8 @@ const ROLE_KNOWLEDGE = {
         ur: "🛡️ پروٹیکٹر پراسیس (ایجنٹ گائیڈ):\n\nکلائنٹ سے نومینی کی تفصیلات + اکاؤنٹ نمبر منگوائیں۔\n\n1. تفصیلات سیو کریں + مالک کو سینڈ کریں\n2. مالک وینڈر سے پروٹیکٹر پیپر نکلوا کر دے گا\n3. کلائنٹ کو صبح 8 بجے پروٹیکٹر آفس بھجوائیں\n4. کلائنٹ سٹمپ لگوا کر اوریجنل پیپر + 200 روپے گارنٹی اسٹامپ آفس جمع کروائے\n5. پروٹیکٹر پیپر پر کلائنٹ کا سائن + انگوٹھا لگوائیں\n6. پیپر سکین کر کے مالک کو دیں\n7. مالک وینڈر کو بھیجے → وینڈر آن لائن پروٹیکٹر کر دے\n\n⏰ ہمیشہ صبح 8 بجے شیڈول کریں!"
       },
       agreementGuide: {
-        en: "📝 Agreement/Iqrarnama Guide:\n\n• The agreement is between Client & Emerald Visa Consultancy Services\n• It's a written agreement that primarily benefits the client\n• Must be signed BEFORE starting any process\n• Ensures transparency and protects both parties\n• Keep signed copy in client file\n\n⚠️ Never skip the agreement step!",
-        ur: "📝 اقرار نامہ گائیڈ:\n\nکلائنٹ سے آفس کا اقرار نامہ سائن کروانا ضروری ہے جو کلائنٹ اور ایمرالڈ ویزا کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے۔\n\n• اس کا زیادہ فائدہ کلائنٹ کو ہے\n• کوئی بھی عمل شروع کرنے سے پہلے سائن کروائیں\n• شفافیت یقینی بناتا ہے اور دونوں فریقوں کی حفاظت کرتا ہے\n• سائن شدہ کاپی کلائنٹ فائل میں رکھیں\n\n⚠️ اقرار نامے کا مرحلہ کبھی نہ چھوڑیں!"
+        en: "📝 Agreement/Iqrarnama Guide:\n\n• The agreement is between Client & Emerald Tech Partners\n• It's a written agreement that primarily benefits the client\n• Must be signed BEFORE starting any process\n• Ensures transparency and protects both parties\n• Keep signed copy in client file\n\n⚠️ Never skip the agreement step!",
+        ur: "📝 اقرار نامہ گائیڈ:\n\nکلائنٹ سے آفس کا اقرار نامہ سائن کروانا ضروری ہے جو کلائنٹ اور ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے۔\n\n• اس کا زیادہ فائدہ کلائنٹ کو ہے\n• کوئی بھی عمل شروع کرنے سے پہلے سائن کروائیں\n• شفافیت یقینی بناتا ہے اور دونوں فریقوں کی حفاظت کرتا ہے\n• سائن شدہ کاپی کلائنٹ فائل میں رکھیں\n\n⚠️ اقرار نامے کا مرحلہ کبھی نہ چھوڑیں!"
       },
       login: {
         en: "🔐 Agent Login Guide:\n\n1. Open CRM login page\n2. Enter your 6-digit access code (received via WhatsApp from Admin)\n3. Click \"Activate Session\"\n4. Session valid for 6 hours → Auto-logout after that\n\n**Session expired?**\n• Request new code: Login page → \"Request Code via WhatsApp\"\n• Or contact Admin: 03186986259\n\n💡 Tip: Code not received? Call Admin directly!",
@@ -253,8 +253,8 @@ const ROLE_KNOWLEDGE = {
         ur: "⚠️ تاخیر والے کیسز:\n\n• بیج 🔴 سرخ + \"اوورڈیو\"\n• آگے بڑھنے کے لیے تاخیر کی وجہ لازمی\n• وجوہات: کلائنٹ دستیاب نہیں | دستاویز مسئلہ | میڈیکل تاخیر | ایمبیسی تاخیر | ادائیگی زیر التواء\n• ایڈمن خودکار مطلع\n\n💡 ڈیڈ لائن سے پہلے اپ ڈیٹ کریں!"
       },
       companyInfo: {
-        en: "🏢 Emerald Visa Consultancy Service\n📍 #25 Faisal Shopping Mall, GPO Saddar, Lahore\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 Gulf country recruitment (Saudi, UAE, Qatar, Kuwait, Oman)",
-        ur: "🏢 ایمرالڈ ویزا کنسلٹنسی سروس\n📍 فیصل شاپنگ مال، صدر، لاہور\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 خلیجی ممالک ریکروٹمنٹ"
+        en: "🏢 Emerald Tech Partner\n📍 #25 Faisal Shopping Mall, GPO Saddar, Lahore\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 Gulf country recruitment (Saudi, UAE, Qatar, Kuwait, Oman)",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n📍 فیصل شاپنگ مال، صدر، لاہور\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 خلیجی ممالک ریکروٹمنٹ"
       },
       troubleshoot: {
         en: "🔧 Quick Fixes:\n1. 🔄 Refresh (F5)\n2. 🌐 Check internet\n3. 🧹 Clear cache\n4. 📱 Try mobile\n\nStill broken? 📞 Admin: 03186986259",
@@ -272,8 +272,8 @@ const ROLE_KNOWLEDGE = {
   },
   customer: {
     greetings: {
-      en: "Assalam o Alaikum! Welcome to Emerald Visa! Ask me about your visa status, documents, payments, or any step. I'm here to help! 🌍",
-      ur: "السلام علیکم! ایمرالڈ ویزا میں خوش آمدید! ویزا سٹیٹس، کاغذات، پیمنٹ، یا کوئی بھی سوال — بے فکر پوچھیں۔ میں حاضر ہوں! 🌍"
+      en: "Assalam o Alaikum! Welcome to Emerald Tech Partner! Ask me about your visa status, documents, payments, or any step. I'm here to help! 🌍",
+      ur: "السلام علیکم! ایمرالڈ ٹیک پارٹنر میں خوش آمدید! ویزا سٹیٹس، کاغذات، پیمنٹ، یا کوئی بھی سوال — بے فکر پوچھیں۔ میں حاضر ہوں! 🌍"
     },
     quickActions: [
       { label: "Track Status", labelUrdu: "میرا سٹیٹس", icon: "📍", prompt: "میرا ویزا سٹیٹس کیا ہے؟" },
@@ -308,16 +308,16 @@ const ROLE_KNOWLEDGE = {
         ur: "🛡️ پروٹیکٹر پراسیس (آپ کو کیا چاہیے):\n\nویزا منظوری کے بعد آپ کو درکار ہوگا:\n• نومینی کا نام (کوئی بھروسے مند شخص)\n• کوئی سا بھی بینک اکاؤنٹ نمبر\n\nکیا ہوگا:\n1. صبح 8 بجے پروٹیکٹر آفس جائیں\n2. پروٹیکٹر پیپر پر سٹمپ لگوائیں\n3. اوریجنل پیپر + 200 روپے اسٹامپ ہمارے آفس جمع کروائیں\n4. پیپر پر سائن + انگوٹھا لگائیں\n5. باقی کام ہم آن لائن کر دیں گے!\n\n📞 سوالات؟ کال کریں: 03186986259"
       },
       agreement: {
-        en: "📝 About Your Agreement:\n\nThe Retainer Agreement is between you and Emerald Visa Consultancy Services:\n• It's a written agreement primarily for YOUR benefit\n• Outlines services, fees, and responsibilities\n• Protects your rights as a client\n• Must be signed before process starts\n\nYou can request a copy anytime!\n📞 Contact: 03186986259",
-        ur: "📝 آپ کے معاہدے کے بارے میں:\n\nاقرار نامہ آپ اور ایمرالڈ ویزا کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے:\n• اس کا زیادہ فائدہ آپ کو ہے\n• خدمات، فیس اور ذمہ داریاں واضح کرتا ہے\n• بطور کلائنٹ آپ کے حقوق کی حفاظت کرتا ہے\n• عمل شروع کرنے سے پہلے سائن ہونا ضروری ہے\n\nآپ کسی بھی وقت کاپی کی درخواست کر سکتے ہیں!\n📞 رابطہ: 03186986259"
+        en: "📝 About Your Agreement:\n\nThe Retainer Agreement is between you and Emerald Tech Partners:\n• It's a written agreement primarily for YOUR benefit\n• Outlines services, fees, and responsibilities\n• Protects your rights as a client\n• Must be signed before process starts\n\nYou can request a copy anytime!\n📞 Contact: 03186986259",
+        ur: "📝 آپ کے معاہدے کے بارے میں:\n\nاقرار نامہ آپ اور ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروسیز کے مابین ایک تحریری معاہدہ ہے:\n• اس کا زیادہ فائدہ آپ کو ہے\n• خدمات، فیس اور ذمہ داریاں واضح کرتا ہے\n• بطور کلائنٹ آپ کے حقوق کی حفاظت کرتا ہے\n• عمل شروع کرنے سے پہلے سائن ہونا ضروری ہے\n\nآپ کسی بھی وقت کاپی کی درخواست کر سکتے ہیں!\n📞 رابطہ: 03186986259"
       },
       login: {
         en: "🔐 Customer Portal Access:\n\nYour visa journey is tracked through our portal. To check status:\n• Visit the customer portal\n• Or contact your agent directly: 03186986259\n• WhatsApp updates sent automatically at each stage\n\n📱 Preferred: WhatsApp for real-time updates!",
         ur: "🔐 کسٹمر پورٹل:\n\nآپ کا ویزا سفر ہمارے پورٹل سے ٹریک ہوتا ہے۔ حیثیت چیک کرنے کے لیے:\n• کسٹمر پورٹل وزٹ کریں\n• یا ایجنٹ سے براہ راست رابطہ: 03186986259\n• ہر مرحلے پر واٹس ایپ اپ ڈیٹس خودکار\n\n📱 ترجیحی: ریئل ٹائم اپ ڈیٹس کے لیے واٹس ایپ!"
       },
       companyInfo: {
-        en: "🏢 Emerald Visa Consultancy Service\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 We help Pakistani workers get jobs in Gulf countries\n📱 WhatsApp: 03186986259\n\nVisit us during office hours for consultation!",
-        ur: "🏢 ایمرالڈ ویزا کنسلٹنسی سروس\n\n📍 آفس: #25 فیصل شاپنگ مال، صدر، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 ہم پاکستانی کارکنوں کو خلیجی ملازمت دلاتے ہیں\n📱 واٹس ایپ: 03186986259\n\nمشاورت کے لیے آفس اوقات میں تشریف لائیں!"
+        en: "🏢 Emerald Tech Partner\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 We help Pakistani workers get jobs in Gulf countries\n📱 WhatsApp: 03186986259\n\nVisit us during office hours for consultation!",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n\n📍 آفس: #25 فیصل شاپنگ مال، صدر، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 ہم پاکستانی کارکنوں کو خلیجی ملازمت دلاتے ہیں\n📱 واٹس ایپ: 03186986259\n\nمشاورت کے لیے آفس اوقات میں تشریف لائیں!"
       },
       troubleshoot: {
         en: "🔧 Having Issues?\n\n1. 🔄 Refresh your page\n2. 🌐 Check internet\n3. 📱 Try on mobile\n\nStill having problems?\n📞 Call: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n\nWe're here to help! 😊",
@@ -791,8 +791,8 @@ export function RoleBasedChatbot({ role }: RoleBasedChatbotProps) {
               </div>
               <p className="text-[10px] text-center text-gray-400 mt-2">
                 {speechSupported
-                  ? (isUrdu ? "🎤 آواز + ٹائپ • ایمرالڈ ویزا • 03186986259" : "🎤 Voice + Type · Emerald Visa · 03186986259")
-                  : (isUrdu ? "ایمرالڈ ویزا • 03186986259" : "Emerald Visa · 03186986259")}
+                  ? (isUrdu ? "🎤 آواز + ٹائپ • ایمرالڈ ٹیک پارٹنر • 03186986259" : "🎤 Voice + Type · Emerald Tech Partner · 03186986259")
+                  : (isUrdu ? "ایمرالڈ ٹیک پارٹنر • 03186986259" : "Emerald Tech Partner · 03186986259")}
               </p>
             </div>
           </motion.div>
