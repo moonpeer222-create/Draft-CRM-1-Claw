@@ -10,10 +10,12 @@ let _dbClient: SupabaseClient | null = null;
 
 export function getDbClient(): SupabaseClient {
   if (!_dbClient) {
-    const url = Deno.env.get("SUPABASE_URL");
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Support both legacy (SUPABASE_*) and new (DB_*) env var names
+    // Supabase CLI blocks secrets starting with "SUPABASE_"
+    const url = Deno.env.get("DB_URL") || Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("DB_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!url || !key) {
-      throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+      throw new Error("DB_URL and DB_SERVICE_ROLE_KEY (or SUPABASE_ variants) must be set");
     }
     _dbClient = createClient(url, key);
   }
@@ -873,6 +875,294 @@ export const leaveRequests = {
   }
 };
 
+// ============ AI CHAT HISTORY ============
+export const aiChatHistory = {
+  async addMessage(messageData: {
+    conversation_id: string;
+    tenant_id?: string;
+    user_id: string;
+    role: string;
+    content: string;
+    metadata?: Record<string, any>;
+  }) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('ai_chat_history')
+      .insert({
+        ...messageData,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getMessages(conversationId: string, limit: number = 50) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('ai_chat_history')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getConversations(options: { tenant_id?: string; user_id?: string; limit?: number }) {
+    const client = getDbClient();
+    let query = client
+      .from('ai_chat_history')
+      .select('conversation_id, created_at, user_id')
+      .order('created_at', { ascending: false });
+    
+    if (options?.tenant_id) query = query.eq('tenant_id', options.tenant_id);
+    if (options?.user_id) query = query.eq('user_id', options.user_id);
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    // Deduplicate by conversation_id
+    const seen = new Set();
+    return (data || []).filter((item: any) => {
+      if (seen.has(item.conversation_id)) return false;
+      seen.add(item.conversation_id);
+      return true;
+    }).slice(0, options?.limit || 20);
+  },
+
+  async getConversation(conversationId: string) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('ai_chat_history')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .limit(1)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  },
+
+  async deleteConversation(conversationId: string, userId: string) {
+    const client = getDbClient();
+    const { error } = await client
+      .from('ai_chat_history')
+      .delete()
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
+    if (error) throw error;
+    return true;
+  }
+};
+
+// ============ AI AUDIT LOG ============
+export const aiAuditLog = {
+  async create(logData: {
+    tenant_id?: string;
+    user_id: string;
+    user_name: string;
+    role: string;
+    action: string;
+    action_type?: string;
+    success?: boolean;
+    error_message?: string | null;
+    tokens_used?: number;
+    latency_ms?: number;
+    metadata?: Record<string, any>;
+  }) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('ai_audit_log')
+      .insert({
+        ...logData,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getAll(options: {
+    tenant_id?: string;
+    limit?: number;
+    offset?: number;
+    user_id?: string;
+    action_type?: string;
+    date_from?: string;
+    date_to?: string;
+  }) {
+    const client = getDbClient();
+    let query = client
+      .from('ai_audit_log')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (options?.tenant_id) query = query.eq('tenant_id', options.tenant_id);
+    if (options?.user_id) query = query.eq('user_id', options.user_id);
+    if (options?.action_type) query = query.eq('action_type', options.action_type);
+    if (options?.date_from) query = query.gte('created_at', options.date_from);
+    if (options?.date_to) query = query.lte('created_at', options.date_to);
+    if (options?.limit) query = query.limit(options.limit);
+    if (options?.offset) query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async count(options?: { tenant_id?: string }) {
+    const client = getDbClient();
+    let query = client.from('ai_audit_log').select('*', { count: 'exact', head: true });
+    if (options?.tenant_id) query = query.eq('tenant_id', options.tenant_id);
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async getStats(options: { tenant_id?: string; days?: number }) {
+    const client = getDbClient();
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - (options?.days || 30));
+    
+    const { data, error } = await client
+      .from('ai_audit_log')
+      .select('*')
+      .eq('tenant_id', options?.tenant_id)
+      .gte('created_at', daysAgo.toISOString());
+    
+    if (error) throw error;
+    
+    const logs = data || [];
+    const total = logs.length;
+    const successful = logs.filter((l: any) => l.success).length;
+    const failed = total - successful;
+    const totalTokens = logs.reduce((sum: number, l: any) => sum + (l.tokens_used || 0), 0);
+    const avgLatency = total > 0 ? logs.reduce((sum: number, l: any) => sum + (l.latency_ms || 0), 0) / total : 0;
+    
+    // Top users
+    const userCounts: Record<string, { count: number; name: string }> = {};
+    logs.forEach((l: any) => {
+      if (!userCounts[l.user_id]) {
+        userCounts[l.user_id] = { count: 0, name: l.user_name };
+      }
+      userCounts[l.user_id].count++;
+    });
+    const topUsers = Object.entries(userCounts)
+      .map(([id, info]) => ({ user_id: id, user_name: info.name, count: info.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Daily usage
+    const dailyUsage: Record<string, number> = {};
+    logs.forEach((l: any) => {
+      const date = l.created_at.split('T')[0];
+      dailyUsage[date] = (dailyUsage[date] || 0) + 1;
+    });
+    
+    return {
+      total_requests: total,
+      successful,
+      failed,
+      total_tokens: totalTokens,
+      avg_latency: Math.round(avgLatency),
+      top_users: topUsers,
+      daily_usage: dailyUsage
+    };
+  }
+};
+
+// ============ PAYMENTS ============
+export const payments = {
+  async create(paymentData: {
+    case_id: string;
+    tenant_id?: string;
+    client_name?: string;
+    amount: number;
+    method: string;
+    receipt_number?: string;
+    receipt_photo?: string;
+    storage_path?: string;
+    timestamp?: string;
+  }) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('payments')
+      .insert({
+        ...paymentData,
+        timestamp: paymentData.timestamp || new Date().toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getByCaseId(caseId: string, tenantId?: string) {
+    const client = getDbClient();
+    let query = client
+      .from('payments')
+      .select('*')
+      .eq('case_id', caseId)
+      .order('timestamp', { ascending: false });
+    if (tenantId) query = query.eq('tenant_id', tenantId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getAll(options?: { tenant_id?: string; case_id?: string; limit?: number }) {
+    const client = getDbClient();
+    let query = client.from('payments').select('*').order('timestamp', { ascending: false });
+    if (options?.tenant_id) query = query.eq('tenant_id', options.tenant_id);
+    if (options?.case_id) query = query.eq('case_id', options.case_id);
+    if (options?.limit) query = query.limit(options.limit);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+};
+
+// ============ NOTES ============
+export const notes = {
+  async create(noteData: {
+    case_id: string;
+    tenant_id?: string;
+    author: string;
+    text: string;
+    important?: boolean;
+    date?: string;
+  }) {
+    const client = getDbClient();
+    const { data, error } = await client
+      .from('notes')
+      .insert({
+        ...noteData,
+        date: noteData.date || new Date().toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getByCaseId(caseId: string, tenantId?: string) {
+    const client = getDbClient();
+    let query = client
+      .from('notes')
+      .select('*')
+      .eq('case_id', caseId)
+      .order('date', { ascending: false });
+    if (tenantId) query = query.eq('tenant_id', tenantId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+};
+
 // ============ PASSPORT TRACKING ============
 export const passportTracking = {
   async create(record: {
@@ -990,6 +1280,10 @@ export const db = {
   notifications,
   leaveRequests,
   passportTracking,
+  aiChatHistory,
+  aiAuditLog,
+  payments,
+  notes,
   getClient: getDbClient
 };
 

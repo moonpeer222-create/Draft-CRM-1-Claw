@@ -5,10 +5,10 @@ import { softAuth, rateLimiter } from "./authMiddleware.ts";
 // PostgreSQL Routes (Migrated from KV)
 import authRouter from "./routes/auth_pg.ts";
 import casesRouter from "./routes/cases.ts";
-import syncRouter from "./routes/sync.ts";
-import systemRouter from "./routes/system.ts";
-import aiRouter from "./routes/ai.ts";
-import adminRouter from "./routes/admin.ts";
+import syncRouter from "./routes/sync_pg.ts";
+import systemRouter from "./routes/system_pg.ts";
+import aiRouter from "./routes/ai_pg.ts";
+import adminRouter from "./routes/admin_pg.ts";
 
 const app = new Hono();
 
@@ -33,6 +33,8 @@ app.get("/", (c) => c.text("Emerald CRM — PostgreSQL Backend v3.0"));
 app.get(`${base}/health`, (c) => c.json({ 
   status: "ok", 
   version: "3.0-postgresql",
+  database: "postgresql",
+  kv_fallback: false,
   timestamp: new Date().toISOString() 
 }));
 

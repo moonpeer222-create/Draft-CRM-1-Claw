@@ -1,17 +1,20 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { Toaster } from "sonner";
 import { ThemeProvider, useTheme } from "../lib/ThemeContext";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { DataSync } from "../lib/dataSync";
 import { listenForPanic, SAFE_ROUTES } from "../lib/panicMode";
 import { SyncProvider, SyncStatusBadge } from "./SyncProvider";
-import { VisaVerseProvider, VisaVerseOverlay } from "./visaverse";
 import { NetworkStatusBanner } from "./NetworkStatusBanner";
-import { KeyboardShortcuts } from "./KeyboardShortcuts";
-import { CommandPalette } from "./CommandPalette";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { GlobalAIChatbot } from "./GlobalAIChatbot";
 import { authApi, getSessionToken, clearSessionToken } from "../lib/api";
+
+// Lazy load heavy components
+const VisaVerseProvider = lazy(() => import("./visaverse").then(m => ({ default: m.VisaVerseProvider })));
+const VisaVerseOverlay = lazy(() => import("./visaverse").then(m => ({ default: m.VisaVerseOverlay })));
+const KeyboardShortcuts = lazy(() => import("./KeyboardShortcuts").then(m => ({ default: m.KeyboardShortcuts })));
+const CommandPalette = lazy(() => import("./CommandPalette").then(m => ({ default: m.CommandPalette })));
+const GlobalAIChatbot = lazy(() => import("./GlobalAIChatbot").then(m => ({ default: m.GlobalAIChatbot })));
 
 // Detect current portal role from URL path
 function useCurrentRole(): "admin" | "agent" | "customer" | "operator" | "master" | null {
@@ -177,6 +180,11 @@ function SessionExpiredBanner({ role, onDismiss }: { role: string; onDismiss: ()
   );
 }
 
+// Lazy fallback for heavy components
+function LazyComponentFallback() {
+  return null; // Don't show loading for background components
+}
+
 function InnerLayout() {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
@@ -192,18 +200,15 @@ function InnerLayout() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Run data sync on mount (UserDB.initialize is handled by SyncProvider)
+  // Run data sync on mount
   useEffect(() => {
     DataSync.fullSync();
     
-    const stats = DataSync.getSyncStats();
-    
     const validation = DataSync.validateDataIntegrity();
     if (!validation.valid) {
-      const { fixed, errors } = DataSync.autoFix();
+      const { fixed } = DataSync.autoFix();
       if (fixed > 0) {
-      }
-      if (errors.length > 0) {
+        console.log(`Auto-fixed ${fixed} data issues`);
       }
     }
   }, []);
@@ -211,11 +216,7 @@ function InnerLayout() {
   // Initialize panic mode listener ONLY on protected routes
   useEffect(() => {
     const isSafe = SAFE_ROUTES.some(route => location.pathname === route);
-    
-    if (isSafe) {
-      return;
-    }
-
+    if (isSafe) return;
     const cleanupPanic = listenForPanic();
     return () => cleanupPanic();
   }, [location.pathname]);
@@ -230,14 +231,22 @@ function InnerLayout() {
       <NetworkStatusBanner />
       {sessionExpired && role && <SessionExpiredBanner role={role} onDismiss={() => setSessionExpired(false)} />}
       {showWarning && !sessionExpired && <SessionTimeoutWarning onDismiss={resetTimer} />}
-      {role && <KeyboardShortcuts role={role} />}
-      {role && <CommandPalette role={role} />}
-      {/* Improvement #7: ErrorBoundary wraps Outlet */}
+      
+      {/* Lazy loaded heavy components */}
+      <Suspense fallback={<LazyComponentFallback />}>
+        {role && <KeyboardShortcuts role={role} />}
+        {role && <CommandPalette role={role} />}
+      </Suspense>
+      
       <ErrorBoundary portalName={role || undefined}>
         <Outlet />
       </ErrorBoundary>
-      <VisaVerseOverlay />
-      <GlobalAIChatbot />
+      
+      <Suspense fallback={<LazyComponentFallback />}>
+        <VisaVerseOverlay />
+        <GlobalAIChatbot />
+      </Suspense>
+      
       <SyncStatusBadge />
       <Toaster 
         position="top-center" 
@@ -255,7 +264,6 @@ function InnerLayout() {
         mobileOffset={isMobile ? 16 : 60}
         offset={isMobile ? 8 : undefined}
       />
-      {/* Removed duplicate GlobalAIChatbot that was here */}
     </RTLWrapper>
   );
 }
@@ -264,9 +272,11 @@ export function RootLayout() {
   return (
     <SyncProvider>
       <ThemeProvider>
-        <VisaVerseProvider>
-          <InnerLayout />
-        </VisaVerseProvider>
+        <Suspense fallback={null}>
+          <VisaVerseProvider>
+            <InnerLayout />
+          </VisaVerseProvider>
+        </Suspense>
       </ThemeProvider>
     </SyncProvider>
   );
