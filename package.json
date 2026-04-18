@@ -7,7 +7,9 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "npm run build && wrangler dev"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -72,6 +74,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.32.3",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "4.1.12",
     "@testing-library/react": "^16.3.2",
@@ -81,7 +84,8 @@
     "supabase": "^2.92.1",
     "tailwindcss": "4.1.12",
     "vite": "^6.4.2",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wrangler": "^4.83.0"
   },
   "peerDependencies": {
     "react": "18.3.1",
