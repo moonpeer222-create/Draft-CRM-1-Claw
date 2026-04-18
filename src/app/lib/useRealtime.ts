@@ -64,11 +64,12 @@ export function useRealtimeCase(caseId?: string) {
     if (!caseId) return;
 
     const unsubCases = onRealtimeChange("cases", (payload) => {
-      const changedCaseId =
-        (payload.new as any)?.id ||
-        (payload.old as any)?.id ||
-        (payload.new as any)?.case_number;
-      if (changedCaseId === caseId) {
+      const newData = payload.new as any;
+      const oldData = payload.old as any;
+      // Case ID can be either UUID (from DB) or case_number (from mapper)
+      const changedId = newData?.id || oldData?.id;
+      const changedCaseNumber = newData?.case_number || oldData?.case_number;
+      if (changedId === caseId || changedCaseNumber === caseId) {
         setLastChange(payload);
       }
     });

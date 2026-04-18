@@ -36,9 +36,28 @@ export type PresenceHandler = (users: PresenceUser[]) => void;
 const channels = new Map<string, RealtimeChannel>();
 const changeCallbacks = new Map<RealtimeTable, Set<ChangeHandler>>();
 const presenceCallbacks = new Map<string, Set<PresenceHandler>>();
+let isAuthenticated = false;
+let pendingTables = new Set<RealtimeTable>();
 
 const BROADCAST_CHANNEL = "emerald-crm-realtime";
 let broadcastChannel: BroadcastChannel | null = null;
+
+// ── Auth-aware re-subscription ──────────────────────────────
+// Realtime channels must be re-subscribed after auth to send the JWT.
+supabase.auth.onAuthStateChange((event, session) => {
+  const wasAuth = isAuthenticated;
+  isAuthenticated = !!session?.user;
+  console.log('[Realtime] Auth state:', event, 'authenticated:', isAuthenticated);
+
+  if (!wasAuth && isAuthenticated && pendingTables.size > 0) {
+    console.log('[Realtime] Re-subscribing pending tables after auth:', Array.from(pendingTables));
+    pendingTables.forEach((table) => {
+      unsubscribeFromTable(table);
+      subscribeToTable(table);
+    });
+    pendingTables.clear();
+  }
+});
 
 // ── BroadcastChannel Fallback ───────────────────────────────
 function getBroadcastChannel(): BroadcastChannel | null {
@@ -78,10 +97,21 @@ function notifyChangeCallbacks(payload: RealtimeChangePayload) {
 // ── Subscribe to a table ────────────────────────────────────
 export function subscribeToTable(table: RealtimeTable): () => void {
   if (channels.has(table)) {
-    // Already subscribed
     return () => unsubscribeFromTable(table);
   }
 
+  // Defer subscription until authenticated — channels created without a JWT
+  // won't receive RLS-guarded changes.
+  if (!isAuthenticated) {
+    console.log(`[Realtime] Deferring ${table} subscription until authenticated`);
+    pendingTables.add(table);
+    return () => {
+      pendingTables.delete(table);
+      unsubscribeFromTable(table);
+    };
+  }
+
+  console.log(`[Realtime] Subscribing to ${table} with auth token`);
   const channel = supabase
     .channel(`${table}-changes`, {
       config: {
@@ -92,6 +122,7 @@ export function subscribeToTable(table: RealtimeTable): () => void {
       "postgres_changes",
       { event: "*", schema: "public", table },
       (payload) => {
+        console.log(`[Realtime] ${table} payload received:`, payload.eventType, (payload.new as any)?.id || (payload.old as any)?.id);
         const changePayload: RealtimeChangePayload = {
           table,
           event: payload.eventType as "INSERT" | "UPDATE" | "DELETE",
