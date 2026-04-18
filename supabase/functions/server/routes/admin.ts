@@ -1,5 +1,5 @@
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
-import { kv } from "https://deno.land/x/kv@v0.0.1/mod.ts";
+import * as kv from "../kv_store.tsx";
 import { KEY } from "../lib/constants.ts";
 import { kvSet } from "../lib/supabase.ts";
 import { authMiddleware } from "../authMiddleware.ts";

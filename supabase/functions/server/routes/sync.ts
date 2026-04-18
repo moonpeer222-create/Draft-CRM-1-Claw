@@ -1,7 +1,7 @@
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
 import { authMiddleware } from "../authMiddleware.ts";
 import { supabase, kvSet } from "../lib/supabase.ts";
-import { kv } from "https://deno.land/x/kv@v0.0.1/mod.ts";
+import * as kv from "../kv_store.tsx";
 import { ServerSession } from "../lib/auth.ts";
 import { trimArray, trimCases } from "../lib/utils.ts";
 import { KEY, MAX_AUDIT_LOG, MAX_NOTIFICATIONS, MAX_ATTENDANCE, MAX_CODE_HISTORY, MAX_LEAVE_REQUESTS, MAX_PASSPORT_TRACKING } from "../lib/constants.ts";

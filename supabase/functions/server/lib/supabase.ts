@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { kv } from "https://deno.land/x/kv@v0.0.1/mod.ts";
+import * as kv from "../kv_store.tsx";
 import { withRetry } from "./retry.ts";
 import { KEY } from "./constants.ts";
 

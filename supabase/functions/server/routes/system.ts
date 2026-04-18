@@ -1,5 +1,5 @@
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
-import { kv } from "https://deno.land/x/kv@v0.0.1/mod.ts";
+import * as kv from "../kv_store.tsx";
 import { KEY, MAX_NOTIFICATIONS, MAX_ATTENDANCE, MAX_LEAVE_REQUESTS, MAX_CODE_HISTORY } from "../lib/constants.ts";
 import { kvSet } from "../lib/supabase.ts";
 import { trimArray } from "../lib/utils.ts";

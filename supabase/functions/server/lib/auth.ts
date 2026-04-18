@@ -1,4 +1,4 @@
-import { kv } from "https://deno.land/x/kv@v0.0.1/mod.ts";
+import * as kv from "../kv_store.tsx";
 import { SESSION_PREFIX } from "./constants.ts";
 import { kvSet, kvDel } from "./supabase.ts";
 
