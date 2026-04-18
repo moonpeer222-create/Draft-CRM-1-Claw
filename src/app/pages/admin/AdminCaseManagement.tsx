@@ -19,6 +19,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageLightbox } from "../../components/ImageLightbox";
+import { RealtimeIndicator } from "../../components/RealtimeIndicator";
 
 import { toast } from "../../lib/toast";
 import { modalVariants, staggerContainer, staggerItem } from "../../lib/animations";
@@ -1084,6 +1085,13 @@ export function AdminCaseManagement() {
                     <h2 className={`text-xl font-bold ${txt}`}>{selectedCase.id}</h2>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedCase.status)}`}>{getStageLabel(selectedCase.status)}</span>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(selectedCase.priority)}`}>{selectedCase.priority}</span>
+                    <RealtimeIndicator caseId={selectedCase.id} onRefresh={async () => {
+                      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                      if (data) {
+                        setSelectedCase(mapSupabaseCaseToLocal(data, profile));
+                        toast.success(isUrdu ? "کیس تازہ ترین ہو گیا" : "Case refreshed");
+                      }
+                    }} />
                   </div>
                   <p className={`mt-1 ${sub}`}>{selectedCase.customerName} • {selectedCase.country} • {selectedCase.jobType}</p>
                 </div>

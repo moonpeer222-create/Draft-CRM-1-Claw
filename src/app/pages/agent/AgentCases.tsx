@@ -1,5 +1,6 @@
 import { AgentHeader } from "../../components/AgentHeader";
 import { AgentSidebar } from "../../components/AgentSidebar";
+import { RealtimeIndicator } from "../../components/RealtimeIndicator";
 import {
   Search, Phone, MessageCircle, Eye, X, FileText, DollarSign, Stethoscope,
   Plus, Send, User, Home, Briefcase, GraduationCap, Heart, ShieldCheck,
@@ -1481,6 +1482,13 @@ export function AgentCases() {
                     <span className={`text-sm font-mono ${sub}`}>{selectedCase.id}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(selectedCase.status)}`}>{getStageLabel(selectedCase.status, isUrdu)}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getPriorityColor(selectedCase.priority)}`}>{selectedCase.priority}</span>
+                    <RealtimeIndicator caseId={selectedCase.id} onRefresh={async () => {
+                      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                      if (data) {
+                        setSelectedCase(mapSupabaseCaseToLocal(data, profile));
+                        toast.success(isUrdu ? "کیس تازہ ترین ہو گیا" : "Case refreshed");
+                      }
+                    }} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

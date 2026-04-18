@@ -658,19 +658,15 @@ export class CloudSyncService {
   // ============================================================
 
   private static subscribeToRealtimeUpdates(): void {
-    // Note: Real-time subscriptions would require Supabase client
-    // For now, we rely on periodic polling
-    console.log('[CloudSync] Real-time updates: Using periodic polling');
-    
-    // TODO: Implement Supabase Realtime when needed
-    // const supabase = getSupabaseClient();
-    // this.realtimeSubscription = supabase
-    //   .channel('crm-changes')
-    //   .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-    //     console.log('[CloudSync] Real-time update:', payload);
-    //     this.pullFromCloud();
-    //   })
-    //   .subscribe();
+    console.log('[CloudSync] Real-time updates: Subscribing to Supabase Realtime...');
+
+    try {
+      const { subscribeToAllTables } = require('./realtimeService');
+      this.realtimeSubscription = subscribeToAllTables();
+      console.log('[CloudSync] Real-time updates: Subscribed to all tables');
+    } catch (e) {
+      console.warn('[CloudSync] Realtime subscription failed, falling back to polling:', e);
+    }
   }
 
   // ============================================================
