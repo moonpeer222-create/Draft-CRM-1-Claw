@@ -60,7 +60,6 @@ export function StorageUsageWidget() {
     } catch (err) {
       toast.dismiss(lt);
       toast.error(isUrdu ? "منتقلی ناکام" : "Migration failed");
-      console.error("Migration error:", err);
     } finally {
       setIsMigrating(false);
     }

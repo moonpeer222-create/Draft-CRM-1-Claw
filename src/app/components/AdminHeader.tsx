@@ -586,7 +586,6 @@ export function AdminHeader() {
                 </button>
                 <button
                   onClick={() => {
-                    console.log("System Stats:", stats);
                     toast.info("Stats logged to console");
                   }}
                   className={`px-3 py-2 rounded-lg text-xs font-medium active:opacity-80 min-h-[44px] ${

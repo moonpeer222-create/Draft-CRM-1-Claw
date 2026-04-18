@@ -37,7 +37,6 @@ function saveAll(data: Record<string, StoredFile>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
-    console.warn("DocumentFileStore: localStorage full, cleaning old entries", e);
     // If storage is full, remove oldest entries
     const entries = Object.entries(data).sort(
       ([, a], [, b]) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
@@ -48,7 +47,6 @@ function saveAll(data: Record<string, StoredFile>) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
-      console.error("DocumentFileStore: unable to save even after cleanup");
     }
   }
 }
@@ -77,7 +75,6 @@ export const DocumentFileStore = {
     // Validate file type — only PNG, JPG, PDF
     const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
-      console.error(`File type '${file.type}' not allowed. Only PNG, JPG, PDF accepted.`);
       return false;
     }
 
@@ -113,7 +110,6 @@ export const DocumentFileStore = {
             })
             .then((res) => {
               if (res.success && res.data) {
-                console.log(`[PRODUCTION] File uploaded to cloud: ${res.data.storagePath} (${res.data.fileSize} bytes)`);
                 // Update metadata with server response
                 const current = getAll();
                 if (current[docId]) {
@@ -123,15 +119,12 @@ export const DocumentFileStore = {
                 }
               } else {
                 // Fallback: try base64 upload
-                console.warn(`Form upload failed, trying base64 fallback:`, res.error);
                 documentStorageApi
                   .upload(docId, file.name, file.type, base64)
                   .then((fallbackRes) => {
                     if (fallbackRes.success) {
-                      console.log(`[FALLBACK] File uploaded via base64: ${docId}/${file.name}`);
                     } else {
                       // Last resort: store base64 locally
-                      console.warn(`All cloud uploads failed for ${docId}/${file.name}, storing locally`);
                       const current = getAll();
                       if (current[docId]) {
                         current[docId].base64 = base64;
@@ -153,7 +146,6 @@ export const DocumentFileStore = {
               }
             })
             .catch((err) => {
-              console.warn(`Cloud upload error for ${docId}/${file.name}:`, err);
               // Store locally as fallback
               const current = getAll();
               if (current[docId]) {
@@ -169,9 +161,7 @@ export const DocumentFileStore = {
             .upload(docId, file.name, file.type, base64)
             .then((res) => {
               if (res.success) {
-                console.log(`File uploaded to cloud storage: ${docId}/${file.name}`);
               } else {
-                console.warn(`Cloud upload failed, storing locally:`, res.error);
                 const current = getAll();
                 if (current[docId]) {
                   current[docId].base64 = base64;
@@ -183,7 +173,6 @@ export const DocumentFileStore = {
               }
             })
             .catch((err) => {
-              console.warn(`Cloud upload error, keeping local:`, err);
               const current = getAll();
               if (current[docId]) {
                 current[docId].base64 = base64;
@@ -228,7 +217,6 @@ export const DocumentFileStore = {
     if (file?.isCloudStored && file.storageRef) {
       // Delete from Supabase Storage in background
       documentStorageApi.remove(docId, file.fileName).catch((err) => {
-        console.warn(`Failed to delete cloud file ${docId}/${file.fileName}:`, err);
       });
     }
     delete all[docId];
@@ -259,7 +247,6 @@ export const DocumentFileStore = {
           return true;
         }
       } catch (err) {
-        console.error("Download from cloud failed:", err);
       }
       return false;
     }
@@ -351,10 +338,8 @@ export const DocumentFileStore = {
           migrated++;
           onProgress?.(migrated, legacyFiles.length);
         } else {
-          console.warn(`Migration failed for ${file.id}/${file.fileName}:`, res.error);
         }
       } catch (err) {
-        console.warn(`Migration error for ${file.id}/${file.fileName}:`, err);
       }
     }
 

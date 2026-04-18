@@ -75,7 +75,6 @@ export function AdminDashboard() {
     setIsLoading(true);
     const { data, error } = await supabase.from('cases').select('*').order('created_at', { ascending: false });
     if (error) {
-      console.error(error);
     } else {
       const allCases = (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
       setCases(allCases);

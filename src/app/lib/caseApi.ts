@@ -64,7 +64,6 @@ export async function createCase(caseData: Partial<Case>): Promise<Case | null> 
   const dbRow = caseToDbRow({ ...newCase, case_number: caseNumber } as any);
   const { error } = await supabase.from('cases').insert(dbRow);
   if (error) {
-    console.error('createCase error', error);
     return null;
   }
   return newCase;
@@ -84,7 +83,6 @@ export async function updateCase(caseId: string, updates: Partial<Case>): Promis
   dbRow.id = dbId; // ensure we use the real UUID, not the case_number
   const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
   if (error) {
-    console.error('updateCase error', error);
     return false;
   }
   return true;
@@ -132,7 +130,6 @@ export async function updateCaseStatus(caseId: string, status: Case["status"]): 
   dbRow.id = dbId;
   const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
   if (error) {
-    console.error('updateCaseStatus error', error);
     return false;
   }
   return true;
@@ -161,7 +158,6 @@ export async function addPayment(caseId: string, payment: Omit<Payment, "id">): 
   dbRow.id = dbId;
   const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
   if (error) {
-    console.error('addPayment error', error);
     return false;
   }
   return true;
@@ -183,7 +179,6 @@ export async function addNote(caseId: string, note: Omit<Note, "id">): Promise<b
   dbRow.id = dbId;
   const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
   if (error) {
-    console.error('addNote error', error);
     return false;
   }
   return true;
@@ -199,7 +194,6 @@ export async function deleteCase(caseId: string): Promise<boolean> {
   if (!dbId) return false;
   const { error } = await supabase.from('cases').delete().eq('id', dbId);
   if (error) {
-    console.error('deleteCase error', error);
     return false;
   }
   return true;
@@ -208,7 +202,6 @@ export async function deleteCase(caseId: string): Promise<boolean> {
 export async function bulkDeleteCases(caseIds: string[]): Promise<boolean> {
   const { error } = await supabase.from('cases').delete().in('id', caseIds);
   if (error) {
-    console.error('bulkDeleteCases error', error);
     return false;
   }
   return true;

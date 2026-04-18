@@ -36,7 +36,6 @@ export function sendBrowserNotification(title: string, body: string, icon?: stri
       tag: `emr-${Date.now()}`,
     });
   } catch (e) {
-    console.log("Browser notification error:", e);
   }
 }
 

@@ -113,7 +113,6 @@ async function request<T = any>(
         // Retry on transient server errors
         if (attempt < maxRetries && isTransientStatus(res.status, errorMsg)) {
           hadRetries = true;
-          console.log(`[API ${path}] Transient error detected, retrying (${attempt + 1}/${maxRetries + 1})...`);
           await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
           lastError = errorMsg;
           continue;
@@ -132,18 +131,15 @@ async function request<T = any>(
 
       // Log successful retry recovery
       if (hadRetries && !silent) {
-        console.log(`[API ${path}] ✓ Request succeeded after ${attempt + 1} attempt(s)`);
       }
 
       if (!json.success && !silent) {
-        console.error(`API Error [${path}]:`, json.error || "Unknown error");
       }
       return json;
     } catch (err) {
       // Retry on transient network errors
       if (attempt < maxRetries && isTransientError(err)) {
         hadRetries = true;
-        console.log(`[API ${path}] Network issue detected, retrying (${attempt + 1}/${maxRetries + 1})...`);
         await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
         lastError = `Network error: ${err}`;
         continue;
@@ -669,7 +665,6 @@ export const documentUploadApi = {
       const json = await res.json();
       return json;
     } catch (err) {
-      console.error("Document upload error:", err);
       return { success: false, error: `Upload error: ${err}` };
     }
   },

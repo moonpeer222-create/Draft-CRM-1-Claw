@@ -20,7 +20,6 @@ function lazyRetry<T extends { [key: string]: any }>(
             reject(err);
             return;
           }
-          console.warn(`[LazyRetry] Module fetch failed, retrying (${remaining} left)...`, err?.message);
           setTimeout(() => attempt(remaining - 1), delay);
         });
     };

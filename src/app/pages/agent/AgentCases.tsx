@@ -260,7 +260,6 @@ export function AgentCases() {
     const { data, error } = await supabase.from('cases').select('*').order('created_at', { ascending: false });
     if (error) {
       toast.error("Failed to load cases");
-      console.error(error);
     } else {
       const all = (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
       const agentCases = all.filter(
@@ -834,7 +833,6 @@ export function AgentCases() {
           await pipelineApi.migrateToVisa(selectedCase.id);
           toast.success(isUrdu ? "کیس خودکار طور پر ویزا پائپ لائن میں منتقل ہو گیا" : "Case auto-migrated to Visa Pipeline!");
         } catch (err) {
-          console.error("Auto-migration failed:", err);
         }
       }
 

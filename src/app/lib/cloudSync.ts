@@ -77,7 +77,6 @@ export class CloudSyncService {
    * Initialize cloud sync - Start automatic background sync
    */
   static initialize(): void {
-    console.log('[CloudSync] Initializing cloud synchronization...');
     
     // Check online status
     this.updateOnlineStatus();
@@ -93,14 +92,12 @@ export class CloudSyncService {
     // Sync immediately on startup
     this.performFullSync();
 
-    console.log('[CloudSync] Initialization complete. Device ID:', this.deviceId);
   }
 
   /**
    * Stop all sync operations
    */
   static shutdown(): void {
-    console.log('[CloudSync] Shutting down cloud sync...');
     
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
@@ -112,7 +109,6 @@ export class CloudSyncService {
       this.realtimeSubscription = null;
     }
 
-    console.log('[CloudSync] Shutdown complete');
   }
 
   // ============================================================
@@ -177,7 +173,6 @@ export class CloudSyncService {
   }
 
   private static handleOnlineStatusChange(isOnline: boolean): void {
-    console.log('[CloudSync] Online status changed:', isOnline);
     this.updateSyncStatus({ isOnline });
     
     if (isOnline) {
@@ -238,7 +233,6 @@ export class CloudSyncService {
     filtered.push(queueItem);
     this.saveQueue(filtered);
 
-    console.log('[CloudSync] Queued:', entityType, action, entityId);
 
     // Try to sync immediately if online
     if (navigator.onLine) {
@@ -253,7 +247,6 @@ export class CloudSyncService {
     const queue = this.getQueue();
     if (queue.length === 0) return;
 
-    console.log('[CloudSync] Processing queue:', queue.length, 'items');
     this.updateSyncStatus({ isSyncing: true, syncError: null });
 
     const successful: string[] = [];
@@ -263,13 +256,10 @@ export class CloudSyncService {
       try {
         await this.uploadQueueItem(item);
         successful.push(item.id);
-        console.log('[CloudSync] Uploaded:', item.entityType, item.action, item.entityId);
       } catch (error) {
-        console.error('[CloudSync] Failed to upload:', item.entityType, item.entityId, error);
         
         item.retryCount++;
         if (item.retryCount >= MAX_RETRY_COUNT) {
-          console.error('[CloudSync] Max retries reached for:', item.entityId);
           this.updateSyncStatus({ syncError: `Failed to sync ${item.entityType} ${item.entityId}` });
         } else {
           failed.push(item);
@@ -286,7 +276,6 @@ export class CloudSyncService {
     });
 
     if (successful.length > 0) {
-      console.log('[CloudSync] Successfully synced', successful.length, 'items');
     }
   }
 
@@ -354,11 +343,9 @@ export class CloudSyncService {
    */
   static async pullFromCloud(): Promise<void> {
     if (!navigator.onLine) {
-      console.log('[CloudSync] Offline - skipping pull');
       return;
     }
 
-    console.log('[CloudSync] Pulling data from cloud...');
     this.updateSyncStatus({ isSyncing: true });
 
     try {
@@ -378,11 +365,9 @@ export class CloudSyncService {
           }
         } else if (casesResponse.status >= 500) {
           // Server error - likely transient, don't alarm user
-          console.log('[CloudSync] Server temporarily unavailable, will retry on next sync');
         }
       } catch (err) {
         // Network error pulling cases - log but don't fail entire sync
-        console.log('[CloudSync] Transient error pulling cases, will retry on next sync');
       }
 
       // Pull agent codes
@@ -395,7 +380,6 @@ export class CloudSyncService {
           }
         }
       } catch (err) {
-        console.log('[CloudSync] Transient error pulling agent codes, will retry on next sync');
       }
 
       // Pull notifications
@@ -408,20 +392,16 @@ export class CloudSyncService {
           }
         }
       } catch (err) {
-        console.log('[CloudSync] Transient error pulling notifications, will retry on next sync');
       }
 
       localStorage.setItem(STORAGE_KEYS.lastPull, new Date().toISOString());
-      console.log('[CloudSync] Pull complete');
       
     } catch (error) {
       // Only show error if it's persistent, not transient
       const errorMsg = String(error);
       if (!errorMsg.includes('Connection reset') && !errorMsg.includes('fetch failed')) {
-        console.error('[CloudSync] Pull failed:', error);
         this.updateSyncStatus({ syncError: 'Failed to pull data from cloud' });
       } else {
-        console.log('[CloudSync] Transient network issue, will retry on next sync');
       }
     } finally {
       this.updateSyncStatus({ isSyncing: false });
@@ -458,10 +438,8 @@ export class CloudSyncService {
           // Queue upload
           this.queueChange('case', localCase.id, 'update', localCase, localCase.agentId || 'system');
           
-          console.log('[CloudSync] Local case is newer:', localCase.id);
         } else if (localModified < cloudModified) {
           // Cloud version is newer - already in merged
-          console.log('[CloudSync] Cloud case is newer:', cloudCase.id);
           
           // Record for DataSyncService
           DataSyncService.markModified(
@@ -479,7 +457,6 @@ export class CloudSyncService {
 
     // Save merged data using saveCases instead of setCases
     CRMDataStore.saveCases(merged);
-    console.log('[CloudSync] Merged', merged.length, 'cases');
   }
 
   /**
@@ -489,7 +466,6 @@ export class CloudSyncService {
     // Simple replace for agent codes (admin controls these)
     if (cloudCodes && typeof cloudCodes === 'object') {
       localStorage.setItem('emerald_agent_access_codes', JSON.stringify(cloudCodes));
-      console.log('[CloudSync] Updated agent codes from cloud');
     }
   }
 
@@ -503,7 +479,6 @@ export class CloudSyncService {
     if (Array.isArray(cloudNotifications)) {
       cloudArray = cloudNotifications;
     } else if (typeof cloudNotifications === 'object' && cloudNotifications !== null) {
-      console.warn('[CloudSync] Cloud notifications received as object, converting...');
       // Extract notifications from object
       Object.keys(cloudNotifications).forEach(key => {
         const value = cloudNotifications[key];
@@ -514,12 +489,10 @@ export class CloudSyncService {
         }
       });
     } else {
-      console.log('[CloudSync] Invalid cloud notifications format, skipping merge');
       return;
     }
 
     if (cloudArray.length === 0 && !Array.isArray(cloudNotifications)) {
-        console.log('[CloudSync] No notifications extracted from cloud object');
     }
 
     // Pull from Zustand store
@@ -527,7 +500,6 @@ export class CloudSyncService {
 
     // Ensure local is an array
     if (!Array.isArray(localNotif)) {
-      console.warn('[CloudSync] Local notifications was not an array (type:', typeof localNotif, '), converting...');
       
       // Try to extract notifications from object format
       const converted: any[] = [];
@@ -544,7 +516,6 @@ export class CloudSyncService {
       }
       
       localNotif = converted;
-      console.log('[CloudSync] Converted local to array with', localNotif.length, 'notifications');
     }
 
     // Merge notifications - add cloud notifications that don't exist locally
@@ -565,11 +536,9 @@ export class CloudSyncService {
     if (localNotif.length > 100) {
       const removed = localNotif.length - 100;
       localNotif = localNotif.slice(0, 100);
-      console.log(`[CloudSync] Trimmed ${removed} old notifications (keeping last 100)`);
     }
 
     useNotificationStore.getState().setNotifications(localNotif);
-    console.log('[CloudSync] ✅ Merged notifications:', localNotif.length, 'total,', addedCount, 'added from cloud');
     
   }
 
@@ -582,11 +551,9 @@ export class CloudSyncService {
    */
   static async performFullSync(): Promise<void> {
     if (!navigator.onLine) {
-      console.log('[CloudSync] Offline - cannot perform full sync');
       return;
     }
 
-    console.log('[CloudSync] Starting full bidirectional sync...');
     this.updateSyncStatus({ isSyncing: true, syncError: null });
 
     try {
@@ -601,10 +568,8 @@ export class CloudSyncService {
         isSyncing: false,
       });
 
-      console.log('[CloudSync] Full sync complete');
       
     } catch (error) {
-      console.error('[CloudSync] Full sync failed:', error);
       this.updateSyncStatus({
         isSyncing: false,
         syncError: `Sync failed: ${error}`,
@@ -642,7 +607,6 @@ export class CloudSyncService {
       }
     }, SYNC_INTERVAL);
 
-    console.log('[CloudSync] Periodic sync started (every 30s)');
   }
 
   // ============================================================
@@ -650,7 +614,6 @@ export class CloudSyncService {
   // ============================================================
 
   private static subscribeToRealtimeUpdates(): void {
-    console.log('[CloudSync] Real-time updates: Initializing Supabase Realtime...');
 
     try {
       // Subscribe to core tables
@@ -662,14 +625,11 @@ export class CloudSyncService {
         });
       });
 
-      console.log('[CloudSync] Real-time engine active for all core tables.');
     } catch (e) {
-      console.warn('[CloudSync] Realtime subscription failed, falling back to polling:', e);
     }
   }
 
   private static handleRealtimeChange(payload: RealtimeChangePayload): void {
-    console.log(`[CloudSync] Real-time ${payload.event} received for ${payload.table}:${payload.new.id || payload.old.id}`);
     
     // Trigger a targeted refresh or re-fetch depending on the table
     if (payload.table === 'cases') {
@@ -718,7 +678,6 @@ export class CloudSyncService {
       // No action needed
     } else {
       // Manual merge would require UI
-      console.warn('[CloudSync] Manual merge not implemented');
     }
 
     // Remove resolved conflict
@@ -738,7 +697,6 @@ export class CloudSyncService {
     localStorage.removeItem(STORAGE_KEYS.status);
     localStorage.removeItem(STORAGE_KEYS.conflicts);
     localStorage.removeItem(STORAGE_KEYS.lastPull);
-    console.log('[CloudSync] Sync data cleared');
   }
 
   /**

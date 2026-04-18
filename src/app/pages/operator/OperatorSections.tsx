@@ -357,7 +357,6 @@ export function FoldersSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases,
       setShowFullForm(false);
       if (onCaseCreated) onCaseCreated();
     } catch (e) {
-      console.error(e);
       toast.error(u("Failed to create case", "کیس بنانا ناکام"));
     } finally {
       setIsCreating(false);
@@ -1008,10 +1007,8 @@ export function PaymentsSection({ u, dc, card, txt, sub, inputCls, bigBtn, cases
         setPayments(updated);
         save(STORAGE.payments, updated);
         toast.warning(u("⚠️ Saved locally (cloud upload failed)", "⚠️ مقامی طور پر محفوظ (کلاؤڈ ناکام)"));
-        console.error("Upload failed:", result.error);
       }
     } catch (err) {
-      console.error("Receipt upload error:", err);
       const previewUrl = URL.createObjectURL(file);
       const updated = payments.map(p => p.id === paymentId ? { ...p, receiptPhoto: previewUrl, uploadProgress: 100 } : p);
       setPayments(updated);
@@ -1634,7 +1631,6 @@ export function DocumentsSection({ u, dc, card, txt, sub, inputCls, bigBtn, case
         return { success: false, docs: currentDocs };
       }
     } catch (err: any) {
-      console.error("Upload error:", err);
       setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: "error", error: err?.message || "Unknown error" } : q));
       return { success: false, docs: currentDocs };
     }
@@ -1799,7 +1795,6 @@ export function DocumentsSection({ u, dc, card, txt, sub, inputCls, bigBtn, case
         if (onCaseUpdated) onCaseUpdated();
       }
     } catch (err) {
-      console.error("Bulk status change error:", err);
       toast.error(u("Failed to update status", "حالت تبدیل نہیں ہو سکی"));
     } finally {
       setBulkProcessing(false);

@@ -28,18 +28,15 @@ export function AgentVerificationCode() {
     // Get agent ID from session
     const session = AccessCodeService.getAgentSession();
     if (!session) {
-      console.log("No agent session found");
       return;
     }
 
     const agentCode = AccessCodeService.getAgentCode(session.agentId);
     if (agentCode) {
-      console.log("Agent code loaded:", agentCode);
       setCode(agentCode.code);
       setExpiresAt(agentCode.expiresAt);
       updateTimeRemaining(agentCode.expiresAt);
     } else {
-      console.log("No code found for agent:", session.agentId);
     }
   };
 

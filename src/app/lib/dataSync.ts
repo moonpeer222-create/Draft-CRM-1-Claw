@@ -192,18 +192,14 @@ export class DataSync {
       const auditKey = "crm_audit_log";
 
       if (!localStorage.getItem(caseKey)) {
-        console.log("🔄 DataSync: Cases store initialized");
       }
       if (!localStorage.getItem(notifKey)) {
-        console.log("🔄 DataSync: Notifications store initialized");
       }
       if (!localStorage.getItem(auditKey)) {
-        console.log("🔄 DataSync: Audit log store initialized");
       }
 
       localStorage.setItem("crm_last_sync", new Date().toISOString());
     } catch (e) {
-      console.error("DataSync.fullSync error:", e);
     }
   }
 

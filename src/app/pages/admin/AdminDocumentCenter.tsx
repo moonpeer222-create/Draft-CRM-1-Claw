@@ -159,7 +159,6 @@ export function AdminDocumentCenter() {
         setSignedUrls(prev => ({ ...prev, ...newUrls }));
       }
     } catch (err) {
-      console.error("Failed to fetch signed URLs:", err);
     } finally {
       setLoadingUrls(false);
     }
@@ -238,7 +237,6 @@ export function AdminDocumentCenter() {
 
         successCount++;
       } catch (err) {
-        console.error(`Upload error for ${file.name}:`, err);
         toast.error(`Error uploading ${file.name}`);
       }
     }
@@ -309,7 +307,6 @@ export function AdminDocumentCenter() {
           await documentStorageApi.remove(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
         }
       } catch (err) {
-        console.error("Storage delete error:", err);
       }
     }
 

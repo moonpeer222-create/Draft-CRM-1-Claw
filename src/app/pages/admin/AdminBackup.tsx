@@ -151,7 +151,6 @@ export function AdminBackup() {
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
       if (historyRes.success && historyRes.data) setHistory(historyRes.data as BackupHistoryEntry[]);
     } catch (err) {
-      console.error("Failed to load backup data:", err);
     }
     setIsLoading(false);
   }, []);

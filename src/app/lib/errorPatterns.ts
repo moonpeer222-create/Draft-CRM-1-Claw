@@ -136,7 +136,6 @@ export function showError(error: unknown, context?: string, isUrdu = false): Par
     duration: parsed.retryable ? 5000 : 8000,
   });
 
-  console.error(`[${parsed.category.toUpperCase()}] ${prefix}${parsed.message}`);
   return parsed;
 }
 

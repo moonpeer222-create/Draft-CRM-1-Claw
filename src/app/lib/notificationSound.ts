@@ -39,7 +39,6 @@ class NotificationSoundService {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + duration);
     } catch (err) {
-      console.warn('Failed to play notification sound:', err);
     }
   }
 

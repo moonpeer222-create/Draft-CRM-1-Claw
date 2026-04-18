@@ -136,7 +136,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         setProfile(data as DbUser);
       }
     } catch (e) {
-      console.error('Failed to load profile', e);
     } finally {
       setLoading(false);
     }
@@ -172,7 +171,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         // Real session obtained — onAuthStateChange will update React state
         return { error: null };
       }
-      console.warn('[Auth] Real agent sign-in failed, falling back to synthetic session:', signInError?.message);
     }
 
     // Fallback: synthetic session (cases may fail RLS if DB requires authenticated)

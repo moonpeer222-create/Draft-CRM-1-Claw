@@ -133,7 +133,6 @@ export async function callGeminiAI(
       } catch {
         try { errorBody = await res.text(); } catch { /* ignore */ }
       }
-      console.error(`StepFun server HTTP error ${res.status}:`, errorBody);
       return {
         success: true,
         response: res.status === 429 ? URDU_RATE_LIMIT_MSG : URDU_NETWORK_ERROR_MSG,
@@ -144,7 +143,6 @@ export async function callGeminiAI(
     const data = await res.json();
 
     if (!data.success) {
-      console.error("StepFun AI error:", data.error);
       const errStr = (data.error || "").toLowerCase();
       if (errStr.includes("429") || errStr.includes("quota") || errStr.includes("rate")) {
         return { success: true, response: URDU_RATE_LIMIT_MSG, model: "fallback-rate-limited" };
@@ -158,7 +156,6 @@ export async function callGeminiAI(
       model: data.data.model,
     };
   } catch (err: any) {
-    console.error("StepFun API network error:", err);
     return {
       success: true,
       response: URDU_NETWORK_ERROR_MSG,
@@ -243,7 +240,6 @@ export async function streamQwenAI(
     onDone?.(fullText);
     return fullText;
   } catch (err: any) {
-    console.error("streamStepFunAI error:", err);
     onError?.(err?.message || "Stream error");
     return fullText;
   }

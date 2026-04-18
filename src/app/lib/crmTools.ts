@@ -77,7 +77,6 @@ export interface CRMActionResult {
 async function fetchCases(): Promise<Case[]> {
   const { data, error } = await supabase.from("cases").select("*");
   if (error || !data) {
-    console.warn("Supabase fetch failed in crmTools:", error);
     return [];
   }
   return data.map((c: any) => mapSupabaseCaseToLocal(c, null));
@@ -247,7 +246,6 @@ export function parseActions(text: string): { actions: CRMAction[]; cleanText: s
         actions.push(parsed as CRMAction);
       }
     } catch (e) {
-      console.warn("Failed to parse CRM action:", match[1], e);
     }
     cleanText = cleanText.replace(match[0], "");
   }
@@ -508,7 +506,6 @@ export async function executeAction(action: CRMAction): Promise<CRMActionResult>
         return { success: false, message: `نامعلوم CRM ایکشن: ${(action as any).type}` };
     }
   } catch (err: any) {
-    console.error("CRM action error:", err);
     return { success: false, message: `CRM ایکشن میں خرابی: ${err.message || err}` };
   }
 }

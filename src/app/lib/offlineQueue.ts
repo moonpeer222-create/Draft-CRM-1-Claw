@@ -34,7 +34,6 @@ export async function registerServiceWorker(): Promise<void> {
 
   try {
     const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    console.log("[SW] Registered:", registration.scope);
 
     registration.addEventListener("updatefound", () => {
       const worker = registration.installing;
@@ -50,7 +49,6 @@ export async function registerServiceWorker(): Promise<void> {
     // Suppress SecurityError (unsupported MIME / sandboxed origin) silently;
     // warn on any other unexpected failure.
     if (err?.name !== "SecurityError") {
-      console.warn("[SW] Registration failed:", err);
     }
   }
 }
@@ -128,7 +126,6 @@ export async function offlineFetch(
       return res;
     } catch (err) {
       // Network error despite navigator.onLine — queue anyway
-      console.warn("[offline] Fetch failed despite online status, queuing:", url);
     }
   }
 

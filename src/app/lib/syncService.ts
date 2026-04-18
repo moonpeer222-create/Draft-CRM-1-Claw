@@ -142,7 +142,6 @@ export async function initialSync(): Promise<boolean> {
     // the version might be stale or missing. Force-wipe ALL entity keys now.
     const storedVersion = localStorage.getItem(VERSION_KEY) || "";
     if (storedVersion !== EXPECTED_VERSION) {
-      console.log(`[Sync] Version guard: "${storedVersion}" ≠ "${EXPECTED_VERSION}". Wiping ALL local entity data.`);
       const ENTITY_KEYS = [
         "crm_cases", "crm_notifications", "crm_alerts",
         "crm_attendance", "crm_leave_requests",
@@ -164,7 +163,6 @@ export async function initialSync(): Promise<boolean> {
     const lastSyncedVersion = localStorage.getItem(SYNC_VERSION_KEY) || "";
 
     if (currentLocalVersion !== lastSyncedVersion) {
-      console.log(`[Sync] Version reset: synced="${lastSyncedVersion}" → local="${currentLocalVersion}". Pushing empty data to server.`);
       // Mark synced BEFORE pushing so periodic sync doesn't re-enter
       localStorage.setItem(SYNC_VERSION_KEY, currentLocalVersion);
       const isUp = await checkServer();
@@ -182,9 +180,7 @@ export async function initialSync(): Promise<boolean> {
             documentFiles: [],
           };
           await syncApi.upload(emptyPayload);
-          console.log("[Sync] Server data wiped successfully.");
         } catch (err) {
-          console.error("[Sync] Failed to wipe server data:", err);
         }
       }
       syncState.status = "synced";
@@ -612,7 +608,6 @@ export async function pushLocalToServer(): Promise<boolean> {
     const res = await syncApi.upload(payload);
     return res.success;
   } catch (err) {
-    console.error("Push to server error:", err);
     return false;
   }
 }
@@ -650,7 +645,6 @@ export async function pushCases() {
     const parsed = localCases ? JSON.parse(localCases) : [];
     await casesApi.saveAll(parsed);
   } catch (err) {
-    console.error("Push cases error:", err);
   }
 }
 
@@ -663,7 +657,6 @@ export async function pushAgentCodes() {
     try {
       await agentCodesApi.saveAll(JSON.parse(localCodes));
     } catch (err) {
-      console.error("Push agent codes error:", err);
     }
   }
 }
@@ -677,7 +670,6 @@ export async function pushAdminProfile() {
     try {
       await adminProfileApi.save(JSON.parse(localProfile));
     } catch (err) {
-      console.error("Push admin profile error:", err);
     }
   }
 }
@@ -690,7 +682,6 @@ export async function pushAgentProfile(name: string) {
     try {
       await agentProfileApi.save(name, JSON.parse(localProfile));
     } catch (err) {
-      console.error("Push agent profile error:", err);
     }
   }
 }
@@ -703,7 +694,6 @@ export async function pushCodeHistory() {
     try {
       await codeHistoryApi.save(JSON.parse(localHistory));
     } catch (err) {
-      console.error("Push code history error:", err);
     }
   }
 }
@@ -721,7 +711,6 @@ export async function pushNotifications() {
       }
       await notificationsApi.save(parsed);
     } catch (err) {
-      console.error("Push notifications error:", err);
     }
   }
 }
@@ -734,7 +723,6 @@ export async function pushUsers() {
     try {
       await usersApi.saveAll(JSON.parse(localUsers));
     } catch (err) {
-      console.error("Push users error:", err);
     }
   }
 }
@@ -747,7 +735,6 @@ export async function pushAttendance() {
     try {
       await attendanceApi.saveAll(JSON.parse(localAttendance));
     } catch (err) {
-      console.error("Push attendance error:", err);
     }
   }
 }
@@ -760,7 +747,6 @@ export async function pushLeaveRequests() {
     try {
       await leaveRequestsApi.saveAll(JSON.parse(localLeave));
     } catch (err) {
-      console.error("Push leave requests error:", err);
     }
   }
 }
@@ -774,7 +760,6 @@ export async function pushAgentAvatar(name: string) {
     // Push the avatar string (or null to remove)
     await agentAvatarApi.save(name, localAvatar || null);
   } catch (err) {
-    console.error("Push agent avatar error:", err);
   }
 }
 
@@ -788,7 +773,6 @@ export async function pullAgentAvatar(name: string): Promise<string | null> {
       return res.data as string;
     }
   } catch (err) {
-    console.error("Pull agent avatar error:", err);
   }
   return null;
 }
@@ -802,7 +786,6 @@ export async function pushPassportTracking() {
     try {
       await passportTrackingApi.saveAll(JSON.parse(local));
     } catch (err) {
-      console.error("Push passport tracking error:", err);
     }
   }
 }
@@ -821,7 +804,6 @@ export async function pushAuditLog() {
       }
       await auditLogApi.saveAll(parsed);
     } catch (err) {
-      console.error("Push audit log error:", err);
     }
   }
 }
@@ -835,7 +817,6 @@ export async function pushDocumentFiles() {
     try {
       await documentFilesApi.saveAll(JSON.parse(local));
     } catch (err) {
-      console.error("Push document files error:", err);
     }
   }
 }
@@ -849,7 +830,6 @@ export async function pushSettings() {
     try {
       await settingsApi.save(JSON.parse(local));
     } catch (err) {
-      console.error("Push settings error:", err);
     }
   }
 }
@@ -1189,16 +1169,12 @@ async function checkAutoExport() {
     }
 
     // Trigger auto-export
-    console.log("Auto-export triggered, sending to:", config.recipients.join(", "));
     const res = await backupApi.autoExport(config.recipients);
     if (res.success) {
       localStorage.setItem(LAST_AUTO_EXPORT_KEY, new Date().toISOString());
-      console.log("Auto-export email sent successfully");
     } else {
-      console.error("Auto-export failed:", res.error);
     }
   } catch (err) {
-    console.error("Auto-export check error:", err);
   }
 }
 

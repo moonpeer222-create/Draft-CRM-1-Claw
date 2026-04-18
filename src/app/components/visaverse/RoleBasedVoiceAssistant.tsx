@@ -442,7 +442,6 @@ export function RoleBasedVoiceAssistant({ role }: RoleBasedVoiceAssistantProps) 
       };
 
       recognition.onerror = (event: any) => {
-        console.log('Speech recognition error:', event.error);
         setIsListening(false);
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           setShowTextInput(true);
@@ -457,7 +456,6 @@ export function RoleBasedVoiceAssistant({ role }: RoleBasedVoiceAssistantProps) 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (err) {
-      console.log('Speech recognition not available:', err);
       setShowTextInput(true);
       setTimeout(() => textInputRef.current?.focus(), 100);
     }
@@ -496,7 +494,6 @@ export function RoleBasedVoiceAssistant({ role }: RoleBasedVoiceAssistantProps) 
           return;
         }
       } catch (err) {
-        console.error("Voice Gemini AI fallback error:", err);
       }
     }
 

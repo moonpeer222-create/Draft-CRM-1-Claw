@@ -140,9 +140,7 @@ export async function triggerPanic() {
         'Authorization': `Bearer ${publicAnonKey}`,
       },
     });
-    console.log('🚨 Server panic flag set');
   } catch (err) {
-    console.error('Failed to set server panic flag:', err);
   }
 
   // 2. Broadcast to all tabs on THIS device (instant kill)
@@ -182,9 +180,7 @@ export async function clearServerPanic() {
         'Authorization': `Bearer ${publicAnonKey}`,
       },
     });
-    console.log('✅ Server panic flag cleared');
   } catch (err) {
-    console.error('Failed to clear server panic flag:', err);
   }
 }
 
@@ -206,7 +202,6 @@ async function checkServerPanic(): Promise<boolean> {
     consecutivePollFailures++;
     // Only log after MAX_SILENT_FAILURES consecutive failures to avoid console spam
     if (consecutivePollFailures === MAX_SILENT_FAILURES) {
-      console.warn('⚠️ Panic mode server polling unavailable — falling back to local-only detection');
     }
     return false;
   }

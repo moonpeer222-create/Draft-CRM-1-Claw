@@ -98,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const prof = await getUserProfile(userId);
       setProfile(prof);
     } catch (e) {
-      console.error('Failed to load profile', e);
     } finally {
       setLoading(false);
     }

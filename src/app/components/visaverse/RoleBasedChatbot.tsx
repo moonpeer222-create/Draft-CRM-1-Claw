@@ -578,7 +578,6 @@ export function RoleBasedChatbot({ role }: RoleBasedChatbotProps) {
       // If stream returned empty (error path handled by callbacks), full string is empty
       if (!full && !streamingMsgId) { /* callbacks already handled it */ }
     } catch (err: any) {
-      console.error("Streaming error:", err);
       await fallback();
     }
   }, [input, role, knowledge, messages, isUrdu]);

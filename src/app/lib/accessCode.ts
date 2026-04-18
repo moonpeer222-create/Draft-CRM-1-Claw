@@ -234,23 +234,16 @@ export class AccessCodeService {
     error?: string;
   } {
     if (!inputCode || inputCode.length !== 6) {
-      console.log("[TOTP] Rejected: code length is", inputCode?.length, "expected 6");
       return { valid: false, error: "Code must be 6 digits" };
     }
 
     const window = getCurrentTimeWindow();
     const agents = this.getKnownAgents();
 
-    console.log("[TOTP] ─── Validation Start ───");
-    console.log("[TOTP] Input code:", inputCode);
-    console.log("[TOTP] Time window:", window);
-    console.log("[TOTP] Known agents:", agents.length);
 
     for (const agent of agents) {
       const expected = computeTOTP(agent.id, window);
-      console.log(`[TOTP] ${agent.id} (${agent.name}): expected=${expected} match=${expected === inputCode}`);
       if (expected === inputCode) {
-        console.log("[TOTP] ✅ VALID — matched", agent.id, agent.name);
         return { valid: true, agentId: agent.id, agentName: agent.name };
       }
     }
@@ -260,17 +253,14 @@ export class AccessCodeService {
     const prevWindowExpiry = getWindowExpiry(prevWindow);
     const gracePeriodMs = 5 * 60 * 1000; // 5 minutes
     if (Date.now() - prevWindowExpiry < gracePeriodMs) {
-      console.log("[TOTP] Checking previous window (grace period):", prevWindow);
       for (const agent of agents) {
         const expected = computeTOTP(agent.id, prevWindow);
         if (expected === inputCode) {
-          console.log("[TOTP] ✅ VALID (grace period) — matched", agent.id, agent.name);
           return { valid: true, agentId: agent.id, agentName: agent.name };
         }
       }
     }
 
-    console.log("[TOTP] ❌ No match found for code:", inputCode);
     return { valid: false, error: "Invalid or expired access code" };
   }
 

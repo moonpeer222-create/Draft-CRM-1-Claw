@@ -81,7 +81,6 @@ export async function getAgentCodesFromSupabase(): Promise<AgentCodeInfo[]> {
     .order("agent_id", { ascending: true });
 
   if (error || !agents) {
-    console.error("[AgentAuth] Failed to fetch agents:", error);
     return [];
   }
 
@@ -116,7 +115,6 @@ export async function validateAgentCodeAsync(inputCode: string): Promise<AgentAu
     .not("agent_id", "is", null);
 
   if (error || !agents || agents.length === 0) {
-    console.error("[AgentAuth] No active agents found in Supabase:", error);
     // Fallback to legacy localStorage registry (admin device only)
     const legacy = AccessCodeService.validateCode(inputCode);
     if (legacy.valid) {

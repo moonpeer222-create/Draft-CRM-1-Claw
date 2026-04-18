@@ -47,10 +47,8 @@ let broadcastChannel: BroadcastChannel | null = null;
 supabase.auth.onAuthStateChange((event, session) => {
   const wasAuth = isAuthenticated;
   isAuthenticated = !!session?.user;
-  console.log('[Realtime] Auth state:', event, 'authenticated:', isAuthenticated);
 
   if (!wasAuth && isAuthenticated && pendingTables.size > 0) {
-    console.log('[Realtime] Re-subscribing pending tables after auth:', Array.from(pendingTables));
     pendingTables.forEach((table) => {
       unsubscribeFromTable(table);
       subscribeToTable(table);
@@ -88,7 +86,6 @@ function notifyChangeCallbacks(payload: RealtimeChangePayload) {
       try {
         cb(payload);
       } catch (e) {
-        console.error("[Realtime] Change callback error:", e);
       }
     });
   }
@@ -103,7 +100,6 @@ export function subscribeToTable(table: RealtimeTable): () => void {
   // Defer subscription until authenticated — channels created without a JWT
   // won't receive RLS-guarded changes.
   if (!isAuthenticated) {
-    console.log(`[Realtime] Deferring ${table} subscription until authenticated`);
     pendingTables.add(table);
     return () => {
       pendingTables.delete(table);
@@ -111,7 +107,6 @@ export function subscribeToTable(table: RealtimeTable): () => void {
     };
   }
 
-  console.log(`[Realtime] Subscribing to ${table} with auth token`);
   const channel = supabase
     .channel(`${table}-changes`, {
       config: {
@@ -122,7 +117,6 @@ export function subscribeToTable(table: RealtimeTable): () => void {
       "postgres_changes",
       { event: "*", schema: "public", table },
       (payload) => {
-        console.log(`[Realtime] ${table} payload received:`, payload.eventType, (payload.new as any)?.id || (payload.old as any)?.id);
         const changePayload: RealtimeChangePayload = {
           table,
           event: payload.eventType as "INSERT" | "UPDATE" | "DELETE",
@@ -135,7 +129,6 @@ export function subscribeToTable(table: RealtimeTable): () => void {
       }
     )
     .subscribe((status) => {
-      console.log(`[Realtime] ${table} subscription status:`, status);
     });
 
   channels.set(table, channel);
@@ -149,7 +142,6 @@ function unsubscribeFromTable(table: RealtimeTable) {
     channel.unsubscribe();
     supabase.removeChannel(channel);
     channels.delete(table);
-    console.log(`[Realtime] Unsubscribed from ${table}`);
   }
 }
 
@@ -205,15 +197,12 @@ export function subscribeToCasePresence(
         try {
           cb(users);
         } catch (e) {
-          console.error("[Realtime] Presence callback error:", e);
         }
       });
     })
     .on("presence", { event: "join" }, ({ key, newPresences }) => {
-      console.log("[Realtime] User joined case", caseId, key);
     })
     .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-      console.log("[Realtime] User left case", caseId, key);
     })
     .subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
@@ -249,7 +238,6 @@ export function shutdownRealtime(): void {
   channels.forEach((channel, name) => {
     channel.unsubscribe();
     supabase.removeChannel(channel);
-    console.log(`[Realtime] Shutdown channel:`, name);
   });
   channels.clear();
   changeCallbacks.clear();

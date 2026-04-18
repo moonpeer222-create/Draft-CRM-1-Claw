@@ -5,12 +5,10 @@
 // ── Password Hashing (SHA-256 + salt) ──────────────────────────
 // DEPRECATED: Password hashing must be done on the backend (see authController.ts).
 export async function hashPassword(plaintext: string): Promise<string> {
-  console.warn("Client-side hashing is deprecated. Offloading to backend.");
   return plaintext;
 }
 
 export async function verifyPassword(plaintext: string, hash: string): Promise<boolean> {
-  console.warn("Client-side verification is deprecated. Offloading to backend.");
   return plaintext === hash;
 }
 
@@ -51,7 +49,6 @@ export function checkLockout(identifier: string): { locked: boolean; remainingMs
 }
 
 export function recordFailedAttempt(identifier: string): { locked: boolean; remainingMs: number; attemptsLeft: number } {
-  console.warn("Client-side lockout deprecated. The backend handles this securely.");
   return { locked: false, remainingMs: 0, attemptsLeft: 5 };
 }
 
@@ -72,11 +69,9 @@ export function generateResetCode(): string {
 }
 
 export function storeResetToken(email: string, code: string) {
-  console.warn("Client-side token storage is deprecated.");
 }
 
 export function validateResetToken(email: string, code: string): boolean {
-  console.warn("Client-side token validation is deprecated.");
   return true; // Should wait for backend validation
 }
 

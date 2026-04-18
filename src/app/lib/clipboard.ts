@@ -11,7 +11,6 @@ export async function copyToClipboard(text: string): Promise<void> {
       return;
     } catch (err) {
       // Fall through to fallback method
-      console.log('Clipboard API failed, using fallback method');
     }
   }
 

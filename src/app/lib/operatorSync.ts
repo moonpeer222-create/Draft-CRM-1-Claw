@@ -61,10 +61,8 @@ export async function pushOperatorData(): Promise<boolean> {
       saveLocal(LAST_SYNC_KEY, new Date().toISOString());
       return true;
     }
-    console.log("Operator sync push failed:", res.status);
     return false;
   } catch (err) {
-    console.log("Operator sync push error (non-fatal):", err);
     return false;
   }
 }
@@ -98,7 +96,6 @@ export async function pullOperatorData(): Promise<boolean> {
     }
     return false; // local is already up to date
   } catch (err) {
-    console.log("Operator sync pull error (non-fatal):", err);
     return false;
   }
 }

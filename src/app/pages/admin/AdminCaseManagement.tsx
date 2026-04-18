@@ -291,7 +291,6 @@ export function AdminCaseManagement() {
     const { data, error } = await supabase.from('cases').select('*').order('created_at', { ascending: false });
     if (error) {
       toast.error("Failed to load cases from server");
-      console.error(error);
     } else {
       const mapped = (data || []).map((r: any) => mapSupabaseCaseToLocal(r));
       setCases(mapped);
@@ -507,7 +506,6 @@ export function AdminCaseManagement() {
           await pipelineApi.migrateToVisa(caseId);
           toast.success("Case auto-migrated to Visa Pipeline!");
         } catch (err) {
-          console.error("Auto-migration failed:", err);
         }
       }
 

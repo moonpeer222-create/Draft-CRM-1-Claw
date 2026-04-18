@@ -49,7 +49,6 @@ export function ForgotPasswordModal({ open, onClose, darkMode, isUrdu = false }:
         setStep("success");
       }
     } catch (err: any) {
-      console.error("Forgot password request error:", err);
       toast.error(u("Network error. Try again.", "نیٹ ورک خرابی۔ دوبارہ کوشش کریں۔"));
     }
     setLoading(false);

@@ -43,7 +43,6 @@ export function AdminHealthDashboard() {
       }
       setLastRefresh(new Date());
     } catch (err) {
-      console.error("Health fetch error:", err);
     }
     setLoading(false);
   }, []);

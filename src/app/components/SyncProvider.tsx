@@ -201,7 +201,6 @@ export function SyncStatusBadge() {
       const data = await exportAllData();
       downloadExport(data);
     } catch (err) {
-      console.error("Export error:", err);
     }
     setExporting(false);
   };

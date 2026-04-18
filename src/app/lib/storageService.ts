@@ -59,13 +59,11 @@ export async function uploadFile(
     onProgress?.(100);
 
     if (!res.ok || !json.success) {
-      console.error("Storage upload failed:", json.error);
       return { success: false, error: json.error || `HTTP ${res.status}` };
     }
 
     return { success: true, path: json.data?.path || json.path, size: json.data?.size || json.size };
   } catch (err: any) {
-    console.error("Upload error:", err);
     return { success: false, error: err?.message || "Upload failed" };
   }
 }

@@ -468,13 +468,11 @@ export function sendWhatsAppMessage(
 ): void {
   const template = getTemplate(templateId);
   if (!template) {
-    console.error(`Template ${templateId} not found`);
     return;
   }
 
   const phone = data.phone || '';
   if (!phone) {
-    console.error('Phone number is required');
     return;
   }
 

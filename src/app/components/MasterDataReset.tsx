@@ -276,7 +276,6 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
 
       onDataReset?.();
     } catch (err) {
-      console.error("Reset failed:", err);
       toast.error(isUrdu ? "ری سیٹ میں خرابی" : "Reset failed");
     } finally {
       setResetting(false);

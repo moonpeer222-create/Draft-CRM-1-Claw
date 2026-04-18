@@ -100,7 +100,6 @@ export function AgentSessionTimer() {
         );
       }
     } catch (error) {
-      console.error("Check-in error:", error);
       toast.error(isUrdu ? "چیک ان میں خرابی" : "Failed to check in");
     }
   };

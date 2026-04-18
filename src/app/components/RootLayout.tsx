@@ -197,17 +197,13 @@ function InnerLayout() {
     DataSync.fullSync();
     
     const stats = DataSync.getSyncStats();
-    console.log("Data Sync Stats:", stats);
     
     const validation = DataSync.validateDataIntegrity();
     if (!validation.valid) {
-      console.warn("Data integrity issues found:", validation.issues);
       const { fixed, errors } = DataSync.autoFix();
       if (fixed > 0) {
-        console.log(`Auto-fixed ${fixed} issues`);
       }
       if (errors.length > 0) {
-        console.error("Auto-fix errors:", errors);
       }
     }
   }, []);

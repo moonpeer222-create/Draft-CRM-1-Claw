@@ -41,17 +41,14 @@ export async function sendCaseStatusEmail(payload: CaseStatusEmailPayload): Prom
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      console.warn("[emailService] Case status email failed:", err?.error || res.status);
       return;
     }
 
     const data = await res.json();
     if (data.success) {
-      console.log(`[emailService] Email sent for ${payload.caseId}: ${payload.oldStatus} → ${payload.newStatus}. Recipients: ${data.recipients}`);
     }
   } catch (err) {
     // Non-fatal — email is a nice-to-have, never block the UI
-    console.warn("[emailService] Network error sending case status email:", err);
   }
 }
 
