@@ -6,7 +6,7 @@ import {
   Globe, Clock, DollarSign, ShieldCheck
 } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { toast } from '../lib/toast';
 import { TenantService } from '../lib/tenantService';
 

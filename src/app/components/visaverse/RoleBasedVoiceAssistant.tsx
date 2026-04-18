@@ -105,8 +105,8 @@ const VOICE_COMMANDS = {
         ur: "کلائنٹ ڈھونڈنے کے لیے ٹاپ نیویگیشن میں سرچ بار استعمال کریں۔ نام، فون نمبر، کیس آئی ڈی، یا پاسپورٹ نمبر ٹائپ کریں۔ نتائج فوراً ظاہر ہوں گے۔ آپ Cases پھر All Cases جا کر فلٹرز بھی لگا سکتے ہیں۔"
       },
       companyInfo: {
-        en: "Emerald Tech Partner. Office number 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine. Email info at emeraldvisaconsultancy dot com. Licensed recruitment agency for Gulf countries.",
-        ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس نمبر 25، فیصل شاپنگ مال، جی پی او صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ای میل info@emeraldvisaconsultancy.com۔ خلیجی ممالک کے لیے لائسنس یافتہ ریکروٹمنٹ ایجنسی۔"
+        en: "Registered Office Address, City Name. Contact zero three one eight six nine eight six two five nine. Email info at example dot com. Licensed recruitment agency for Gulf countries.",
+        ur: "رجسٹرڈ آفس، سٹی نیم۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ای میل info@example.com۔ خلیجی ممالک کے لیے لائسنس یافتہ ریکروٹمنٹ ایجنسی۔"
       },
       troubleshoot: {
         en: "If system is not working: Step 1, refresh the page with F5. Step 2, check internet connection. Step 3, clear browser cache. Step 4, try mobile app. If still broken, take screenshot, note what you were doing, and contact Admin immediately at zero three one eight six nine eight six two five nine.",
@@ -199,7 +199,7 @@ const VOICE_COMMANDS = {
         ur: "آپ کا ڈیش بورڈ آج کے کام دکھاتا ہے۔ فالو اپس، اپ لوڈز، ادائیگی یاد دہانیاں اور اپائنٹمنٹس شامل ہیں۔ کام پر کلک کریں تو کیس کھلے گا۔ پہلے تاخیر والے آئٹمز سے شروع کریں۔"
       },
       companyInfo: {
-        en: "Emerald Tech Partner. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. Contact zero three one eight six nine eight six two five nine.",
+        en: "Registered Office Address, City Name. Contact zero three one eight six nine eight six two five nine.",
         ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
       },
       troubleshoot: {
@@ -273,7 +273,7 @@ const VOICE_COMMANDS = {
         ur: "کسٹمر پورٹل: آپ کا ویزا سفر ہمارے پورٹل سے ٹریک ہوتا ہے۔ رسائی کے لیے ایجنٹ سے رابطہ کریں صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔ ہر مرحلے پر واٹس ایپ اپ ڈیٹ خودکار بھیجی جاتی ہے۔"
       },
       companyInfo: {
-        en: "Emerald Tech Partner. Office 25, Faisal Shopping Mall, GPO Saddar, Lahore. We help Pakistani workers get jobs in Gulf countries including Saudi Arabia, UAE, Qatar, Kuwait and Oman. Contact zero three one eight six nine eight six two five nine.",
+        en: "Registered Office Address, City Name. We help Pakistani workers get jobs in Gulf countries including Saudi Arabia, UAE, Qatar, Kuwait and Oman. Contact zero three one eight six nine eight six two five nine.",
         ur: "ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس۔ آفس 25، فیصل شاپنگ مال، صدر، لاہور۔ ہم پاکستانی کارکنوں کو خلیجی ممالک سعودی عرب، یو اے ای، قطر، کویت اور عمان میں ملازمت دلاتے ہیں۔ رابطہ صفر تین ایک آٹھ چھ نو آٹھ چھ دو پانچ نو۔"
       },
       troubleshoot: {

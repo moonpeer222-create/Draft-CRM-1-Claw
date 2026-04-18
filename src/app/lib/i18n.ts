@@ -31,7 +31,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "lang.changed": "Language changed to",
     "lang.english": "English",
     "lang.urdu": "Urdu",
-    "contact.address": "Office #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan",
+    "contact.address": "Lahore, Pakistan",
     "contact.phone": "Phone: 03186986259 | Email: info@emeraldtechpartner.com",
 
     // Admin Header
@@ -553,7 +553,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "lang.changed": "زبان تبدیل ہو گئی",
     "lang.english": "انگریزی",
     "lang.urdu": "اردو",
-    "contact.address": "آفس نمبر 25 فیصل شاپنگ مال، جی پی او صدر، 54000، لاہور",
+    "contact.address": "لاہور، پاکستان",
     "contact.phone": "فون: 03186986259 | ای میل: info@emeraldtechpartner.com",
 
     // Admin Header

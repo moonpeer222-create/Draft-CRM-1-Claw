@@ -6,7 +6,7 @@ BUSINESS CONTEXT:
 - Company: Emerald Visa Consultancy Service
 - Nature: Licensed recruitment/visa consultancy facilitating overseas employment for Pakistani workers
 - Services: Work Visa Processing, Document Verification & Attestation, Job Placement Assistance, Medical/Biometric Guidance, Ticket & Travel Arrangements, Pre-Departure Orientation, Gulf Employer Recruitment Partnerships
-- Location: Office #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan
+- Location: Registered Office Address, City Name, Country
 - Contact: Phone: 03186986259 | WhatsApp: 03186986259 | Email: info@emeraldvisaconsultancy.com
 - Target Users: 
   • Admin/Owner (full system control)

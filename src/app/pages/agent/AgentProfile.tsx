@@ -57,13 +57,13 @@ function getAgentProfile(agentName: string): AgentProfileData {
   }
   const defaultProfile: AgentProfileData = {
     fullName: agentName,
-    email: `${agentName.toLowerCase().replace(/\s+/g, ".")}@emeraldvisa.com`,
-    phone: `+92 3${Math.floor(10 + Math.random() * 90)} ${Math.floor(1000000 + Math.random() * 9000000)}`,
+    email: `${agentName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+    phone: "",
     role: "Agent",
-    address: "Office #25 Faisal Shopping Mall, GPO Saddar",
-    city: "Lahore",
+    address: "Registered Office Address",
+    city: "City Name",
     joinDate: "2024-03-01T00:00:00Z",
-    bio: `Technology solutions agent at Emerald Tech Partner. Specializing in client support and digital services.`,
+    bio: `Technology solutions agent. Specializing in client support and digital services.`,
     specialization: "Gulf Countries",
     notifications: { email: true, sms: true, push: true },
   };

@@ -215,6 +215,26 @@ export function LandingPage() {
           >
             {t("app.tagline")}
           </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-6"
+          >
+            <button
+              id="landing-signup-btn"
+              onClick={() => navigate("/signup")}
+              className={`px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-xl flex items-center gap-2 mx-auto ${
+                darkMode 
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20" 
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30"
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Join as an Agency
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
         </motion.div>
 
         {/* Role Selection Cards */}

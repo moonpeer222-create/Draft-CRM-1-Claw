@@ -1,24 +1,6 @@
 // Advanced Notification & Alert System — with Supabase sync hooks
 import { CRMDataStore } from "./mockData";
-import { useNotificationStore } from "../store/notificationStore";
-export interface Notification {
-  id: string;
-  type: "case" | "payment" | "document" | "system" | "deadline" | "agent" | "customer" | "attendance" | "alert";
-  priority: "low" | "medium" | "high" | "critical";
-  title: string;
-  titleUrdu?: string;
-  message: string;
-  messageUrdu?: string;
-  timestamp: string;
-  read: boolean;
-  actionable: boolean;
-  actionUrl?: string;
-  actionLabel?: string;
-  metadata?: Record<string, any>;
-  expiresAt?: string;
-  targetRole?: "admin" | "agent" | "customer" | "all";
-  targetUserId?: string;
-}
+import { useNotificationStore, type Notification } from "./notificationStore";
 
 export interface Alert {
   id: string;

@@ -162,8 +162,8 @@ const ROLE_KNOWLEDGE = {
         ur: "📤 دستاویز اپ لوڈ کیسے کریں:\n\n1. کیس ڈیٹیل → \"دستاویزات\" ٹیب\n2. چیک لسٹ میں قسم ڈھونڈیں\n3. [📤 اپ لوڈ] بٹن پر کلک\n4. فائل منتخب کریں (PDF/JPG/PNG، 5MB تک)\n5. پروگریس بار مکمل ہونے تک انتظار ✓\n6. پیش نظر → معیار تصدیق → \"سیو\"\n7. سٹیٹس: ⏳ زیر التواء → ✅ تصدیق شدہ\n\n📱 موبائل: \"AR اسکین\" استعمال کریں!"
       },
       companyInfo: {
-        en: "🏢 Emerald Tech Partner:\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore, Pakistan\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 Licensed recruitment agency for Pakistani workers → Gulf countries (Saudi, UAE, Qatar, Kuwait, Oman)\n📱 WhatsApp: 03186986259",
-        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس:\n\n📍 آفس: #25 فیصل شاپنگ مال، جی پی او صدر، 54000، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 پاکستانی کارکنوں کے لیے لائسنس یافتہ ایجنسی → خلیجی ممالک\n📱 واٹس ایپ: 03186986259"
+        en: "🏢 Emerald Tech Partner:\n\n📍 Office: Registered Office Address, City Name, Country\n📞 Contact: 03186986259\n📧 Email: info@example.com\n💼 Licensed recruitment agency for Pakistani workers → Gulf countries (Saudi, UAE, Qatar, Kuwait, Oman)\n📱 WhatsApp: 03186986259",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس:\n\n📍 آفس: Registered Office Address, City Name\n📞 رابطہ: 03186986259\n📧 ای میل: info@example.com\n💼 پاکستانی کارکنوں کے لیے لائسنس یافتہ ایجنسی → خلیجی ممالک\n📱 واٹس ایپ: 03186986259"
       },
       troubleshoot: {
         en: "🔧 Troubleshooting Guide:\n\n1. 🔄 Refresh page (F5 or Ctrl+R)\n2. 🌐 Check internet connection\n3. 🧹 Clear browser cache\n4. 📱 Try mobile app if web fails\n\n**If still broken:**\n📸 Take screenshot of error\n📝 Note what you were doing + error message\n📞 Contact Admin: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com",
@@ -253,8 +253,8 @@ const ROLE_KNOWLEDGE = {
         ur: "⚠️ تاخیر والے کیسز:\n\n• بیج 🔴 سرخ + \"اوورڈیو\"\n• آگے بڑھنے کے لیے تاخیر کی وجہ لازمی\n• وجوہات: کلائنٹ دستیاب نہیں | دستاویز مسئلہ | میڈیکل تاخیر | ایمبیسی تاخیر | ادائیگی زیر التواء\n• ایڈمن خودکار مطلع\n\n💡 ڈیڈ لائن سے پہلے اپ ڈیٹ کریں!"
       },
       companyInfo: {
-        en: "🏢 Emerald Tech Partner\n📍 #25 Faisal Shopping Mall, GPO Saddar, Lahore\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 Gulf country recruitment (Saudi, UAE, Qatar, Kuwait, Oman)",
-        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n📍 فیصل شاپنگ مال، صدر، لاہور\n📞 03186986259\n📧 info@emeraldvisaconsultancy.com\n💼 خلیجی ممالک ریکروٹمنٹ"
+        en: "🏢 Emerald Tech Partner\n📍 Registered Office Address, City Name\n📞 03186986259\n📧 info@example.com\n💼 Gulf country recruitment (Saudi, UAE, Qatar, Kuwait, Oman)",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n📍 رجسٹرڈ آفس، سٹی نیم\n📞 03186986259\n📧 info@example.com\n💼 خلیجی ممالک ریکروٹمنٹ"
       },
       troubleshoot: {
         en: "🔧 Quick Fixes:\n1. 🔄 Refresh (F5)\n2. 🌐 Check internet\n3. 🧹 Clear cache\n4. 📱 Try mobile\n\nStill broken? 📞 Admin: 03186986259",
@@ -316,8 +316,8 @@ const ROLE_KNOWLEDGE = {
         ur: "🔐 کسٹمر پورٹل:\n\nآپ کا ویزا سفر ہمارے پورٹل سے ٹریک ہوتا ہے۔ حیثیت چیک کرنے کے لیے:\n• کسٹمر پورٹل وزٹ کریں\n• یا ایجنٹ سے براہ راست رابطہ: 03186986259\n• ہر مرحلے پر واٹس ایپ اپ ڈیٹس خودکار\n\n📱 ترجیحی: ریئل ٹائم اپ ڈیٹس کے لیے واٹس ایپ!"
       },
       companyInfo: {
-        en: "🏢 Emerald Tech Partner\n\n📍 Office: #25 Faisal Shopping Mall, GPO Saddar, 54000, Lahore\n📞 Contact: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n💼 We help Pakistani workers get jobs in Gulf countries\n📱 WhatsApp: 03186986259\n\nVisit us during office hours for consultation!",
-        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n\n📍 آفس: #25 فیصل شاپنگ مال، صدر، لاہور\n📞 رابطہ: 03186986259\n📧 ای میل: info@emeraldvisaconsultancy.com\n💼 ہم پاکستانی کارکنوں کو خلیجی ملازمت دلاتے ہیں\n📱 واٹس ایپ: 03186986259\n\nمشاورت کے لیے آفس اوقات میں تشریف لائیں!"
+        en: "🏢 Emerald Tech Partner\n\n📍 Office: Registered Office Address, City Name\n📞 Contact: 03186986259\n📧 Email: info@example.com\n💼 We help Pakistani workers get jobs in Gulf countries\n📱 WhatsApp: 03186986259\n\nVisit us during office hours for consultation!",
+        ur: "🏢 ایمرالڈ ٹیک پارٹنر کنسلٹنسی سروس\n\n📍 آفس: Registered Office Address, City Name\n📞 رابطہ: 03186986259\n📧 ای میل: info@example.com\n💼 ہم پاکستانی کارکنوں کو خلیجی ملازمت دلاتے ہیں\n📱 واٹس ایپ: 03186986259\n\nمشاورت کے لیے آفس اوقات میں تشریف لائیں!"
       },
       troubleshoot: {
         en: "🔧 Having Issues?\n\n1. 🔄 Refresh your page\n2. 🌐 Check internet\n3. 📱 Try on mobile\n\nStill having problems?\n📞 Call: 03186986259\n📧 Email: info@emeraldvisaconsultancy.com\n\nWe're here to help! 😊",
