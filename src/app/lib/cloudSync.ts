@@ -18,7 +18,7 @@ import { DataSyncService } from './dataSync';
 import { AuditLogService } from './auditLog';
 import { toast } from './toast';
 import { DataIntegrityFix } from './dataIntegrityFix';
-import { useNotificationStore } from '../store/notificationStore';
+import { useNotificationStore } from './notificationStore';
 import * as RealtimeService from "./realtimeService";
 import { RealtimeChangePayload } from "./realtimeService";
 
