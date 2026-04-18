@@ -1,4 +1,4 @@
-name: Deploy to Hostinger VPS
+name: Deploy to Hostinger Shared Hosting (FTP)
 
 on:
   push:
@@ -6,52 +6,36 @@ on:
       - main
 
 jobs:
-  deploy:
+  web-deploy:
+    name: 🎉 Deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+    - name: 🛠️ Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
 
-      - name: Install Dependencies & Build
-        run: |
-          npm install
-          npm run build
+    - name: 📦 Install and Build
+      run: |
+        npm install
+        npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            # 1. Sync files (using a directory in home first for safety)
-            mkdir -p ~/emerald-crm/dist
-            
-            # Note: We'll use SCP in the next step or just git pull for now
-            # For simplicity in this first version, we'll git pull and build ON server
-            # because SCPing thousands of files is slow.
-            
-            cd ~/emerald-crm || git clone https://github.com/moonpeer222-create/Draft-CRM-1-Claw.git ~/emerald-crm
-            cd ~/emerald-crm
-            git pull origin main
-            
-            # Setup .env
-            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
-            echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
-            
-            # Install & Build
-            npm install
-            npm run build
-            
-            # Start or Restart with PM2
-            pm2 delete emerald-crm || true
-            pm2 start "npx serve -s dist -p 3001" --name emerald-crm
-            
-            # Save PM2 state
-            pm2 save
+    - name: 🚀 Sync Files via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        port: 21
+        local-dir: ./dist/
+        server-dir: ./public_html/
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
