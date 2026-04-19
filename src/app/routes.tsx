@@ -220,12 +220,12 @@ const routeConfig = [
       { path: "customer/login", element: <SuspenseWrap><CustomerLogin /></SuspenseWrap> },
       { path: "operator/login", element: <SuspenseWrap><OperatorLogin /></SuspenseWrap> },
 
-      // ── Admin Portal (unified layout) ─────────────────────────────
-      {
-        path: "admin",
-        element: <AdminLayout />,
-        children: [
-          { index: true, element: <SuspenseWrap><AdminDashboard /></SuspenseWrap> },
+// ── Admin Portal Routes ─────────────────────────────────────────────
+const adminRoutes = {
+  path: "admin",
+  element: <AdminLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><AdminDashboard /></SuspenseWrap> },
           { path: "reports", element: <SuspenseWrap><AdminReports /></SuspenseWrap> },
           { path: "team", element: <SuspenseWrap><AdminTeam /></SuspenseWrap> },
           { path: "attendance", element: <SuspenseWrap><AdminAttendance /></SuspenseWrap> },
@@ -245,104 +245,20 @@ const routeConfig = [
           { path: "passport-tracker", element: <SuspenseWrap><AdminPassportTracker /></SuspenseWrap> },
           { path: "approval-queue", element: <SuspenseWrap><AdminApprovalQueue /></SuspenseWrap> },
           { path: "audit-log", element: <SuspenseWrap><AdminAuditLog /></SuspenseWrap> },
-          { path: "backup", element: <SuspenseWrap><AdminBackup /></SuspenseWrap> },
-          { path: "sync-history", element: <SuspenseWrap><AdminSyncHistory /></SuspenseWrap> },
-          { path: "ai-chatbot", element: <SuspenseWrap><AdminAIChatbot /></SuspenseWrap> },
-          { path: "voice-assistant", element: <SuspenseWrap><AdminVoiceAssistant /></SuspenseWrap> },
-          { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
-          { path: "health", element: <SuspenseWrap><AdminHealthDashboard /></SuspenseWrap> },
-        ],
-      },
+      // ── Portals ──────────────────────────────────────────────────
+      adminRoutes,
+      masterRoutes,
+      agentRoutes,
+      customerRoutes,
+      operatorRoutes,
 
-      // ── Master Admin Portal (unified layout) ──────────────────────
-      {
-        path: "master",
-        element: <MasterLayout />,
-        children: [
-          { index: true, element: <SuspenseWrap><MasterDashboard /></SuspenseWrap> },
-          { path: "ai-chatbot", element: <SuspenseWrap><MasterAIChatbot /></SuspenseWrap> },
-          { path: "voice-assistant", element: <SuspenseWrap><MasterVoiceAssistant /></SuspenseWrap> },
-          { path: "profile", element: <SuspenseWrap><MasterProfile /></SuspenseWrap> },
-          { path: "ai-tools", element: <SuspenseWrap><MasterAITools /></SuspenseWrap> },
-          { path: "stepfun-test", element: <SuspenseWrap><MasterQwenTest /></SuspenseWrap> },
-          { path: "qwen-test", element: <Navigate to="/master/stepfun-test" replace /> },
-          { path: "tenants", element: <SuspenseWrap><MasterTenantsList /></SuspenseWrap> },
-          { path: "audit-dashboard", element: <SuspenseWrap><MasterAuditDashboard /></SuspenseWrap> },
-          // Master admin reuses admin pages for shared functionality
-          { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
-          { path: "cases/:caseId", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
-          { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
-          { path: "documents", element: <SuspenseWrap><AdminDocuments /></SuspenseWrap> },
-          { path: "financials", element: <SuspenseWrap><AdminFinancials /></SuspenseWrap> },
-          { path: "team", element: <SuspenseWrap><AdminTeam /></SuspenseWrap> },
-          { path: "attendance", element: <SuspenseWrap><AdminAttendance /></SuspenseWrap> },
-          { path: "overdue-cases", element: <SuspenseWrap><AdminOverdueCases /></SuspenseWrap> },
-          { path: "approval-queue", element: <SuspenseWrap><AdminApprovalQueue /></SuspenseWrap> },
-          { path: "passport-tracker", element: <SuspenseWrap><AdminPassportTracker /></SuspenseWrap> },
-          { path: "leaderboard", element: <SuspenseWrap><AdminLeaderboard /></SuspenseWrap> },
-          { path: "agent-codes", element: <SuspenseWrap><AdminAgentCodes /></SuspenseWrap> },
-          { path: "user-management", element: <SuspenseWrap><AdminUserManagement /></SuspenseWrap> },
-          { path: "reports", element: <SuspenseWrap><AdminReports /></SuspenseWrap> },
-          { path: "analytics", element: <SuspenseWrap><AdminAnalytics /></SuspenseWrap> },
-          { path: "business-intelligence", element: <SuspenseWrap><AdminBusinessIntelligence /></SuspenseWrap> },
-          { path: "settings", element: <SuspenseWrap><AdminSettings /></SuspenseWrap> },
-          { path: "health", element: <SuspenseWrap><AdminHealthDashboard /></SuspenseWrap> },
-          { path: "audit-log", element: <SuspenseWrap><AdminAuditLog /></SuspenseWrap> },
-          { path: "backup", element: <SuspenseWrap><AdminBackup /></SuspenseWrap> },
-          { path: "sync-history", element: <SuspenseWrap><AdminSyncHistory /></SuspenseWrap> },
-        ],
-      },
-
-      // ── Agent Portal (unified layout) ──────────────────────────────
-      {
-        path: "agent",
-        element: <AgentLayout />,
-        children: [
-          { index: true, element: <SuspenseWrap><AgentDashboard /></SuspenseWrap> },
-          { path: "cases", element: <SuspenseWrap><AgentCases /></SuspenseWrap> },
-          { path: "cases/:caseId", element: <SuspenseWrap><AgentCases /></SuspenseWrap> },
-          { path: "calendar", element: <SuspenseWrap><AgentCalendar /></SuspenseWrap> },
-          { path: "performance", element: <SuspenseWrap><AgentPerformance /></SuspenseWrap> },
-          { path: "attendance", element: <SuspenseWrap><AgentAttendance /></SuspenseWrap> },
-          { path: "profile", element: <SuspenseWrap><AgentProfile /></SuspenseWrap> },
-          { path: "ai-chatbot", element: <SuspenseWrap><AgentAIChatbot /></SuspenseWrap> },
-          { path: "voice-assistant", element: <SuspenseWrap><AgentVoiceAssistant /></SuspenseWrap> },
-        ],
-      },
-
-      // ── Customer Portal (unified layout) ───────────────────────────
-      {
-        path: "customer",
-        element: <CustomerLayout />,
-        children: [
-          { index: true, element: <SuspenseWrap><CustomerDashboard /></SuspenseWrap> },
-          { path: "documents", element: <SuspenseWrap><CustomerDocuments /></SuspenseWrap> },
-          { path: "payments", element: <SuspenseWrap><CustomerPayments /></SuspenseWrap> },
-          { path: "notifications", element: <SuspenseWrap><CustomerNotifications /></SuspenseWrap> },
-          { path: "ai-chatbot", element: <SuspenseWrap><CustomerAIChatbot /></SuspenseWrap> },
-          { path: "voice-assistant", element: <SuspenseWrap><CustomerVoiceAssistant /></SuspenseWrap> },
-        ],
-      },
-
-      // ── Operator Portal (unified layout) ───────────────────────────
-      {
-        path: "operator",
-        element: <OperatorLayout />,
-        children: [
-          { index: true, element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
-          { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
-          { path: "ai-chatbot", element: <SuspenseWrap><OperatorAIChatbot /></SuspenseWrap> },
-          { path: "voice-assistant", element: <SuspenseWrap><OperatorVoiceAssistant /></SuspenseWrap> },
-        ],
-      },
-
+      // ── Public ───────────────────────────────────────────────────
       { path: "signup", element: <SuspenseWrap><TenantSignup /></SuspenseWrap> },
       { path: "onboarding", element: <SuspenseWrap><OnboardingWizard /></SuspenseWrap> },
       { path: "update-password", element: <SuspenseWrap><UpdatePassword /></SuspenseWrap> },
       { path: "terms", element: <SuspenseWrap><TermsOfService /></SuspenseWrap> },
       { path: "privacy", element: <SuspenseWrap><PrivacyPolicy /></SuspenseWrap> },
       { path: "pricing", element: <SuspenseWrap><PricingPage /></SuspenseWrap> },
-      // 404
       { path: "*", element: <SuspenseWrap><NotFound /></SuspenseWrap> },
     ],
   },
