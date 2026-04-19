@@ -5,7 +5,7 @@
 
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
 import { db } from "../lib/db.ts";
-import { authMiddleware } from "../authMiddleware";
+import { authMiddleware } from "../authMiddleware.ts";
 import { ServerSession } from "../lib/auth.ts";
 import { rateLimiter } from "../lib/utils.ts";
 

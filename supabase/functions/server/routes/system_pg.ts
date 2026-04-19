@@ -1,6 +1,6 @@
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
-import * as db from "../lib/db";
-import { authMiddleware } from "../authMiddleware";
+import * as db from "../lib/db.ts";
+import { authMiddleware } from "../authMiddleware.ts";
 
 const system = new Hono();
 
