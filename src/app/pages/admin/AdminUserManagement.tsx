@@ -4,6 +4,7 @@ import { useTheme } from "../../lib/ThemeContext";
 import { motion, AnimatePresence } from "motion/react";
 import { staggerContainer, staggerItem, modalVariants } from "../../lib/animations";
 import { NotificationService } from "../../lib/notifications";
+import { getCurrentTenantId } from "../../lib/tenantContext";
 import {
   Users, ShieldCheck, Shield, User as UserIcon, Check, Search, UserPlus, RefreshCw,
   Crown, Mail, EyeOff, Eye, Trash2, X, Key,
@@ -21,6 +22,7 @@ interface ProfileUser {
   role: UserRole;
   created_at: string;
   last_seen: string | null;
+  tenant_id: string | null;
 }
 
 export function AdminUserManagement() {
@@ -41,17 +43,43 @@ export function AdminUserManagement() {
   const [showResetPwModal, setShowResetPwModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ProfileUser | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentTenantId, setCurrentTenantId] = useState<string | null>(null);
 
   const [newUser, setNewUser] = useState({
     fullName: "", email: "", password: "", role: "customer" as UserRole,
   });
   const [editData, setEditData] = useState<Partial<ProfileUser>>({});
 
-  useEffect(() => { loadUsers(); }, []);
+  // Load tenant context on mount
+  useEffect(() => {
+    const loadTenant = async () => {
+      const tid = await getCurrentTenantId();
+      setCurrentTenantId(tid);
+    };
+    loadTenant();
+  }, []);
+
+  useEffect(() => { loadUsers(); }, [currentTenantId]);
   useEffect(() => { applyFilters(); }, [searchTerm, roleFilter, users]);
 
   const loadUsers = async () => {
-    const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    if (!currentTenantId) {
+      // Wait for tenant context to load
+      const tid = await getCurrentTenantId();
+      if (!tid) {
+        toast.error("No tenant context available. Please log in again.");
+        return;
+      }
+      setCurrentTenantId(tid);
+    }
+
+    // Query users filtered by tenant_id - TENANT ISOLATION
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("tenant_id", currentTenantId)
+      .order("created_at", { ascending: false });
+
     if (!error && data) {
       setUsers(data as ProfileUser[]);
     } else {
@@ -87,6 +115,13 @@ export function AdminUserManagement() {
       toast.error("Email already exists"); return;
     }
 
+    // Ensure we have tenant context
+    const tenantId = currentTenantId || await getCurrentTenantId();
+    if (!tenantId) {
+      toast.error("No tenant context available. Please log in again.");
+      return;
+    }
+
     const lt = toast.loading("Creating user...");
     try {
       // Generate agent_id and deterministic password for agents
@@ -96,6 +131,7 @@ export function AdminUserManagement() {
           .from("profiles")
           .select("agent_id")
           .eq("role", "agent")
+          .eq("tenant_id", tenantId) // Tenant isolation
           .not("agent_id", "is", null)
           .order("agent_id", { ascending: false })
           .limit(1);
@@ -118,9 +154,12 @@ export function AdminUserManagement() {
         toast.error(signUpError?.message || "Account creation failed");
         return;
       }
+
+      // Update profile with tenant_id and role - TENANT ISOLATION
       await supabase.from("profiles").update({
         role: newUser.role,
         full_name: newUser.fullName.trim(),
+        tenant_id: tenantId, // Set tenant_id for new user
         ...(agentId ? { agent_id: agentId, agent_name: newUser.fullName.trim() } : {}),
       }).eq("id", signUpData.user.id);
 
@@ -138,13 +177,24 @@ export function AdminUserManagement() {
 
   const handleUpdateUser = async () => {
     if (!selectedUser) return;
+
+    // Ensure tenant isolation - can only edit users in same tenant
+    if (selectedUser.tenant_id !== currentTenantId) {
+      toast.error("Cannot edit user from different tenant");
+      return;
+    }
+
     const lt = toast.loading("Updating user...");
     try {
       const { error } = await supabase.from("profiles").update({
         full_name: editData.full_name,
         email: editData.email,
         role: editData.role,
-      }).eq("id", selectedUser.id);
+        // Preserve tenant_id
+        tenant_id: selectedUser.tenant_id,
+      }).eq("id", selectedUser.id)
+        .eq("tenant_id", currentTenantId || ""); // Additional tenant filter
+
       if (error) throw error;
       toast.dismiss(lt);
       toast.success("User updated successfully!");
@@ -177,10 +227,22 @@ export function AdminUserManagement() {
 
   const handleDeleteUser = async (user: ProfileUser) => {
     if (user.role === "master_admin") { toast.error("Cannot delete master admin"); return; }
+
+    // Tenant isolation check
+    if (user.tenant_id !== currentTenantId) {
+      toast.error("Cannot delete user from different tenant");
+      return;
+    }
+
     if (!confirm(`Delete ${user.full_name || user.email}? This action cannot be undone.`)) return;
     const lt = toast.loading("Deleting user...");
     try {
-      const { error } = await supabase.from("profiles").delete().eq("id", user.id);
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", user.id)
+        .eq("tenant_id", currentTenantId || ""); // Tenant isolation
+
       if (error) throw error;
       toast.dismiss(lt);
       toast.success("User deleted!");
@@ -222,6 +284,11 @@ export function AdminUserManagement() {
           <div>
             <h1 className={`text-xl md:text-2xl font-bold mb-1 ${txt}`}>{isUrdu ? "صارف انتظام" : "User Management"}</h1>
             <p className={sub}>{isUrdu ? "ایڈمنز، ایجنٹس اور صارفین کا انتظام" : "Manage admins, agents, and customers"}</p>
+            {currentTenantId && (
+              <p className={`text-xs mt-1 ${sub}`}>
+                Tenant: {currentTenantId.slice(0, 8)}...
+              </p>
+            )}
           </div>
           <div className="flex gap-3">
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={loadUsers} className={`flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm transition-all ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-white"}`}>
@@ -301,21 +368,47 @@ export function AdminUserManagement() {
                         </div>
                       </td>
                       <td className="py-4 px-4 md:px-6">
-                        <div className={`flex items-center gap-2 text-sm ${sub}`}><Mail className="w-3.5 h-3.5 shrink-0" /> <span className="truncate max-w-[180px]">{user.email}</span></div>
-                      </td>
-                      <td className="py-4 px-4 md:px-6">
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${getRoleColor(user.role)}`}>
-                          <RoleIcon className="w-3.5 h-3.5" />
-                          <span className="text-xs font-semibold capitalize">{user.role.replace("_", " ")}</span>
+                        <div className="flex items-center gap-2">
+                          <Mail className={`w-4 h-4 ${sub}`} />
+                          <span className={`text-sm ${txt}`}>{user.email}</span>
                         </div>
                       </td>
                       <td className="py-4 px-4 md:px-6">
-                        <div className="flex gap-1">
-                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { setSelectedUser(user); setEditData({ full_name: user.full_name, email: user.email, role: user.role }); setShowEditModal(true); }} className={`p-2 text-blue-600 rounded-lg ${dc ? "hover:bg-blue-900/20" : "hover:bg-blue-50"}`} title="Edit"><Edit className="w-4 h-4" /></motion.button>
-                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { setSelectedUser(user); setShowResetPwModal(true); }} className={`p-2 text-amber-600 rounded-lg ${dc ? "hover:bg-amber-900/20" : "hover:bg-amber-50"}`} title="Reset password"><Key className="w-4 h-4" /></motion.button>
-                          {user.role !== "master_admin" && (
-                            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteUser(user)} className={`p-2 text-red-600 rounded-lg ${dc ? "hover:bg-red-900/20" : "hover:bg-red-50"}`} title="Delete"><Trash2 className="w-4 h-4" /></motion.button>
-                          )}
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${getRoleColor(user.role)}`}>
+                          <RoleIcon className="w-3.5 h-3.5" />
+                          {user.role === "master_admin" ? "Master Admin" :
+                           user.role === "admin" ? "Admin" :
+                           user.role === "agent" ? "Agent" :
+                           user.role === "operator" ? "Operator" : "Customer"}
+                        </div>
+                        {user.agent_id && (
+                          <p className={`text-xs ${sub} mt-1`}>{user.agent_id}</p>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 md:px-6">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => { setSelectedUser(user); setEditData({ full_name: user.full_name, email: user.email, role: user.role }); setShowEditModal(true); }}
+                            className={`p-2 rounded-lg transition-colors ${dc ? "hover:bg-gray-700 text-gray-400 hover:text-blue-400" : "hover:bg-gray-100 text-gray-500 hover:text-blue-600"}`}
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setSelectedUser(user); setShowResetPwModal(true); }}
+                            className={`p-2 rounded-lg transition-colors ${dc ? "hover:bg-gray-700 text-gray-400 hover:text-amber-400" : "hover:bg-gray-100 text-gray-500 hover:text-amber-600"}`}
+                            title="Reset Password"
+                          >
+                            <Key className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={user.role === "master_admin"}
+                            className={`p-2 rounded-lg transition-colors ${dc ? "hover:bg-gray-700 text-gray-400 hover:text-red-400" : "hover:bg-gray-100 text-gray-500 hover:text-red-600"} ${user.role === "master_admin" ? "opacity-30 cursor-not-allowed" : ""}`}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </motion.tr>
@@ -324,76 +417,82 @@ export function AdminUserManagement() {
               </tbody>
             </table>
           </div>
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <Users className={`w-12 h-12 mx-auto mb-4 ${sub}`} />
-              <p className={sub}>{isUrdu ? "کوئی صارف نہیں ملا" : "No users found"}</p>
-            </div>
-          )}
         </motion.div>
       </div>
 
+      {/* Create Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
-            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" onClick={(e) => e.stopPropagation()} className={`${dc ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto`}>
-              <div className={`flex items-center justify-between p-6 border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <h2 className={`text-lg font-bold ${txt}`}>{isUrdu ? "نیا صارف بنائیں" : "Create New User"}</h2>
-                <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowCreateModal(false)} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></motion.button>
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`w-full max-w-md rounded-2xl shadow-2xl ${card} p-6`}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-xl font-bold ${txt}`}>{isUrdu ? "نیا صارف بنائیں" : "Create New User"}</h2>
+                <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="space-y-4">
                 <div>
-                  <label className={labelCls}>{isUrdu ? "کردار *" : "Role *"}</label>
+                  <label className={labelCls}>{isUrdu ? "پورا نام" : "Full Name"} *</label>
+                  <input type="text" value={newUser.fullName} onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })} className={inputCls} placeholder={isUrdu ? "علی احمد" : "Ali Ahmad"} />
+                </div>
+                <div>
+                  <label className={labelCls}>{isUrdu ? "ای میل" : "Email"} *</label>
+                  <input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} className={inputCls} placeholder="ali@example.com" />
+                </div>
+                <div>
+                  <label className={labelCls}>{isUrdu ? "پاس ورڈ" : "Password"} *</label>
+                  <div className="relative">
+                    <input type={showPassword ? "text" : "password"} value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} className={`${inputCls} pr-12`} placeholder={isUrdu ? "کم از کم 6 حروف" : "Min 6 characters"} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded ${dc ? "hover:bg-gray-600" : "hover:bg-gray-200"}`}>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className={`text-xs mt-1 ${sub}`}>{isUrdu ? "ایجنٹس کے لیے پاس ورڈ خودکار طور پر مقرر ہو جائے گا" : "Agents get auto-assigned passwords"}</p>
+                </div>
+                <div>
+                  <label className={labelCls}>{isUrdu ? "کردار" : "Role"} *</label>
                   <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })} className={inputCls}>
                     <option value="customer">{isUrdu ? "صارف" : "Customer"}</option>
                     <option value="agent">{isUrdu ? "ایجنٹ" : "Agent"}</option>
                     <option value="admin">{isUrdu ? "ایڈمن" : "Admin"}</option>
                     <option value="operator">{isUrdu ? "آپریٹر" : "Operator"}</option>
+                    <option value="master_admin">{isUrdu ? "ماسٹر ایڈمن" : "Master Admin"}</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>{isUrdu ? "پورا نام *" : "Full Name *"}</label>
-                  <input type="text" value={newUser.fullName} onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })} className={inputCls} placeholder={isUrdu ? "پورا نام درج کریں" : "Enter full name"} />
-                </div>
-                <div>
-                  <label className={labelCls}>{isUrdu ? "ای میل *" : "Email *"}</label>
-                  <input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} className={inputCls} placeholder="email@example.com" dir="ltr" />
-                </div>
-                <div>
-                  <label className={labelCls}>{isUrdu ? "پاس ورڈ *" : "Password *"}</label>
-                  <div className="relative">
-                    <input type={showPassword ? "text" : "password"} value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} className={inputCls} placeholder={isUrdu ? "کم از کم 6 حروف" : "Min 6 characters"} dir="ltr" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${sub}`}>
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                <div className={`p-3 rounded-xl text-sm ${dc ? "bg-blue-900/20 text-blue-300" : "bg-blue-50 text-blue-700"}`}>
+                  <p><strong>{isUrdu ? "ٹیننٹ:" : "Tenant:"}</strong> {currentTenantId ? currentTenantId.slice(0, 16) + "..." : "Loading..."}</p>
+                  <p className="text-xs mt-1 opacity-75">{isUrdu ? "نیا صارف اسی ٹیننٹ میں بنایا جائے گا" : "New user will be created in this tenant"}</p>
                 </div>
               </div>
-              <div className={`flex gap-3 p-6 border-t ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowCreateModal(false)} className={`flex-1 py-3 rounded-xl border ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ" : "Cancel"}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleCreateUser} className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold flex items-center justify-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  {isUrdu ? "صارف بنائیں" : "Create User"}
-                </motion.button>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowCreateModal(false)} className={`flex-1 py-2.5 border rounded-xl font-medium transition-all ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ کریں" : "Cancel"}</button>
+                <button onClick={handleCreateUser} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all shadow-lg">{isUrdu ? "صارف بنائیں" : "Create User"}</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Edit Modal */}
       <AnimatePresence>
         {showEditModal && selectedUser && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
-            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" onClick={(e) => e.stopPropagation()} className={`${dc ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-2xl w-full max-w-md`}>
-              <div className={`flex items-center justify-between p-6 border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <h2 className={`text-lg font-bold ${txt}`}>{isUrdu ? "صارف میں ترمیم" : "Edit User"}</h2>
-                <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowEditModal(false)} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></motion.button>
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`w-full max-w-md rounded-2xl shadow-2xl ${card} p-6`}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-xl font-bold ${txt}`}>{isUrdu ? "صارف میں ترمیم کریں" : "Edit User"}</h2>
+                <button onClick={() => setShowEditModal(false)} className={`p-2 rounded-lg ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div><label className={labelCls}>{isUrdu ? "پورا نام" : "Full Name"}</label><input type="text" value={editData.full_name || ""} onChange={(e) => setEditData({ ...editData, full_name: e.target.value })} className={inputCls} /></div>
-                <div><label className={labelCls}>{isUrdu ? "ای میل" : "Email"}</label><input type="email" value={editData.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className={inputCls} dir="ltr" /></div>
-                <div><label className={labelCls}>{isUrdu ? "کردار" : "Role"}</label>
-                  <select value={editData.role || ""} onChange={(e) => setEditData({ ...editData, role: e.target.value as UserRole })} className={inputCls} disabled={selectedUser.role === "master_admin"}>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>{isUrdu ? "پورا نام" : "Full Name"}</label>
+                  <input type="text" value={editData.full_name || ""} onChange={(e) => setEditData({ ...editData, full_name: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{isUrdu ? "ای میل" : "Email"}</label>
+                  <input type="email" value={editData.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{isUrdu ? "کردار" : "Role"}</label>
+                  <select value={editData.role || selectedUser.role} onChange={(e) => setEditData({ ...editData, role: e.target.value as UserRole })} className={inputCls}>
                     <option value="customer">{isUrdu ? "صارف" : "Customer"}</option>
                     <option value="agent">{isUrdu ? "ایجنٹ" : "Agent"}</option>
                     <option value="admin">{isUrdu ? "ایڈمن" : "Admin"}</option>
@@ -402,29 +501,28 @@ export function AdminUserManagement() {
                   </select>
                 </div>
               </div>
-              <div className={`flex gap-3 p-6 border-t ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowEditModal(false)} className={`flex-1 py-3 rounded-xl border ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ" : "Cancel"}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleUpdateUser} className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold">{isUrdu ? "محفوظ کریں" : "Save"}</motion.button>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowEditModal(false)} className={`flex-1 py-2.5 border rounded-xl font-medium transition-all ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ کریں" : "Cancel"}</button>
+                <button onClick={handleUpdateUser} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all shadow-lg">{isUrdu ? "تبدیلیاں محفوظ کریں" : "Save Changes"}</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Reset Password Modal */}
       <AnimatePresence>
         {showResetPwModal && selectedUser && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowResetPwModal(false)}>
-            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" onClick={(e) => e.stopPropagation()} className={`${dc ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-2xl w-full max-w-sm`}>
-              <div className={`flex items-center justify-between p-6 border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <h2 className={`text-lg font-bold ${txt}`}>{isUrdu ? "پاس ورڈ ری سیٹ" : "Reset Password"}</h2>
-                <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowResetPwModal(false)} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></motion.button>
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`w-full max-w-sm rounded-2xl shadow-2xl ${card} p-6`}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-xl font-bold ${txt}`}>{isUrdu ? "پاس ورڈ ری سیٹ کریں" : "Reset Password"}</h2>
+                <button onClick={() => setShowResetPwModal(false)} className={`p-2 rounded-lg ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6">
-                <p className={`text-sm ${sub} mb-4`}>{isUrdu ? `ایک پاس ورڈ ری سیٹ ای میل بھیجیں ${selectedUser.email || selectedUser.full_name} کو` : `Send a password reset email to ${selectedUser.email || selectedUser.full_name}?`}</p>
-              </div>
-              <div className={`flex gap-3 p-6 border-t ${dc ? "border-gray-700" : "border-gray-200"}`}>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowResetPwModal(false)} className={`flex-1 py-3 rounded-xl border ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ" : "Cancel"}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleResetPassword} className="flex-1 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-semibold">{isUrdu ? "بھیجیں" : "Send Email"}</motion.button>
+              <p className={`text-sm mb-4 ${sub}`}>{isUrdu ? `پاس ورڈ ری سیٹ لنک بھیجیں ${selectedUser.email} پر` : `Send password reset link to ${selectedUser.email}?`}</p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowResetPwModal(false)} className={`flex-1 py-2.5 border rounded-xl font-medium transition-all ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{isUrdu ? "منسوخ کریں" : "Cancel"}</button>
+                <button onClick={handleResetPassword} className="flex-1 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-all shadow-lg">{isUrdu ? "لنک بھیجیں" : "Send Link"}</button>
               </div>
             </motion.div>
           </motion.div>

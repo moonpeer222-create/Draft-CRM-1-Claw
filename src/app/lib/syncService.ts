@@ -3,28 +3,81 @@
 // On app start: download from server -> merge into localStorage
 // On writes: write to localStorage immediately, then push to server in background
 // If server is unavailable, everything works locally without errors.
+// TENANT ISOLATION: All localStorage keys are scoped by tenant_id
 
 import { syncApi, casesApi, agentCodesApi, codeHistoryApi, adminProfileApi, agentProfileApi, settingsApi, notificationsApi, usersApi, attendanceApi, leaveRequestsApi, healthCheck, agentAvatarApi, passportTrackingApi, auditLogApi, documentFilesApi, backupApi, setServerAvailable } from "./api";
+import { getCachedTenantId, getTenantScopedKey } from "./tenantContext";
 
-const SYNC_STATUS_KEY = "crm_sync_status";
-const SYNC_QUEUE_KEY = "crm_sync_queue";
-const LOCAL_TIMESTAMPS_KEY = "crm_local_entity_timestamps";
-const CONFLICT_LOG_KEY = "crm_sync_conflict_log";
-const CONFLICT_HISTORY_KEY = "crm_sync_conflict_history";
-const LAST_AUTO_EXPORT_KEY = "crm_last_auto_export";
-const CONFLICT_AUTO_RESOLVE_KEY = "crm_conflict_auto_resolve";
-const SYNC_INTERVAL_KEY = "crm_sync_interval";
+// Base keys - will be suffixed with tenant_id for isolation
+const SYNC_STATUS_BASE = "crm_sync_status";
+const SYNC_QUEUE_BASE = "crm_sync_queue";
+const LOCAL_TIMESTAMPS_BASE = "crm_local_entity_timestamps";
+const CONFLICT_LOG_BASE = "crm_sync_conflict_log";
+const CONFLICT_HISTORY_BASE = "crm_sync_conflict_history";
+const LAST_AUTO_EXPORT_BASE = "crm_last_auto_export";
+const CONFLICT_AUTO_RESOLVE_BASE = "crm_conflict_auto_resolve";
+const SYNC_INTERVAL_BASE = "crm_sync_interval";
+
+// Entity base keys
+const CASES_BASE = "crm_cases";
+const NOTIFICATIONS_BASE = "crm_notifications";
+const ALERTS_BASE = "crm_alerts";
+const ATTENDANCE_BASE = "crm_attendance";
+const LEAVE_REQUESTS_BASE = "crm_leave_requests";
+const AUDIT_LOG_BASE = "crm_audit_log";
+const PASSPORT_TRACKING_BASE = "crm_passport_tracking";
+const DOCUMENT_FILES_BASE = "crm_document_files";
+const AGENT_CODES_BASE = "emerald-agent-codes";
+const CODE_HISTORY_BASE = "emerald-code-history";
+const ADMIN_PROFILE_BASE = "crm_admin_profile";
+const AGENT_PROFILE_BASE = "crm_agent_profile";
+const SETTINGS_BASE = "crm_settings";
+const USERS_DB_BASE = "crm_users_db";
+const PENDING_CONFLICTS_BASE = "crm_pending_conflicts";
+
+// Helper to get tenant-scoped keys
+function getSyncStatusKey(): string { return getTenantScopedKey(SYNC_STATUS_BASE); }
+function getSyncQueueKey(): string { return getTenantScopedKey(SYNC_QUEUE_BASE); }
+function getLocalTimestampsKey(): string { return getTenantScopedKey(LOCAL_TIMESTAMPS_BASE); }
+function getConflictLogKey(): string { return getTenantScopedKey(CONFLICT_LOG_BASE); }
+function getConflictHistoryKey(): string { return getTenantScopedKey(CONFLICT_HISTORY_BASE); }
+function getLastAutoExportKey(): string { return getTenantScopedKey(LAST_AUTO_EXPORT_BASE); }
+function getConflictAutoResolveKey(): string { return getTenantScopedKey(CONFLICT_AUTO_RESOLVE_BASE); }
+function getSyncIntervalKey(): string { return getTenantScopedKey(SYNC_INTERVAL_BASE); }
+function getCasesKey(): string { return getTenantScopedKey(CASES_BASE); }
+function getNotificationsKey(): string { return getTenantScopedKey(NOTIFICATIONS_BASE); }
+function getAlertsKey(): string { return getTenantScopedKey(ALERTS_BASE); }
+function getAttendanceKey(): string { return getTenantScopedKey(ATTENDANCE_BASE); }
+function getLeaveRequestsKey(): string { return getTenantScopedKey(LEAVE_REQUESTS_BASE); }
+function getAuditLogKey(): string { return getTenantScopedKey(AUDIT_LOG_BASE); }
+function getPassportTrackingKey(): string { return getTenantScopedKey(PASSPORT_TRACKING_BASE); }
+function getDocumentFilesKey(): string { return getTenantScopedKey(DOCUMENT_FILES_BASE); }
+function getAgentCodesKey(): string { return getTenantScopedKey(AGENT_CODES_BASE); }
+function getCodeHistoryKey(): string { return getTenantScopedKey(CODE_HISTORY_BASE); }
+function getAdminProfileKey(): string { return getTenantScopedKey(ADMIN_PROFILE_BASE); }
+function getAgentProfileKey(name: string): string { return getTenantScopedKey(`${AGENT_PROFILE_BASE}_${name}`); }
+function getSettingsKey(): string { return getTenantScopedKey(SETTINGS_BASE); }
+function getUsersDbKey(): string { return getTenantScopedKey(USERS_DB_BASE); }
+function getPendingConflictsKey(): string { return getTenantScopedKey(PENDING_CONFLICTS_BASE); }
 
 // ============================================================
-// Cross-tab sync via BroadcastChannel
+// Cross-tab sync via BroadcastChannel - scoped by tenant
 // ============================================================
-const SYNC_CHANNEL_NAME = "emerald-crm-sync";
+function getSyncChannelName(): string {
+  const tid = getCachedTenantId();
+  return `emerald-crm-sync${tid ? `-${tid}` : ''}`;
+}
+
 let broadcastChannel: BroadcastChannel | null = null;
 
 export function initCrossTabSync() {
   try {
     if (typeof BroadcastChannel === "undefined") return;
-    broadcastChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+    // Close existing channel if tenant changed
+    if (broadcastChannel) {
+      broadcastChannel.close();
+    }
+    broadcastChannel = new BroadcastChannel(getSyncChannelName());
     broadcastChannel.onmessage = (event) => {
       const { type, entityKey, timestamp } = event.data || {};
       if (type === "entity-updated" && entityKey) {
@@ -45,6 +98,10 @@ export function initCrossTabSync() {
 
 export function notifyCrossTab(entityKey: string) {
   try {
+    // Ensure we're on the right channel
+    if (broadcastChannel?.name !== getSyncChannelName()) {
+      initCrossTabSync();
+    }
     broadcastChannel?.postMessage({ type: "entity-updated", entityKey, timestamp: new Date().toISOString() });
   } catch { /* ignore */ }
 }
@@ -52,12 +109,18 @@ export function notifyCrossTab(entityKey: string) {
 /** Broadcast that a conflict was resolved (for cross-tab toast notifications) */
 export function notifyCrossTabConflictResolved(entity: string, recordId: string, method: "local" | "server" | "cherry-pick") {
   try {
+    if (broadcastChannel?.name !== getSyncChannelName()) {
+      initCrossTabSync();
+    }
     broadcastChannel?.postMessage({ type: "conflict-resolved", entity, recordId, method, timestamp: new Date().toISOString() });
   } catch { /* ignore */ }
 }
 
 function notifyCrossTabSyncCompleted() {
   try {
+    if (broadcastChannel?.name !== getSyncChannelName()) {
+      initCrossTabSync();
+    }
     broadcastChannel?.postMessage({ type: "sync-completed", timestamp: new Date().toISOString() });
   } catch { /* ignore */ }
 }
@@ -70,6 +133,7 @@ interface SyncState {
   pendingOps: number;
   error: string | null;
   serverAvailable: boolean;
+  tenantId: string | null;
 }
 
 let syncState: SyncState = {
@@ -78,6 +142,7 @@ let syncState: SyncState = {
   pendingOps: 0,
   error: null,
   serverAvailable: false,
+  tenantId: null,
 };
 
 // Listeners for UI updates
@@ -97,10 +162,21 @@ export function getSyncState(): SyncState {
   return { ...syncState };
 }
 
+/** Update sync state with current tenant */
+function updateTenantContext() {
+  const currentTenant = getCachedTenantId();
+  if (currentTenant !== syncState.tenantId) {
+    syncState.tenantId = currentTenant;
+    // Re-initialize cross-tab sync for new tenant
+    initCrossTabSync();
+  }
+}
+
 // ============================================================
 // Check server availability (silent - no console errors)
 // ============================================================
 export async function checkServer(): Promise<boolean> {
+  updateTenantContext();
   try {
     const res = await healthCheck();
     syncState.serverAvailable = res.success === true;
@@ -118,8 +194,17 @@ export async function checkServer(): Promise<boolean> {
 // Falls back to local-only mode silently if server unavailable
 // ============================================================
 export async function initialSync(): Promise<boolean> {
+  updateTenantContext();
   syncState.status = "syncing";
   notifyListeners();
+
+  const tenantId = getCachedTenantId();
+  if (!tenantId) {
+    syncState.status = "error";
+    syncState.error = "No tenant context available";
+    notifyListeners();
+    return false;
+  }
 
   try {
     // ── Version-reset guard (definitive zombie-data fix) ───────────
@@ -134,8 +219,8 @@ export async function initialSync(): Promise<boolean> {
     //  2. Push empty data to the server to prevent re-infection from other devices
     //  3. Skip the normal download/merge entirely on this cycle
     //
-    const VERSION_KEY = "crm_data_version";
-    const SYNC_VERSION_KEY = "crm_sync_data_version";
+    const VERSION_KEY = getTenantScopedKey("crm_data_version");
+    const SYNC_VERSION_KEY = getTenantScopedKey("crm_sync_data_version");
     const EXPECTED_VERSION = "v10-zombie-kill";
 
     // Step 1: Ensure version key is correct. If getCases() hasn't run yet,
@@ -143,19 +228,19 @@ export async function initialSync(): Promise<boolean> {
     const storedVersion = localStorage.getItem(VERSION_KEY) || "";
     if (storedVersion !== EXPECTED_VERSION) {
       const ENTITY_KEYS = [
-        "crm_cases", "crm_notifications", "crm_alerts",
-        "crm_attendance", "crm_leave_requests",
-        "crm_audit_log", "crm_passport_tracking",
-        "crm_document_files", "emerald-agent-codes",
-        "emerald-code-history", "crm_sync_conflict_log",
-        "crm_sync_conflict_history", "crm_pending_conflicts",
-        "crm_local_entity_timestamps", "crm_sync_queue",
+        getCasesKey(), getNotificationsKey(), getAlertsKey(),
+        getAttendanceKey(), getLeaveRequestsKey(),
+        getAuditLogKey(), getPassportTrackingKey(),
+        getDocumentFilesKey(), getAgentCodesKey(),
+        getCodeHistoryKey(), getConflictLogKey(),
+        getConflictHistoryKey(), getPendingConflictsKey(),
+        getLocalTimestampsKey(), getSyncQueueKey(),
       ];
       for (const key of ENTITY_KEYS) {
         localStorage.removeItem(key);
       }
       // Write clean state
-      localStorage.setItem("crm_cases", "[]");
+      localStorage.setItem(getCasesKey(), "[]");
       localStorage.setItem(VERSION_KEY, EXPECTED_VERSION);
     }
 
@@ -286,7 +371,7 @@ export async function initialSync(): Promise<boolean> {
 
     async function mergeCasesPerRecord(serverCases: any[] | null, localTimestamps: Record<string, string>, serverTimestamps: Record<string, string>, conflictEntries: ConflictEntry[]) {
       let localCases: any[] = [];
-      try { localCases = JSON.parse(localStorage.getItem("crm_cases") || "[]"); } catch { /* ignore */ }
+      try { localCases = JSON.parse(localStorage.getItem(getCasesKey()) || "[]"); } catch { /* ignore */ }
 
       const hasServer = serverCases && Array.isArray(serverCases) && serverCases.length > 0;
       const hasLocal = localCases.length > 0;
@@ -303,7 +388,7 @@ export async function initialSync(): Promise<boolean> {
         return;
       }
       if (!hasLocal) {
-        localStorage.setItem("crm_cases", JSON.stringify(serverCases));
+        localStorage.setItem(getCasesKey(), JSON.stringify(serverCases));
         conflictEntries.push({ entity: "cases", winner: "server", localTs: null, serverTs: serverTimestamps.cases || null, detail: `Applied ${serverCases!.length} server cases` });
         return;
       }
@@ -392,7 +477,7 @@ export async function initialSync(): Promise<boolean> {
       });
 
       // Save merged result locally and push to server
-      localStorage.setItem("crm_cases", JSON.stringify(merged));
+      localStorage.setItem(getCasesKey(), JSON.stringify(merged));
       try { await casesApi.saveAll(merged); } catch { /* ignore */ }
 
       const parts: string[] = [];
@@ -506,37 +591,37 @@ export async function initialSync(): Promise<boolean> {
     // Per-record merge for cases: merge by case ID using updatedDate as tiebreaker
     await mergeCasesPerRecord(data.cases, localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeArray("agentCodes", data.agentCodes, "emerald-agent-codes", (d) => agentCodesApi.saveAll(d));
-    await mergeArray("codeHistory", data.codeHistory, "emerald-code-history", (d) => codeHistoryApi.save(d));
+    await mergeArray("agentCodes", data.agentCodes, getAgentCodesKey(), (d) => agentCodesApi.saveAll(d));
+    await mergeArray("codeHistory", data.codeHistory, getCodeHistoryKey(), (d) => codeHistoryApi.save(d));
 
     // Per-record merge for notifications (by id, using timestamp)
-    await mergeRecordsById("notifications", data.notifications, "crm_notifications",
+    await mergeRecordsById("notifications", data.notifications, getNotificationsKey(),
       (r) => r.timestamp || "1970-01-01",
       (d) => notificationsApi.save(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for users (by id, using updatedAt)
-    await mergeRecordsById("users", data.users, "crm_users_db",
+    await mergeRecordsById("users", data.users, getUsersDbKey(),
       (r) => r.updatedAt || r.createdAt || "1970-01-01",
       (d) => usersApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeObject("adminProfile", data.adminProfile, "crm_admin_profile", (d) => adminProfileApi.save(d));
-    await mergeObject("settings", data.settings, "crm_settings", (d) => settingsApi.save(d));
+    await mergeObject("adminProfile", data.adminProfile, getAdminProfileKey(), (d) => adminProfileApi.save(d));
+    await mergeObject("settings", data.settings, getSettingsKey(), (d) => settingsApi.save(d));
 
     // Restore theme preferences from synced settings (cross-device)
     restoreThemeFromSettings();
 
     // Per-record merge for attendance (by id, using checkOut/checkIn as timestamp)
-    await mergeRecordsById("attendance", data.attendance, "crm_attendance",
+    await mergeRecordsById("attendance", data.attendance, getAttendanceKey(),
       (r) => r.checkOut || r.checkIn || r.date || "1970-01-01",
       (d) => attendanceApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for leave requests (by id, using reviewedAt/submittedAt)
-    await mergeRecordsById("leaveRequests", data.leaveRequests, "crm_leave_requests",
+    await mergeRecordsById("leaveRequests", data.leaveRequests, getLeaveRequestsKey(),
       (r) => r.reviewedAt || r.submittedAt || "1970-01-01",
       (d) => leaveRequestsApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for passport tracking (by id, using latest history entry or checkedOutAt)
-    await mergeRecordsById("passportTracking", data.passportTracking, "crm_passport_tracking",
+    await mergeRecordsById("passportTracking", data.passportTracking, getPassportTrackingKey(),
       (r) => {
         const hist = r.history;
         if (hist && Array.isArray(hist) && hist.length > 0) return hist[hist.length - 1].movedAt || r.checkedOutAt || "1970-01-01";
@@ -544,8 +629,8 @@ export async function initialSync(): Promise<boolean> {
       },
       (d) => passportTrackingApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeArray("auditLog", data.auditLog, "crm_audit_log", (d) => auditLogApi.saveAll(d));
-    await mergeArray("documentFiles", data.documentFiles, "crm_document_files", (d) => documentFilesApi.saveAll(d));
+    await mergeArray("auditLog", data.auditLog, getAuditLogKey(), (d) => auditLogApi.saveAll(d));
+    await mergeArray("documentFiles", data.documentFiles, getDocumentFilesKey(), (d) => documentFilesApi.saveAll(d));
 
     // Save conflict log
     saveConflictLog({ syncedAt: new Date().toISOString(), entries: conflictEntries });
@@ -556,7 +641,7 @@ export async function initialSync(): Promise<boolean> {
     syncState.status = "synced";
     syncState.lastSyncAt = new Date().toISOString();
     syncState.error = null;
-    localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(syncState));
+    localStorage.setItem(getSyncStatusKey(), JSON.stringify(syncState));
     notifyListeners();
     notifyCrossTabSyncCompleted();
     return true;
@@ -572,6 +657,12 @@ export async function initialSync(): Promise<boolean> {
 // Push all local data to server
 // ============================================================
 export async function pushLocalToServer(): Promise<boolean> {
+  updateTenantContext();
+  const tenantId = getCachedTenantId();
+  if (!tenantId) {
+    return false;
+  }
+
   try {
     const payload: Record<string, any> = {};
 
@@ -587,23 +678,26 @@ export async function pushLocalToServer(): Promise<boolean> {
       } catch { return undefined; }
     };
 
-    payload.cases = tryParse("crm_cases", 500);
-    payload.agentCodes = tryParse("emerald-agent-codes");
-    payload.adminProfile = tryParse("crm_admin_profile");
-    payload.codeHistory = tryParse("emerald-code-history", 200);
-    payload.settings = tryParse("crm_settings");
-    payload.notifications = tryParse("crm_notifications", 100);
-    payload.users = tryParse("crm_users_db");
-    payload.attendance = tryParse("crm_attendance", 500);
-    payload.leaveRequests = tryParse("crm_leave_requests", 200);
-    payload.passportTracking = tryParse("crm_passport_tracking", 300);
-    payload.auditLog = tryParse("crm_audit_log", 300);
-    payload.documentFiles = tryParse("crm_document_files");
+    payload.cases = tryParse(getCasesKey(), 500);
+    payload.agentCodes = tryParse(getAgentCodesKey());
+    payload.adminProfile = tryParse(getAdminProfileKey());
+    payload.codeHistory = tryParse(getCodeHistoryKey(), 200);
+    payload.settings = tryParse(getSettingsKey());
+    payload.notifications = tryParse(getNotificationsKey(), 100);
+    payload.users = tryParse(getUsersDbKey());
+    payload.attendance = tryParse(getAttendanceKey(), 500);
+    payload.leaveRequests = tryParse(getLeaveRequestsKey(), 200);
+    payload.passportTracking = tryParse(getPassportTrackingKey(), 300);
+    payload.auditLog = tryParse(getAuditLogKey(), 300);
+    payload.documentFiles = tryParse(getDocumentFilesKey());
 
     // Remove undefined keys
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
 
     if (Object.keys(payload).length === 0) return true;
+
+    // Add tenant context to payload metadata
+    (payload as any)._tenantId = tenantId;
 
     const res = await syncApi.upload(payload);
     return res.success;
@@ -617,6 +711,10 @@ export async function pushLocalToServer(): Promise<boolean> {
 // Immediate push (no debounce) for live Supabase mode
 // ============================================================
 export function schedulePush() {
+  updateTenantContext();
+  const tenantId = getCachedTenantId();
+  if (!tenantId) return;
+
   syncState.pendingOps++;
   notifyListeners();
 
@@ -636,10 +734,14 @@ export function schedulePush() {
 
 // Push specific entity immediately
 export async function pushCases() {
+  updateTenantContext();
+  const tenantId = getCachedTenantId();
+  if (!tenantId) return;
+
   markEntityModified("cases");
   notifyCrossTab("cases");
   if (!syncState.serverAvailable) return;
-  const localCases = localStorage.getItem("crm_cases");
+  const localCases = localStorage.getItem(getCasesKey());
   try {
     // Always push — even empty array — so server data gets wiped too
     const parsed = localCases ? JSON.parse(localCases) : [];
@@ -649,10 +751,11 @@ export async function pushCases() {
 }
 
 export async function pushAgentCodes() {
+  updateTenantContext();
   markEntityModified("agentCodes");
   notifyCrossTab("agentCodes");
   if (!syncState.serverAvailable) return;
-  const localCodes = localStorage.getItem("emerald-agent-codes");
+  const localCodes = localStorage.getItem(getAgentCodesKey());
   if (localCodes) {
     try {
       await agentCodesApi.saveAll(JSON.parse(localCodes));
@@ -662,10 +765,11 @@ export async function pushAgentCodes() {
 }
 
 export async function pushAdminProfile() {
+  updateTenantContext();
   markEntityModified("adminProfile");
   notifyCrossTab("adminProfile");
   if (!syncState.serverAvailable) return;
-  const localProfile = localStorage.getItem("crm_admin_profile");
+  const localProfile = localStorage.getItem(getAdminProfileKey());
   if (localProfile) {
     try {
       await adminProfileApi.save(JSON.parse(localProfile));
@@ -675,8 +779,9 @@ export async function pushAdminProfile() {
 }
 
 export async function pushAgentProfile(name: string) {
+  updateTenantContext();
   if (!syncState.serverAvailable) return;
-  const key = `crm_agent_profile_${name}`;
+  const key = getAgentProfileKey(name);
   const localProfile = localStorage.getItem(key);
   if (localProfile) {
     try {
@@ -687,9 +792,10 @@ export async function pushAgentProfile(name: string) {
 }
 
 export async function pushCodeHistory() {
+  updateTenantContext();
   markEntityModified("codeHistory");
   if (!syncState.serverAvailable) return;
-  const localHistory = localStorage.getItem("emerald-code-history");
+  const localHistory = localStorage.getItem(getCodeHistoryKey());
   if (localHistory) {
     try {
       await codeHistoryApi.save(JSON.parse(localHistory));
@@ -699,9 +805,10 @@ export async function pushCodeHistory() {
 }
 
 export async function pushNotifications() {
+  updateTenantContext();
   markEntityModified("notifications");
   if (!syncState.serverAvailable) return;
-  const localNotifs = localStorage.getItem("crm_notifications");
+  const localNotifs = localStorage.getItem(getNotificationsKey());
   if (localNotifs) {
     try {
       let parsed = JSON.parse(localNotifs);
@@ -716,9 +823,10 @@ export async function pushNotifications() {
 }
 
 export async function pushUsers() {
+  updateTenantContext();
   markEntityModified("users");
   if (!syncState.serverAvailable) return;
-  const localUsers = localStorage.getItem("crm_users_db");
+  const localUsers = localStorage.getItem(getUsersDbKey());
   if (localUsers) {
     try {
       await usersApi.saveAll(JSON.parse(localUsers));
@@ -728,9 +836,10 @@ export async function pushUsers() {
 }
 
 export async function pushAttendance() {
+  updateTenantContext();
   markEntityModified("attendance");
   if (!syncState.serverAvailable) return;
-  const localAttendance = localStorage.getItem("crm_attendance");
+  const localAttendance = localStorage.getItem(getAttendanceKey());
   if (localAttendance) {
     try {
       await attendanceApi.saveAll(JSON.parse(localAttendance));
@@ -740,9 +849,10 @@ export async function pushAttendance() {
 }
 
 export async function pushLeaveRequests() {
+  updateTenantContext();
   markEntityModified("leaveRequests");
   if (!syncState.serverAvailable) return;
-  const localLeave = localStorage.getItem("crm_leave_requests");
+  const localLeave = localStorage.getItem(getLeaveRequestsKey());
   if (localLeave) {
     try {
       await leaveRequestsApi.saveAll(JSON.parse(localLeave));
@@ -753,8 +863,9 @@ export async function pushLeaveRequests() {
 
 // Push agent avatar (base64 data URL) to cloud
 export async function pushAgentAvatar(name: string) {
+  updateTenantContext();
   if (!syncState.serverAvailable) return;
-  const avatarKey = `crm_agent_avatar_${name}`;
+  const avatarKey = getAgentProfileKey(name); // Use agent profile key pattern
   const localAvatar = localStorage.getItem(avatarKey);
   try {
     // Push the avatar string (or null to remove)
@@ -765,11 +876,12 @@ export async function pushAgentAvatar(name: string) {
 
 // Pull agent avatar from cloud into localStorage
 export async function pullAgentAvatar(name: string): Promise<string | null> {
+  updateTenantContext();
   try {
     const res = await agentAvatarApi.get(name);
     if (res.success && res.data) {
       const avatarKey = `crm_agent_avatar_${name}`;
-      localStorage.setItem(avatarKey, res.data as string);
+      localStorage.setItem(getTenantScopedKey(avatarKey), res.data as string);
       return res.data as string;
     }
   } catch (err) {
@@ -779,9 +891,10 @@ export async function pullAgentAvatar(name: string): Promise<string | null> {
 
 // Push passport tracking data to cloud
 export async function pushPassportTracking() {
+  updateTenantContext();
   markEntityModified("passportTracking");
   if (!syncState.serverAvailable) return;
-  const local = localStorage.getItem("crm_passport_tracking");
+  const local = localStorage.getItem(getPassportTrackingKey());
   if (local) {
     try {
       await passportTrackingApi.saveAll(JSON.parse(local));
@@ -792,9 +905,10 @@ export async function pushPassportTracking() {
 
 // Push audit log to cloud
 export async function pushAuditLog() {
+  updateTenantContext();
   markEntityModified("auditLog");
   if (!syncState.serverAvailable) return;
-  const local = localStorage.getItem("crm_audit_log");
+  const local = localStorage.getItem(getAuditLogKey());
   if (local) {
     try {
       let parsed = JSON.parse(local);
@@ -810,9 +924,10 @@ export async function pushAuditLog() {
 
 // Push document files metadata to cloud
 export async function pushDocumentFiles() {
+  updateTenantContext();
   markEntityModified("documentFiles");
   if (!syncState.serverAvailable) return;
-  const local = localStorage.getItem("crm_document_files");
+  const local = localStorage.getItem(getDocumentFilesKey());
   if (local) {
     try {
       await documentFilesApi.saveAll(JSON.parse(local));
@@ -823,9 +938,10 @@ export async function pushDocumentFiles() {
 
 // Push settings to cloud
 export async function pushSettings() {
+  updateTenantContext();
   markEntityModified("settings");
   if (!syncState.serverAvailable) return;
-  const local = localStorage.getItem("crm_settings");
+  const local = localStorage.getItem(getSettingsKey());
   if (local) {
     try {
       await settingsApi.save(JSON.parse(local));
@@ -839,22 +955,22 @@ export async function pushSettings() {
 // ============================================================
 function addToQueue(operation: string) {
   try {
-    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    const queue = JSON.parse(localStorage.getItem(getSyncQueueKey()) || "[]");
     queue.push({ operation, timestamp: Date.now() });
-    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    localStorage.setItem(getSyncQueueKey(), JSON.stringify(queue));
   } catch { /* ignore */ }
 }
 
 export async function processQueue(): Promise<void> {
   try {
-    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    const queue = JSON.parse(localStorage.getItem(getSyncQueueKey()) || "[]");
     if (queue.length === 0) return;
 
     if (!syncState.serverAvailable) return;
 
     // Just do a full sync to catch up
     await pushLocalToServer();
-    localStorage.setItem(SYNC_QUEUE_KEY, "[]");
+    localStorage.setItem(getSyncQueueKey(), "[]");
   } catch { /* ignore */ }
 }
 
@@ -866,6 +982,7 @@ let periodicInterval: ReturnType<typeof setInterval> | null = null;
 export function startPeriodicSync(intervalMs = 30000) {
   if (periodicInterval) clearInterval(periodicInterval);
   periodicInterval = setInterval(async () => {
+    updateTenantContext();
     const isUp = await checkServer();
     if (isUp) {
       await processQueue();
@@ -902,7 +1019,7 @@ export async function forceSync(): Promise<boolean> {
 // Helper function to restore theme from settings
 function restoreThemeFromSettings() {
   try {
-    const raw = localStorage.getItem("crm_settings");
+    const raw = localStorage.getItem(getSettingsKey());
     if (!raw) return;
     const settings = JSON.parse(raw);
     // Restore dark mode preference if present
@@ -927,7 +1044,7 @@ function restoreThemeFromSettings() {
 // Helper functions for entity timestamps
 function getLocalEntityTimestamps(): Record<string, string> {
   try {
-    const raw = localStorage.getItem(LOCAL_TIMESTAMPS_KEY);
+    const raw = localStorage.getItem(getLocalTimestampsKey());
     if (!raw) return {};
     return JSON.parse(raw);
   } catch { /* ignore */ }
@@ -936,7 +1053,7 @@ function getLocalEntityTimestamps(): Record<string, string> {
 
 function saveLocalEntityTimestamps(timestamps: Record<string, string>) {
   try {
-    localStorage.setItem(LOCAL_TIMESTAMPS_KEY, JSON.stringify(timestamps));
+    localStorage.setItem(getLocalTimestampsKey(), JSON.stringify(timestamps));
   } catch { /* ignore */ }
 }
 
@@ -967,18 +1084,18 @@ export interface ConflictLog {
 
 function saveConflictLog(log: ConflictLog) {
   try {
-    localStorage.setItem(CONFLICT_LOG_KEY, JSON.stringify(log));
+    localStorage.setItem(getConflictLogKey(), JSON.stringify(log));
     // Also append to conflict history (keep last 50 syncs)
-    const historyRaw = localStorage.getItem(CONFLICT_HISTORY_KEY);
+    const historyRaw = localStorage.getItem(getConflictHistoryKey());
     const history: ConflictLog[] = historyRaw ? JSON.parse(historyRaw) : [];
     history.unshift(log);
-    localStorage.setItem(CONFLICT_HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
+    localStorage.setItem(getConflictHistoryKey(), JSON.stringify(history.slice(0, 50)));
   } catch { /* ignore */ }
 }
 
 export function getConflictLog(): ConflictLog | null {
   try {
-    const raw = localStorage.getItem(CONFLICT_LOG_KEY);
+    const raw = localStorage.getItem(getConflictLogKey());
     if (!raw) return null;
     return JSON.parse(raw);
   } catch { return null; }
@@ -986,22 +1103,20 @@ export function getConflictLog(): ConflictLog | null {
 
 export function getConflictHistory(): ConflictLog[] {
   try {
-    const raw = localStorage.getItem(CONFLICT_HISTORY_KEY);
+    const raw = localStorage.getItem(getConflictHistoryKey());
     if (!raw) return [];
     return JSON.parse(raw);
   } catch { return []; }
 }
 
 export function clearConflictHistory(): void {
-  localStorage.removeItem(CONFLICT_HISTORY_KEY);
+  localStorage.removeItem(getConflictHistoryKey());
 }
 
 // ============================================================
 // Manual conflict resolution — stores conflicting record pairs
 // for admin review when both sides modified the same record
 // ============================================================
-const PENDING_CONFLICTS_KEY = "crm_pending_conflicts";
-
 export interface PendingConflict {
   id: string;           // unique conflict ID
   entity: string;       // e.g. "cases"
@@ -1016,14 +1131,14 @@ export interface PendingConflict {
 
 export function getPendingConflicts(): PendingConflict[] {
   try {
-    const raw = localStorage.getItem(PENDING_CONFLICTS_KEY);
+    const raw = localStorage.getItem(getPendingConflictsKey());
     if (!raw) return [];
     return JSON.parse(raw);
   } catch { return []; }
 }
 
 export function savePendingConflicts(conflicts: PendingConflict[]): void {
-  localStorage.setItem(PENDING_CONFLICTS_KEY, JSON.stringify(conflicts));
+  localStorage.setItem(getPendingConflictsKey(), JSON.stringify(conflicts));
 }
 
 export function addPendingConflict(conflict: Omit<PendingConflict, "id" | "detectedAt" | "resolved">): void {
@@ -1032,12 +1147,12 @@ export function addPendingConflict(conflict: Omit<PendingConflict, "id" | "detec
   if (autoMode === "prefer-local" || autoMode === "prefer-server") {
     // Auto-resolve: apply the preferred version to localStorage immediately
     const ENTITY_STORAGE: Record<string, string> = {
-      cases: "crm_cases",
-      notifications: "crm_notifications",
-      users: "crm_users_db",
-      attendance: "crm_attendance",
-      leaveRequests: "crm_leave_requests",
-      passportTracking: "crm_passport_tracking",
+      cases: getCasesKey(),
+      notifications: getNotificationsKey(),
+      users: getUsersDbKey(),
+      attendance: getAttendanceKey(),
+      leaveRequests: getLeaveRequestsKey(),
+      passportTracking: getPassportTrackingKey(),
     };
     const storageKey = ENTITY_STORAGE[conflict.entity];
     if (storageKey) {
@@ -1133,7 +1248,11 @@ export function clearResolvedConflicts(): void {
 // ============================================================
 // Auto-Export via Brevo (scheduled email of full data dump)
 // ============================================================
-const AUTO_EXPORT_CONFIG_KEY = "crm_auto_export_config";
+const AUTO_EXPORT_CONFIG_BASE = "crm_auto_export_config";
+
+function getAutoExportConfigKey(): string {
+  return getTenantScopedKey(AUTO_EXPORT_CONFIG_BASE);
+}
 
 export interface AutoExportConfig {
   enabled: boolean;
@@ -1143,14 +1262,14 @@ export interface AutoExportConfig {
 
 export function getAutoExportConfig(): AutoExportConfig {
   try {
-    const raw = localStorage.getItem(AUTO_EXPORT_CONFIG_KEY);
+    const raw = localStorage.getItem(getAutoExportConfigKey());
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
   return { enabled: false, recipients: [], intervalHours: 24 };
 }
 
 export function setAutoExportConfig(config: AutoExportConfig) {
-  localStorage.setItem(AUTO_EXPORT_CONFIG_KEY, JSON.stringify(config));
+  localStorage.setItem(getAutoExportConfigKey(), JSON.stringify(config));
 }
 
 async function checkAutoExport() {
@@ -1159,7 +1278,7 @@ async function checkAutoExport() {
     if (!config.enabled || config.recipients.length === 0) return;
     if (!syncState.serverAvailable) return;
 
-    const lastExport = localStorage.getItem(LAST_AUTO_EXPORT_KEY);
+    const lastExport = localStorage.getItem(getLastAutoExportKey());
     const now = Date.now();
     const intervalMs = config.intervalHours * 60 * 60 * 1000;
 
@@ -1171,7 +1290,7 @@ async function checkAutoExport() {
     // Trigger auto-export
     const res = await backupApi.autoExport(config.recipients);
     if (res.success) {
-      localStorage.setItem(LAST_AUTO_EXPORT_KEY, new Date().toISOString());
+      localStorage.setItem(getLastAutoExportKey(), new Date().toISOString());
     } else {
     }
   } catch (err) {
@@ -1185,14 +1304,14 @@ export type ConflictAutoResolveMode = "prompt" | "prefer-local" | "prefer-server
 
 export function getConflictAutoResolveMode(): ConflictAutoResolveMode {
   try {
-    const raw = localStorage.getItem(CONFLICT_AUTO_RESOLVE_KEY);
+    const raw = localStorage.getItem(getConflictAutoResolveKey());
     if (raw === "prefer-local" || raw === "prefer-server") return raw;
   } catch { /* ignore */ }
   return "prompt";
 }
 
 export function setConflictAutoResolveMode(mode: ConflictAutoResolveMode): void {
-  localStorage.setItem(CONFLICT_AUTO_RESOLVE_KEY, mode);
+  localStorage.setItem(getConflictAutoResolveKey(), mode);
 }
 
 // ============================================================
@@ -1203,7 +1322,7 @@ const VALID_INTERVALS: SyncIntervalOption[] = [30000, 60000, 120000, 300000, 900
 
 export function getSyncInterval(): SyncIntervalOption {
   try {
-    const raw = localStorage.getItem(SYNC_INTERVAL_KEY);
+    const raw = localStorage.getItem(getSyncIntervalKey());
     if (raw) {
       const val = parseInt(raw, 10);
       if (VALID_INTERVALS.includes(val as SyncIntervalOption)) return val as SyncIntervalOption;
@@ -1213,7 +1332,7 @@ export function getSyncInterval(): SyncIntervalOption {
 }
 
 export function setSyncInterval(intervalMs: SyncIntervalOption): void {
-  localStorage.setItem(SYNC_INTERVAL_KEY, String(intervalMs));
+  localStorage.setItem(getSyncIntervalKey(), String(intervalMs));
   // Restart periodic sync with new interval
   startPeriodicSync(intervalMs);
 }
