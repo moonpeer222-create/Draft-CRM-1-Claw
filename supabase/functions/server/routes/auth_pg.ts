@@ -54,15 +54,15 @@ auth.post("/login", async (c) => {
     await db.users.update(user.id, { last_login: new Date().toISOString() });
     
     // Log audit
-    await db.audit.create({
+    await db.auditLog.create({
       user_id: user.id,
       user_email: user.email,
-      user_role: user.role,
       action: "login",
       entity_type: "user",
       entity_id: user.id,
       ip_address: ip,
-      user_agent: c.req.header("user-agent")
+      user_agent: c.req.header("user-agent"),
+      tenant_id: user.tenant_id
     });
     
     return c.json({
@@ -124,14 +124,15 @@ auth.post("/logout", async (c) => {
       const session = await db.sessions.findByToken(token);
       if (session) {
         await db.sessions.delete(token);
-        await db.audit.create({
+        await db.auditLog.create({
           user_id: session.user_id,
           user_email: session.email,
-          user_role: session.role,
           action: "logout",
           entity_type: "session",
           entity_id: token,
-          ip_address: c.req.header("x-forwarded-for") || "unknown"
+          ip_address: c.req.header("x-forwarded-for") || "unknown",
+          user_agent: c.req.header("user-agent"),
+          tenant_id: session.tenant_id
         });
       }
     }
@@ -150,107 +151,288 @@ auth.post("/forgot-password", rateLimiter(5), async (c) => {
       return c.json({ success: false, error: "Email is required" }, 400);
     }
     
-    // Validate email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return c.json({ success: false, error: "Invalid email format" }, 400);
-    }
-    
-    // Find user
-    const user = await db.users.findByEmail(email);
-    
-    if (!user) {
-      // Don't reveal if email exists
-      return c.json({ success: true, message: "If this email exists, a reset code was sent." });
-    }
-    
-    // Generate code
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + RESET_TTL).toISOString();
-    
-    // Save reset token
-    await db.passwordReset.create({
-      email: email.toLowerCase(),
-      code,
-      expires_at: expiresAt
-    });
-    
-    // Send email via Brevo
-    const brevoKey = Deno.env.get("BREVO_API_KEY");
-    if (brevoKey) {
-      try {
-        await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "api-key": brevoKey
-          },
-          body: JSON.stringify({
-            sender: { name: "Emerald Tech Partner", email: "noreply@emeraldvisa.com" },
-            to: [{ email: user.email, name: user.full_name }],
-            subject: "Password Reset Code - Emerald Tech Partner",
-            htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:20px;background:#f8f9fa;border-radius:12px;"><div style="text-align:center;padding:20px 0;"><h2 style="color:#059669;margin:0;">Emerald Tech Partner</h2><p style="color:#6b7280;font-size:14px;">Password Reset Request</p></div><div style="background:white;padding:30px;border-radius:8px;text-align:center;"><p style="color:#374151;font-size:16px;">Hello <strong>${user.full_name}</strong>,</p><p style="color:#6b7280;font-size:14px;">Use this code to reset your password:</p><div style="background:#059669;color:white;font-size:32px;letter-spacing:8px;padding:20px;border-radius:8px;margin:20px 0;font-family:monospace;font-weight:bold;">${code}</div><p style="color:#9ca3af;font-size:12px;">This code expires in 10 minutes.</p></div><p style="text-align:center;color:#9ca3af;font-size:11px;margin-top:20px;">Emerald Tech Partner | Lahore, Pakistan</p></div>`
-          })
-        });
-      } catch (e) {
-        // Silent fail for email
-      }
-    }
-    
-    return c.json({ success: true, message: "Reset code sent" });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
-  }
-});
-
-// Reset password
-auth.post("/reset-password", async (c) => {
-  try {
-    const { email, code, newPassword } = await c.req.json();
-    
-    if (!email || !code || !newPassword) {
-      return c.json({ success: false, error: "Email, code, and new password are required" }, 400);
-    }
-    
-    // Validate password strength
-    if (newPassword.length < 8) {
-      return c.json({ success: false, error: "Password must be at least 8 characters" }, 400);
-    }
-    
-    // Find and validate reset token
-    const resetToken = await db.passwordReset.findValid(email.toLowerCase(), code);
-    if (!resetToken) {
-      return c.json({ success: false, error: "Invalid or expired reset code" }, 400);
-    }
-    
-    // Find user
     const user = await db.users.findByEmail(email);
     if (!user) {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     
-    // Update password
-    const hashedPassword = await hashPw(newPassword);
-    await db.users.update(user.id, { password_hash: hashedPassword });
+    // Generate reset token
+    const resetToken = crypto.randomUUID();
+    const resetExpires = new Date(Date.now() + RESET_TTL).toISOString();
     
-    // Mark token as used
-    await db.passwordReset.markUsed(resetToken.id);
-    
-    // Log audit
-    await db.audit.create({
-      user_id: user.id,
-      user_email: user.email,
-      user_role: user.role,
-      action: "password_reset",
-      entity_type: "user",
-      entity_id: user.id,
-      ip_address: c.req.header("x-forwarded-for") || "unknown"
+    await db.users.update(user.id, {
+      reset_token: resetToken,
+      reset_expires: resetExpires
     });
     
-    return c.json({ success: true, message: "Password reset successful" });
+    // Log audit
+    await db.auditLog.create({
+      user_id: user.id,
+      user_email: user.email,
+      action: "forgot_password",
+      entity_type: "user",
+      entity_id: user.id,
+      ip_address: c.req.header("x-forwarded-for") || "unknown",
+      user_agent: c.req.header("user-agent"),
+      tenant_id: user.tenant_id
+    });
+    
+    return c.json({ success: true, data: { resetToken } });
   } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+    return c.json({ success: false, error: `Forgot password error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Reset password with PostgreSQL
+auth.post("/reset-password", async (c) => {
+  try {
+    const { token, newPassword } = await c.req.json();
+    
+    if (!token || !newPassword) {
+      return c.json({ success: false, error: "Token and new password are required" }, 400);
+    }
+    
+    // Find user by reset token
+    const client = db.getDbClient();
+    const { data: users, error } = await client
+      .from('users')
+      .select('*')
+      .eq('reset_token', token)
+      .single();
+    
+    if (error || !users) {
+      return c.json({ success: false, error: "Invalid or expired token" }, 400);
+    }
+    
+    // Check if token expired
+    if (new Date(users.reset_expires) < new Date()) {
+      return c.json({ success: false, error: "Token expired" }, 400);
+    }
+    
+    // Hash new password
+    const hashedPassword = await hashPw(newPassword);
+    
+    // Update user
+    await db.users.update(users.id, {
+      password_hash: hashedPassword,
+      reset_token: null,
+      reset_expires: null
+    });
+    
+    // Log audit
+    await db.auditLog.create({
+      user_id: users.id,
+      user_email: users.email,
+      action: "reset_password",
+      entity_type: "user",
+      entity_id: users.id,
+      ip_address: c.req.header("x-forwarded-for") || "unknown",
+      user_agent: c.req.header("user-agent"),
+      tenant_id: users.tenant_id
+    });
+    
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Reset password error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Register new user
+auth.post("/register", async (c) => {
+  try {
+    const { email, password, fullName, role, tenantCode } = await c.req.json();
+    
+    if (!email || !password || !fullName) {
+      return c.json({ success: false, error: "Email, password, and full name are required" }, 400);
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return c.json({ success: false, error: "Invalid email format" }, 400);
+    }
+    
+    // Check if user exists
+    const existingUser = await db.users.findByEmail(email);
+    if (existingUser) {
+      return c.json({ success: false, error: "User already exists" }, 409);
+    }
+    
+    // Hash password
+    const hashedPassword = await hashPw(password);
+    
+    // Create user
+    const user = await db.users.create({
+      email,
+      password_hash: hashedPassword,
+      full_name: fullName,
+      role: role || "customer",
+      status: "active",
+      tenant_id: tenantCode || null
+    });
+    
+    // Log audit
+    await db.auditLog.create({
+      user_id: user.id,
+      user_email: user.email,
+      action: "register",
+      entity_type: "user",
+      entity_id: user.id,
+      ip_address: c.req.header("x-forwarded-for") || "unknown",
+      user_agent: c.req.header("user-agent"),
+      tenant_id: user.tenant_id
+    });
+    
+    return c.json({ success: true, data: { userId: user.id } });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Registration error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Refresh token
+auth.post("/refresh", async (c) => {
+  try {
+    const token = c.req.header("x-session-token");
+    if (!token) {
+      return c.json({ success: false, error: "No token provided" }, 400);
+    }
+    
+    const session = await db.sessions.findByToken(token);
+    if (!session) {
+      return c.json({ success: false, error: "Invalid session" }, 401);
+    }
+    
+    // Create new session
+    const ip = c.req.header("x-forwarded-for") || "unknown";
+    const newSession = await createSession(session.user_id, session.full_name, session.email, session.role, ip);
+    
+    // Delete old session
+    await db.sessions.delete(token);
+    
+    return c.json({
+      success: true,
+      data: {
+        token: newSession.token,
+        expiresAt: newSession.expiresAt
+      }
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Refresh error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Verify agent code
+auth.post("/verify-agent-code", async (c) => {
+  try {
+    const { code } = await c.req.json();
+    
+    if (!code) {
+      return c.json({ success: false, error: "Code is required" }, 400);
+    }
+    
+    const agentCode = await db.agentCodes.findByCode(code);
+    if (!agentCode || !agentCode.is_active) {
+      return c.json({ success: false, error: "Invalid or inactive code" }, 400);
+    }
+    
+    return c.json({ success: true, data: { valid: true, code: agentCode } });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Verify code error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Login with agent code
+auth.post("/agent-code-login", async (c) => {
+  try {
+    const { code } = await c.req.json();
+    
+    if (!code) {
+      return c.json({ success: false, error: "Code is required" }, 400);
+    }
+    
+    const agentCode = await db.agentCodes.findByCode(code);
+    if (!agentCode || !agentCode.is_active) {
+      return c.json({ success: false, error: "Invalid or inactive code" }, 400);
+    }
+    
+    // Increment usage
+    await db.agentCodes.incrementUsage(code);
+    
+    // Create session for agent
+    const ip = c.req.header("x-forwarded-for") || "unknown";
+    const session = await createSession(
+      agentCode.id,
+      agentCode.agent_name || "Agent",
+      agentCode.email || "agent@example.com",
+      "agent",
+      ip
+    );
+    
+    return c.json({
+      success: true,
+      data: {
+        token: session.token,
+        userId: session.userId,
+        fullName: session.fullName,
+        email: session.email,
+        role: "agent",
+        expiresAt: session.expiresAt
+      }
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Agent code login error: ${err?.message || err}` }, 500);
+  }
+});
+
+// Change password
+auth.post("/change-password", async (c) => {
+  try {
+    const token = c.req.header("x-session-token");
+    if (!token) {
+      return c.json({ success: false, error: "Not authenticated" }, 401);
+    }
+    
+    const session = await db.sessions.findByToken(token);
+    if (!session) {
+      return c.json({ success: false, error: "Invalid session" }, 401);
+    }
+    
+    const { oldPassword, newPassword } = await c.req.json();
+    
+    if (!oldPassword || !newPassword) {
+      return c.json({ success: false, error: "Old and new passwords are required" }, 400);
+    }
+    
+    // Verify old password
+    const user = await db.users.findById(session.user_id);
+    if (!user) {
+      return c.json({ success: false, error: "User not found" }, 404);
+    }
+    
+    const hashedOld = await hashPw(oldPassword);
+    if (user.password_hash !== hashedOld) {
+      return c.json({ success: false, error: "Incorrect old password" }, 400);
+    }
+    
+    // Hash and update new password
+    const hashedNew = await hashPw(newPassword);
+    await db.users.update(user.id, { password_hash: hashedNew });
+    
+    // Log audit
+    await db.auditLog.create({
+      user_id: user.id,
+      user_email: user.email,
+      action: "change_password",
+      entity_type: "user",
+      entity_id: user.id,
+      ip_address: c.req.header("x-forwarded-for") || "unknown",
+      user_agent: c.req.header("user-agent"),
+      tenant_id: user.tenant_id
+    });
+    
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: `Change password error: ${err?.message || err}` }, 500);
   }
 });
 

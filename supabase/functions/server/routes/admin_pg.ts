@@ -5,7 +5,7 @@
 
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
 import { db } from "../lib/db.ts";
-import { authMiddleware } from "../authMiddleware.ts";
+import { authMiddleware } from "../authMiddleware";
 import { ServerSession } from "../lib/auth.ts";
 import { rateLimiter } from "../lib/utils.ts";
 
@@ -223,6 +223,32 @@ admin.get("/users", authMiddleware(["master_admin", "admin"]), async (c) => {
     return c.json({ success: true, data: sanitized, count: sanitized.length });
   } catch (err) {
     console.error("Get users error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// GET /admin/users/:id - Get single user
+admin.get("/users/:id", authMiddleware(["master_admin", "admin"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const userId = c.req.param("id");
+    
+    const user = await db.users.findById(userId);
+    if (!user) {
+      return c.json({ success: false, error: "User not found" }, 404);
+    }
+    
+    // Verify tenant access
+    if (user.tenant_id && user.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    // Remove sensitive data
+    const { password_hash, ...safeUser } = user;
+    
+    return c.json({ success: true, data: safeUser });
+  } catch (err) {
+    console.error("Get user error:", err);
     return c.json({ success: false, error: String(err) }, 500);
   }
 });
@@ -508,6 +534,50 @@ admin.delete("/agent-codes/:id", authMiddleware(["master_admin", "admin"]), asyn
   }
 });
 
+// POST /admin/agent-codes/:code/revoke - Revoke agent code by code
+admin.post("/agent-codes/:code/revoke", authMiddleware(["master_admin", "admin"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const code = c.req.param("code");
+    
+    // Find the code by code value
+    const existingCode = await db.agentCodes.findByCode(code);
+    
+    if (!existingCode) {
+      return c.json({ success: false, error: "Agent code not found" }, 404);
+    }
+    
+    // Verify tenant access
+    if (existingCode.tenant_id && existingCode.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    // Delete the agent code
+    await db.agentCodes.delete(existingCode.id);
+    
+    // Create audit log
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "agent_code_revoked",
+      entity_type: "agent_code",
+      entity_id: existingCode.id,
+      details: { 
+        code: existingCode.code,
+        agent_name: existingCode.agent_name 
+      },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, message: "Agent code revoked" });
+  } catch (err) {
+    console.error("Revoke agent code error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
 // ==================== AUDIT LOG ====================
 
 // GET /admin/audit-log - Get audit log entries
@@ -738,7 +808,71 @@ admin.post("/panic/clear", authMiddleware(["master_admin"]), async (c) => {
   }
 });
 
-admin.get("/panic/status", async (c) => {
+// POST /admin/panic/enable - Alias to trigger panic mode
+admin.post("/panic/enable", authMiddleware(["master_admin"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    
+    await db.settings.set(PANIC_KEY, {
+      active: true,
+      triggered_by: session.userId,
+      triggered_at: new Date().toISOString()
+    }, {
+      description: "Emergency panic mode - locks system",
+      updated_by: session.userId,
+      tenant_id: session.tenantId
+    });
+    
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "panic_triggered",
+      entity_type: "system",
+      entity_id: "panic_mode",
+      details: { reason: "Manual trigger via /panic/enable" },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, message: "Panic mode activated" });
+  } catch (err) {
+    console.error("Panic enable error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// POST /admin/panic/disable - Alias to clear panic mode
+admin.post("/panic/disable", authMiddleware(["master_admin"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    
+    await db.settings.set(PANIC_KEY, { active: false, cleared_at: new Date().toISOString() }, {
+      description: "Emergency panic mode - locks system",
+      updated_by: session.userId,
+      tenant_id: session.tenantId
+    });
+    
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "panic_cleared",
+      entity_type: "system",
+      entity_id: "panic_mode",
+      details: { reason: "Manual trigger via /panic/disable" },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, message: "Panic mode cleared" });
+  } catch (err) {
+    console.error("Panic disable error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+admin.get("/panic/status", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     // Check settings (was previously checking KV first)
     const settingsPanic = await db.settings.get(PANIC_KEY);

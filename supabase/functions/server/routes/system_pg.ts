@@ -1,19 +1,18 @@
 import { Hono } from "https://deno.land/x/hono@v3.11.7/mod.ts";
-import { db } from "../lib/db.ts";
-import { auditLog } from "../lib/db.ts";
-import { getDbClient } from "../lib/db.ts";
+import * as db from "../lib/db";
+import { authMiddleware } from "../authMiddleware";
 
 const system = new Hono();
 
 // ============================================
-// SYSTEM HEALTH CHECK
+// SYSTEM HEALTH CHECK (Public)
 // ============================================
 system.get("/health", async (c) => {
   try {
     const startTime = Date.now();
     
     // Check database connectivity
-    const client = getDbClient();
+    const client = db.getDbClient();
     const { data: dbCheck, error: dbError } = await client
       .from('users')
       .select('count', { count: 'exact', head: true });
@@ -57,11 +56,11 @@ system.get("/health", async (c) => {
 });
 
 // ============================================
-// SYSTEM STATISTICS
+// SYSTEM STATISTICS (Protected - admin/master_admin only)
 // ============================================
-system.get("/stats", async (c) => {
+system.get("/stats", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
-    const client = getDbClient();
+    const client = db.getDbClient();
     
     // Get counts from all major tables
     const [
@@ -135,26 +134,17 @@ system.get("/stats", async (c) => {
 });
 
 // ============================================
-// MAINTENANCE MODE
+// MAINTENANCE MODE (Protected - admin/master_admin only)
 // ============================================
-system.post("/maintenance", async (c) => {
+system.post("/maintenance", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     const body = await c.req.json();
     const { enabled, reason, duration } = body;
     
-    // Get current user from session (if available)
-    const authHeader = c.req.header('authorization');
-    let userEmail = 'system';
-    let userId = null;
-    
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const session = await db.sessions.findValidByToken(token);
-      if (session) {
-        userEmail = session.email;
-        userId = session.user_id;
-      }
-    }
+    // Get current user from session (attached by authMiddleware)
+    const session = c.get("session");
+    const userEmail = session?.email || 'system';
+    const userId = session?.userId || null;
     
     // Update maintenance mode setting
     await db.settings.set('system:maintenance_mode', enabled, {
@@ -171,7 +161,7 @@ system.post("/maintenance", async (c) => {
     }
     
     // Log the action
-    await auditLog.create({
+    await db.auditLog.create({
       user_id: userId,
       user_email: userEmail,
       action: enabled ? 'maintenance_enabled' : 'maintenance_disabled',
@@ -192,9 +182,9 @@ system.post("/maintenance", async (c) => {
 });
 
 // ============================================
-// SYSTEM CONFIG
+// SYSTEM CONFIG (Protected - admin/master_admin only)
 // ============================================
-system.get("/config", async (c) => {
+system.get("/config", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     // Get all system settings
     const allSettings = await db.settings.getAll();
@@ -233,8 +223,8 @@ system.get("/config", async (c) => {
   }
 });
 
-// Update system config
-system.post("/config", async (c) => {
+// Update system config (Protected - admin/master_admin only)
+system.post("/config", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     const body = await c.req.json();
     const { config } = body;
@@ -243,19 +233,10 @@ system.post("/config", async (c) => {
       return c.json({ success: false, error: 'Config object required' }, 400);
     }
     
-    // Get current user from session
-    const authHeader = c.req.header('authorization');
-    let userEmail = 'system';
-    let userId = null;
-    
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const session = await db.sessions.findValidByToken(token);
-      if (session) {
-        userEmail = session.email;
-        userId = session.user_id;
-      }
-    }
+    // Get current user from session (attached by authMiddleware)
+    const session = c.get("session");
+    const userEmail = session?.email || 'system';
+    const userId = session?.userId || null;
     
     // Update each config value
     const updated: string[] = [];
@@ -267,7 +248,7 @@ system.post("/config", async (c) => {
     }
     
     // Log the action
-    await auditLog.create({
+    await db.auditLog.create({
       user_id: userId,
       user_email: userEmail,
       action: 'config_updated',
@@ -288,13 +269,13 @@ system.post("/config", async (c) => {
 });
 
 // ============================================
-// BACKUP MANAGEMENT
+// BACKUP MANAGEMENT (Protected - admin/master_admin only)
 // ============================================
 
-// List backups
-system.get("/backups", async (c) => {
+// List backups (Protected)
+system.get("/backups", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
-    const client = getDbClient();
+    const client = db.getDbClient();
     
     // Get backup records from settings or a dedicated table
     // For simplicity, we store backup metadata in settings
@@ -340,27 +321,18 @@ system.get("/backups", async (c) => {
   }
 });
 
-// Create backup
-system.post("/backup", async (c) => {
+// Create backup (Protected)
+system.post("/backup", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     const body = await c.req.json();
     const { type = 'manual', tables = [] } = body;
     
-    // Get current user from session
-    const authHeader = c.req.header('authorization');
-    let userEmail = 'system';
-    let userId = null;
+    // Get current user from session (attached by authMiddleware)
+    const session = c.get("session");
+    const userEmail = session?.email || 'system';
+    const userId = session?.userId || null;
     
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const session = await db.sessions.findValidByToken(token);
-      if (session) {
-        userEmail = session.email;
-        userId = session.user_id;
-      }
-    }
-    
-    const client = getDbClient();
+    const client = db.getDbClient();
     const backupId = `backup-${Date.now()}`;
     const timestamp = new Date().toISOString();
     
@@ -422,7 +394,7 @@ system.post("/backup", async (c) => {
     });
     
     // Log the action
-    await auditLog.create({
+    await db.auditLog.create({
       user_id: userId,
       user_email: userEmail,
       action: 'backup_created',
@@ -445,8 +417,8 @@ system.post("/backup", async (c) => {
   }
 });
 
-// Restore from backup
-system.post("/restore", async (c) => {
+// Restore from backup (Protected)
+system.post("/restore", authMiddleware(["master_admin", "admin"]), async (c) => {
   try {
     const body = await c.req.json();
     const { backupId, tables = [], dryRun = false } = body;
@@ -455,19 +427,10 @@ system.post("/restore", async (c) => {
       return c.json({ success: false, error: 'backupId is required' }, 400);
     }
     
-    // Get current user from session
-    const authHeader = c.req.header('authorization');
-    let userEmail = 'system';
-    let userId = null;
-    
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const session = await db.sessions.findValidByToken(token);
-      if (session) {
-        userEmail = session.email;
-        userId = session.user_id;
-      }
-    }
+    // Get current user from session (attached by authMiddleware)
+    const session = c.get("session");
+    const userEmail = session?.email || 'system';
+    const userId = session?.userId || null;
     
     // Find the backup
     const backupsData = await db.settings.get('system:backups') || [];
@@ -498,7 +461,7 @@ system.post("/restore", async (c) => {
     
     if (!dryRun) {
       // Log the restore action
-      await auditLog.create({
+      await db.auditLog.create({
         user_id: userId,
         user_email: userEmail,
         action: 'backup_restored',

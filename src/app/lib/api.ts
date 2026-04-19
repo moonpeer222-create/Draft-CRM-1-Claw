@@ -41,7 +41,7 @@ function getEdgeUrl(path: string): string {
   return EDGE_URLS.auth;
 }
 
-// ── Session token management (Improvement #1) ─────────────
+// ── Session token management ─────────────
 const SESSION_TOKEN_KEY = "emerald-session-token";
 
 export function getSessionToken(): string | null {
