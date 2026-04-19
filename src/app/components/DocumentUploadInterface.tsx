@@ -39,6 +39,7 @@ interface Props {
   onDocumentVerify?: (docId: string, status: "verified" | "rejected") => void;
   maxFiles?: number;
   compact?: boolean;
+  caseId?: string; // Optional case ID for tenant-scoped uploads
 }
 
 export function DocumentUploadInterface({
@@ -47,6 +48,7 @@ export function DocumentUploadInterface({
   onDocumentVerify,
   maxFiles = 10,
   compact = false,
+  caseId,
 }: Props) {
   const { darkMode, isUrdu } = useTheme();
   const dc = darkMode;
@@ -56,6 +58,17 @@ export function DocumentUploadInterface({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upload" | "existing">("upload");
   const [docPreviews, setDocPreviews] = useState<Record<string, string | null>>({});
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  // Load tenant context on mount
+  useEffect(() => {
+    const loadTenant = async () => {
+      const { getCachedTenantId } = await import("../lib/tenantContext");
+      const tid = getCachedTenantId();
+      setTenantId(tid);
+    };
+    loadTenant();
+  }, []);
 
   // Load preview URLs for existing documents from Supabase Storage signed URLs
   useEffect(() => {
@@ -218,7 +231,19 @@ export function DocumentUploadInterface({
       toast.error(isUrdu ? "کوئی فائل نہیں ہے" : "No files to upload");
       return;
     }
-    onUpload?.(completedFiles.map(f => ({ file: f.file, category: f.category })));
+    
+    // Include tenant_id and case_id in upload metadata for tenant isolation
+    const enrichedFiles = completedFiles.map(f => ({
+      file: f.file,
+      category: f.category,
+      metadata: {
+        tenantId: tenantId || "default",
+        caseId: caseId || null,
+        uploadedAt: new Date().toISOString(),
+      }
+    }));
+    
+    onUpload?.(enrichedFiles as any);
     toast.success(`${completedFiles.length} ${isUrdu ? "دستاویزات اپ لوڈ" : "documents uploaded"}`);
     completedFiles.forEach(f => { if (f.preview) URL.revokeObjectURL(f.preview); });
     setUploadedFiles([]);

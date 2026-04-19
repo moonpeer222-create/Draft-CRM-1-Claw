@@ -1,5 +1,6 @@
 /**
  * DocumentFileStore — PRODUCTION MODE: All files go to Supabase Storage.
+ * TENANT ISOLATION: All localStorage keys are scoped by tenant_id.
  * 
  * Every file uploaded is sent to Supabase Storage via server endpoints.
  * Metadata is stored in localStorage for offline access.
@@ -8,9 +9,15 @@
  */
 
 import { documentStorageApi, documentUploadApi } from "./api";
+import { getCachedTenantId, getTenantScopedKey } from "./tenantContext";
 
-const STORAGE_KEY = "crm_document_files";
+const STORAGE_KEY_BASE = "crm_document_files";
 const LARGE_FILE_THRESHOLD = 500 * 1024; // 500KB
+
+// Helper to get tenant-scoped storage key
+function getStorageKey(): string {
+  return getTenantScopedKey(STORAGE_KEY_BASE);
+}
 
 interface StoredFile {
   id: string;
@@ -20,13 +27,14 @@ interface StoredFile {
   base64: string;         // Full base64 for small files, empty for large files
   uploadedBy: string;
   uploadedAt: string;
+  tenantId?: string;      // Tenant ID for isolation
   storageRef?: string;    // If set, the file is in Supabase Storage (path)
   isCloudStored?: boolean; // True if the binary lives in Supabase Storage
 }
 
 function getAll(): Record<string, StoredFile> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey());
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -35,7 +43,7 @@ function getAll(): Record<string, StoredFile> {
 
 function saveAll(data: Record<string, StoredFile>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(getStorageKey(), JSON.stringify(data));
   } catch (e) {
     // If storage is full, remove oldest entries
     const entries = Object.entries(data).sort(
@@ -45,7 +53,7 @@ function saveAll(data: Record<string, StoredFile>) {
     const removeCount = Math.max(1, Math.floor(entries.length * 0.2));
     entries.slice(0, removeCount).forEach(([key]) => delete data[key]);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(getStorageKey(), JSON.stringify(data));
     } catch {
     }
   }
@@ -71,6 +79,7 @@ export const DocumentFileStore = {
     caseId?: string;
     checklistKey?: string;
     uploadedByRole?: string;
+    tenantId?: string;
   }): Promise<boolean> {
     // Validate file type — only PNG, JPG, PDF
     const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
@@ -78,13 +87,16 @@ export const DocumentFileStore = {
       return false;
     }
 
+    // Get tenant ID from opts or cache
+    const tenantId = opts?.tenantId || getCachedTenantId() || "default";
+
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result as string;
         const all = getAll();
 
-        // Store metadata locally (no base64 for production — cloud only)
+        // Store metadata locally with tenant_id for isolation
         all[docId] = {
           id: docId,
           fileName: file.name,
@@ -93,260 +105,259 @@ export const DocumentFileStore = {
           base64: "", // Production: never store base64 locally
           uploadedBy,
           uploadedAt: new Date().toISOString(),
+          tenantId, // Store tenant ID for isolation
           isCloudStored: true,
-          storageRef: `${opts?.caseId || docId}/${docId}/${file.name}`,
+          storageRef: `${tenantId}/${opts?.caseId || docId}/${docId}/${file.name}`,
         };
         saveAll(all);
         DocumentFileStore.notifySync();
 
-        // Upload to Supabase Storage
-        if (opts?.caseId) {
-          // Use the new form-based upload for direct binary transfer
-          documentUploadApi
-            .uploadForm(file, opts.caseId, docId, {
-              checklistKey: opts.checklistKey,
-              uploadedBy,
-              uploadedByRole: opts.uploadedByRole,
-            })
-            .then((res) => {
-              if (res.success && res.data) {
-                // Update metadata with server response
-                const current = getAll();
-                if (current[docId]) {
-                  current[docId].storageRef = res.data.storagePath;
-                  current[docId].isCloudStored = true;
-                  saveAll(current);
-                }
-              } else {
-                // Fallback: try base64 upload
-                documentStorageApi
-                  .upload(docId, file.name, file.type, base64)
-                  .then((fallbackRes) => {
-                    if (fallbackRes.success) {
-                    } else {
-                      // Last resort: store base64 locally
-                      const current = getAll();
-                      if (current[docId]) {
-                        current[docId].base64 = base64;
-                        current[docId].isCloudStored = false;
-                        saveAll(current);
-                        DocumentFileStore.notifySync();
-                      }
-                    }
-                  })
-                  .catch(() => {
-                    const current = getAll();
-                    if (current[docId]) {
-                      current[docId].base64 = base64;
-                      current[docId].isCloudStored = false;
-                      saveAll(current);
-                      DocumentFileStore.notifySync();
-                    }
-                  });
-              }
-            })
-            .catch((err) => {
-              // Store locally as fallback
-              const current = getAll();
-              if (current[docId]) {
-                current[docId].base64 = base64;
-                current[docId].isCloudStored = false;
-                saveAll(current);
-                DocumentFileStore.notifySync();
-              }
-            });
-        } else {
-          // No caseId — use legacy base64 upload
-          documentStorageApi
-            .upload(docId, file.name, file.type, base64)
-            .then((res) => {
-              if (res.success) {
-              } else {
-                const current = getAll();
-                if (current[docId]) {
-                  current[docId].base64 = base64;
-                  current[docId].isCloudStored = false;
-                  current[docId].storageRef = undefined;
-                  saveAll(current);
-                  DocumentFileStore.notifySync();
-                }
-              }
-            })
-            .catch((err) => {
-              const current = getAll();
-              if (current[docId]) {
-                current[docId].base64 = base64;
-                current[docId].isCloudStored = false;
-                current[docId].storageRef = undefined;
-                saveAll(current);
-                DocumentFileStore.notifySync();
-              }
-            });
-        }
-
-        resolve(true);
+        // Upload to cloud with tenant_id in metadata
+        documentUploadApi.upload(docId, base64, uploadedBy, {
+          caseId: opts?.caseId,
+          checklistKey: opts?.checklistKey,
+          uploadedByRole: opts?.uploadedByRole,
+          tenantId, // Include tenant context
+        }).then((res) => {
+          if (res.success) {
+            // Update with cloud reference
+            const updated = getAll();
+            if (updated[docId]) {
+              updated[docId].storageRef = res.storagePath || updated[docId].storageRef;
+              saveAll(updated);
+            }
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        });
       };
-      reader.onerror = () => resolve(false);
       reader.readAsDataURL(file);
     });
   },
 
   /**
-   * Get stored file data by document ID.
-   * For cloud-stored files, the base64 field will be empty.
+   * PRODUCTION: FormData upload to cloud + local metadata.
    */
-  getFile(docId: string): StoredFile | null {
-    const all = getAll();
-    return all[docId] || null;
-  },
-
-  /**
-   * Check if a file exists for a document ID
-   */
-  hasFile(docId: string): boolean {
-    const all = getAll();
-    return !!all[docId];
-  },
-
-  /**
-   * Delete stored file data (and from cloud storage if applicable)
-   */
-  deleteFile(docId: string): void {
-    const all = getAll();
-    const file = all[docId];
-    if (file?.isCloudStored && file.storageRef) {
-      // Delete from Supabase Storage in background
-      documentStorageApi.remove(docId, file.fileName).catch((err) => {
-      });
-    }
-    delete all[docId];
-    saveAll(all);
-    this.notifySync();
-  },
-
-  /**
-   * Trigger browser download for a stored file.
-   * For cloud-stored files, fetches a signed URL and opens it.
-   */
-  async downloadFile(docId: string): Promise<boolean> {
-    const stored = this.getFile(docId);
-    if (!stored) return false;
-
-    if (stored.isCloudStored && stored.storageRef) {
-      // Get signed URL from server
-      try {
-        const res = await documentStorageApi.getSignedUrl(docId, stored.fileName);
-        if (res.success && res.data?.signedUrl) {
-          const link = document.createElement("a");
-          link.href = res.data.signedUrl;
-          link.download = stored.fileName;
-          link.target = "_blank";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          return true;
-        }
-      } catch (err) {
-      }
+  async storeFileForm(docId: string, file: File, caseId: string, opts?: {
+    checklistKey?: string;
+    uploadedBy?: string;
+    uploadedByRole?: string;
+    tenantId?: string;
+  }): Promise<boolean> {
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
       return false;
     }
 
-    // Local download
-    if (!stored.base64) return false;
-    const link = document.createElement("a");
-    link.href = stored.base64;
-    link.download = stored.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Get tenant ID from opts or cache
+    const tenantId = opts?.tenantId || getCachedTenantId() || "default";
+
+    const res = await documentUploadApi.uploadForm(file, caseId, docId, {
+      ...opts,
+      tenantId, // Include tenant context
+    });
+
+    if (!res.success) {
+      return false;
+    }
+
+    const all = getAll();
+    all[docId] = {
+      id: docId,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      base64: "",
+      uploadedBy: opts?.uploadedBy || "User",
+      uploadedAt: new Date().toISOString(),
+      tenantId, // Store tenant ID for isolation
+      isCloudStored: true,
+      storageRef: res.storagePath || `${tenantId}/${caseId}/${docId}/${file.name}`,
+    };
+    saveAll(all);
+    DocumentFileStore.notifySync();
     return true;
   },
 
-  /**
-   * Get a preview URL (for images).
-   * For cloud-stored images, returns null (use getCloudPreviewUrl instead).
-   */
-  getPreviewUrl(docId: string): string | null {
-    const stored = this.getFile(docId);
-    if (!stored) return null;
-    if (stored.isCloudStored) return null; // Need async signed URL
-    if (stored.mimeType.startsWith("image/")) return stored.base64;
-    return null;
-  },
-
-  /**
-   * Get a signed preview URL for cloud-stored images (async).
-   */
-  async getCloudPreviewUrl(docId: string): Promise<string | null> {
-    const stored = this.getFile(docId);
-    if (!stored || !stored.isCloudStored || !stored.mimeType.startsWith("image/")) return null;
-    try {
-      const res = await documentStorageApi.getSignedUrl(docId, stored.fileName);
-      if (res.success && res.data?.signedUrl) return res.data.signedUrl;
-    } catch { /* ignore */ }
-    return null;
-  },
-
-  /**
-   * Get count of stored files
-   */
-  getCount(): number {
-    return Object.keys(getAll()).length;
-  },
-
-  /**
-   * Get storage statistics
-   */
-  getStats(): { total: number; local: number; cloud: number; totalSizeBytes: number; legacyLargeFiles: number } {
+  /** Get file metadata (tenant-scoped). */
+  getFile(docId: string): StoredFile | null {
     const all = getAll();
-    const entries = Object.values(all);
-    return {
-      total: entries.length,
-      local: entries.filter((f) => !f.isCloudStored).length,
-      cloud: entries.filter((f) => f.isCloudStored).length,
-      totalSizeBytes: entries.reduce((sum, f) => sum + f.size, 0),
-      legacyLargeFiles: entries.filter((f) => !f.isCloudStored && f.base64 && f.size >= LARGE_FILE_THRESHOLD).length,
-    };
+    const file = all[docId] || null;
+    
+    // Verify tenant ownership
+    if (file && file.tenantId) {
+      const currentTenant = getCachedTenantId();
+      if (currentTenant && file.tenantId !== currentTenant) {
+        return null; // File belongs to different tenant
+      }
+    }
+    
+    return file;
   },
 
-  /**
-   * Migrate legacy large files (stored as base64 locally) to Supabase Storage.
-   * Returns count of files migrated.
-   */
-  async migrateLegacyFiles(onProgress?: (migrated: number, total: number) => void): Promise<number> {
-    const all = getAll();
-    const legacyFiles = Object.values(all).filter(
-      (f) => !f.isCloudStored && f.base64 && f.size >= LARGE_FILE_THRESHOLD
-    );
+  /** Get preview URL (signed cloud URL for production). */
+  async getPreviewUrl(docId: string): Promise<string | null> {
+    const file = this.getFile(docId);
+    if (!file) return null;
 
-    if (legacyFiles.length === 0) return 0;
-
-    let migrated = 0;
-
-    for (const file of legacyFiles) {
+    // Production: always get signed URL from cloud
+    if (file.storageRef) {
       try {
-        const res = await documentStorageApi.upload(file.id, file.fileName, file.mimeType, file.base64);
-        if (res.success) {
-          // Update the entry: strip base64, mark as cloud stored
-          const current = getAll();
-          if (current[file.id]) {
-            current[file.id].base64 = "";
-            current[file.id].isCloudStored = true;
-            current[file.id].storageRef = `${file.id}/${file.fileName}`;
-            saveAll(current);
-          }
-          migrated++;
-          onProgress?.(migrated, legacyFiles.length);
-        } else {
+        const res = await documentStorageApi.getSignedUrl(file.storageRef);
+        if (res.success && res.data?.signedUrl) {
+          return res.data.signedUrl;
         }
-      } catch (err) {
+      } catch {
       }
     }
 
-    if (migrated > 0) {
-      DocumentFileStore.notifySync();
+    // Fallback: base64 (should rarely happen in production)
+    return file.base64 || null;
+  },
+
+  /** Get local preview URL (base64 or blob URL). */
+  getPreviewUrlSync(docId: string): string | null {
+    const file = this.getFile(docId);
+    if (!file) return null;
+    if (file.base64) return file.base64;
+    return null;
+  },
+
+  /** Get cloud preview URL (signed URL from Supabase Storage). */
+  async getCloudPreviewUrl(docId: string): Promise<string | null> {
+    const file = this.getFile(docId);
+    if (!file || !file.storageRef) return null;
+
+    const parts = file.storageRef.split("/");
+    if (parts.length < 2) return null;
+
+    const fileName = parts[parts.length - 1];
+    const docIdPath = parts.slice(0, -1).join("/");
+
+    const res = await documentStorageApi.getSignedUrl(docIdPath, fileName);
+    if (res.success && res.data?.signedUrl) {
+      return res.data.signedUrl;
+    }
+    return null;
+  },
+
+  /** Get all files for a case (tenant-scoped). */
+  getFilesForCase(caseId: string): StoredFile[] {
+    const all = getAll();
+    const currentTenant = getCachedTenantId();
+    
+    return Object.values(all).filter(f => {
+      // Filter by caseId in storage path
+      const matchesCase = f.storageRef?.includes(`/${caseId}/`);
+      // Filter by tenant ownership
+      const matchesTenant = !currentTenant || !f.tenantId || f.tenantId === currentTenant;
+      return matchesCase && matchesTenant;
+    });
+  },
+
+  /** Get all files (tenant-scoped). */
+  getAllFiles(): StoredFile[] {
+    const all = getAll();
+    const currentTenant = getCachedTenantId();
+    
+    return Object.values(all).filter(f => {
+      // Filter by tenant ownership
+      return !currentTenant || !f.tenantId || f.tenantId === currentTenant;
+    });
+  },
+
+  /** Delete a file. */
+  async deleteFile(docId: string): Promise<boolean> {
+    const file = this.getFile(docId);
+    if (!file) return false;
+
+    // Delete from cloud if cloud-stored
+    if (file.isCloudStored && file.storageRef) {
+      try {
+        const parts = file.storageRef.split("/");
+        const fileName = parts[parts.length - 1];
+        const docIdPath = parts.slice(0, -1).join("/");
+        await documentStorageApi.deleteFile(docIdPath, fileName);
+      } catch {
+      }
     }
 
-    return migrated;
+    // Delete local metadata
+    const all = getAll();
+    delete all[docId];
+    saveAll(all);
+    DocumentFileStore.notifySync();
+    return true;
   },
+
+  /** Update file metadata. */
+  updateMetadata(docId: string, updates: Partial<StoredFile>): boolean {
+    const all = getAll();
+    if (!all[docId]) return false;
+    all[docId] = { ...all[docId], ...updates };
+    saveAll(all);
+    DocumentFileStore.notifySync();
+    return true;
+  },
+
+  /** Clear all files (tenant-scoped). */
+  clear(): void {
+    localStorage.removeItem(getStorageKey());
+  },
+
+  /** Get storage stats (tenant-scoped). */
+  getStats(): { count: number; totalSize: number; cloudCount: number } {
+    const files = this.getAllFiles();
+    return {
+      count: files.length,
+      totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+      cloudCount: files.filter(f => f.isCloudStored).length,
+    };
+  },
+
+  /** Export files for backup (tenant-scoped). */
+  export(): StoredFile[] {
+    return this.getAllFiles();
+  },
+
+  /** Import files from backup (with tenant ID validation). */
+  import(files: StoredFile[]): void {
+    const all = getAll();
+    const currentTenant = getCachedTenantId();
+    
+    for (const f of files) {
+      // Only import files that match current tenant or have no tenant
+      if (!currentTenant || !f.tenantId || f.tenantId === currentTenant) {
+        // Update tenantId to current tenant if missing
+        if (!f.tenantId && currentTenant) {
+          f.tenantId = currentTenant;
+        }
+        all[f.id] = f;
+      }
+    }
+    saveAll(all);
+  },
+};
+
+// Backward compatibility aliases
+export const saveDocumentFile = (docId: string, base64: string, mimeType: string) => {
+  const all = getAll();
+  const currentTenant = getCachedTenantId();
+  
+  all[docId] = {
+    id: docId,
+    fileName: docId,
+    mimeType,
+    size: base64.length,
+    base64,
+    uploadedBy: "system",
+    uploadedAt: new Date().toISOString(),
+    tenantId: currentTenant || undefined,
+  };
+  saveAll(all);
+};
+
+export const getDocumentFile = (docId: string): StoredFile | null => {
+  return DocumentFileStore.getFile(docId);
 };

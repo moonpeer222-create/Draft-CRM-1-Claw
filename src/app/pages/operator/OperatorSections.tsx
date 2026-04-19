@@ -2829,7 +2829,7 @@ export function VisitsSection({ u, dc, card, txt, sub, inputCls, bigBtn }: any) 
             </div>
             <select value={metWith} onChange={e => setMetWith(e.target.value)} className={inputCls}>
               <option value="">{u("Met With (Operator)", "کس سے ملے")}</option>
-              <option value="Expert">{u("Expert / Sir Atif", "ایکسپرٹ")}</option>
+              <option value="Expert">{u("Expert", "ایکسپرٹ")}</option>
               <option value="Agent">{u("Agent", "ایجنٹ")}</option>
               <option value="Operator">{u("Operator", "آپریٹر")}</option>
             </select>

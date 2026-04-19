@@ -63,10 +63,10 @@ export interface Case {
   paymentVerifiedAt?: string;
   paymentVerifiedBy?: string;
 
-  // ── Sir Atif Approval ──────────────────────────────────
-  sirAtifApproval?: boolean;
-  sirAtifApprovalAt?: string;
-  sirAtifApprovalNote?: string;
+  // ── Platform Owner Approval ──────────────────────────────────
+  ownerApproval?: boolean;
+  ownerApprovalAt?: string;
+  ownerApprovalNote?: string;
 
   // ── Cancellation & Reopen ──────────────────────────────
   cancellationReason?: string;

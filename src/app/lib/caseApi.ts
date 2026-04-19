@@ -1,8 +1,16 @@
 import { supabase } from "./supabase";
+import { getCurrentTenantId, getCachedTenantId } from "./tenantContext";
 import type { Case, Payment, Note } from "./mockData";
 import { getStageNumber, getStageLabel, getStageDeadlineHours } from "./mockData";
 
 export async function createCase(caseData: Partial<Case>): Promise<Case | null> {
+  // Get tenant context for tenant isolation
+  const tenantId = await getCurrentTenantId();
+  if (!tenantId) {
+    console.error("No tenant context available for case creation");
+    return null;
+  }
+
   const { data: existing } = await supabase.from('cases').select('case_number').order('created_at', { ascending: false }).limit(100);
   const cases = existing || [];
   const year = new Date().getFullYear();
@@ -61,27 +69,47 @@ export async function createCase(caseData: Partial<Case>): Promise<Case | null> 
     ...caseData,
   } as Case;
 
-  const dbRow = caseToDbRow({ ...newCase, case_number: caseNumber } as any);
+  const dbRow = caseToDbRow({ ...newCase, case_number: caseNumber } as any, tenantId);
   const { error } = await supabase.from('cases').insert(dbRow);
   if (error) {
+    console.error("Failed to create case:", error);
     return null;
   }
   return newCase;
 }
 
 export async function updateCase(caseId: string, updates: Partial<Case>): Promise<boolean> {
-  let { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').select('*').eq('id', caseId);
+  
+  // Add tenant filter for security
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  let { data } = await query.single();
   if (!data) {
-    const { data: byCaseNumber } = await supabase.from('cases').select('*').eq('case_number', caseId).single();
+    let fallbackQuery = supabase.from('cases').select('*').eq('case_number', caseId);
+    if (tenantId) {
+      fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+    }
+    const { data: byCaseNumber } = await fallbackQuery.single();
     data = byCaseNumber;
   }
   if (!data) return false;
+  
   const current = mapSupabaseCaseToLocal(data);
   const dbId = data.id;
   const merged: Case = { ...current, ...updates, updatedDate: new Date().toISOString() } as Case;
-  const dbRow = caseToDbRow(merged);
+  const dbRow = caseToDbRow(merged, data.tenant_id);
   dbRow.id = dbId; // ensure we use the real UUID, not the case_number
-  const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
+  
+  let updateQuery = supabase.from('cases').update(dbRow).eq('id', dbId);
+  if (tenantId) {
+    updateQuery = updateQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await updateQuery;
   if (error) {
     return false;
   }
@@ -89,95 +117,134 @@ export async function updateCase(caseId: string, updates: Partial<Case>): Promis
 }
 
 export async function updateCaseStatus(caseId: string, status: Case["status"]): Promise<boolean> {
-  let { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').select('*').eq('id', caseId);
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  let { data } = await query.single();
   if (!data) {
-    const { data: byCaseNumber } = await supabase.from('cases').select('*').eq('case_number', caseId).single();
+    let fallbackQuery = supabase.from('cases').select('*').eq('case_number', caseId);
+    if (tenantId) {
+      fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+    }
+    const { data: byCaseNumber } = await fallbackQuery.single();
     data = byCaseNumber;
   }
   if (!data) return false;
+  
   const current = mapSupabaseCaseToLocal(data);
   const dbId = data.id;
   const now = new Date().toISOString();
-  const stageNum = getStageNumber(status);
+
+  // Build next stage deadline
+  const currentStageNumber = getStageNumber(status);
+  const stageLabel = getStageLabel(status);
   const deadlineHours = getStageDeadlineHours(status);
-  const deadlineAt = deadlineHours
-    ? new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString()
-    : current.stageDeadlineAt;
+  const newDeadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString();
 
   const timelineEntry = {
-    id: `TL-${Date.now()}`,
-    date: now,
-    title: `Status changed to ${getStageLabel(status)}`,
-    description: `Case moved to stage ${stageNum}: ${getStageLabel(status)}`,
-    type: "status" as any,
+    stage: currentStageNumber,
+    label: stageLabel,
+    status: "completed" as const,
+    timestamp: now,
+    note: `Status updated to ${status}`,
+    agent: "System",
   };
 
   const merged: Case = {
     ...current,
     status,
-    pipelineStageKey: status,
-    currentStage: stageNum || current.currentStage,
+    currentStage: currentStageNumber,
     stageStartedAt: now,
-    stageDeadlineAt: deadlineAt,
-    isOverdue: false,
-    delayReason: undefined,
-    delayReportedAt: undefined,
-    timeline: [...current.timeline, timelineEntry],
+    stageDeadlineAt: newDeadline,
     updatedDate: now,
+    timeline: [...(current.timeline || []), timelineEntry],
   } as Case;
 
-  const dbRow = caseToDbRow(merged);
+  const dbRow = caseToDbRow(merged, data.tenant_id);
   dbRow.id = dbId;
-  const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
+  
+  let updateQuery = supabase.from('cases').update(dbRow).eq('id', dbId);
+  if (tenantId) {
+    updateQuery = updateQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await updateQuery;
   if (error) {
     return false;
   }
   return true;
 }
 
-export async function addPayment(caseId: string, payment: Omit<Payment, "id">): Promise<boolean> {
-  let { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+export async function addPayment(caseId: string, payment: Payment): Promise<boolean> {
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').select('*').eq('id', caseId);
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  let { data } = await query.single();
   if (!data) {
-    const { data: byCaseNumber } = await supabase.from('cases').select('*').eq('case_number', caseId).single();
+    let fallbackQuery = supabase.from('cases').select('*').eq('case_number', caseId);
+    if (tenantId) {
+      fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+    }
+    const { data: byCaseNumber } = await fallbackQuery.single();
     data = byCaseNumber;
   }
   if (!data) return false;
+  
   const current = mapSupabaseCaseToLocal(data);
   const dbId = data.id;
-  const newPayment: Payment = {
-    ...payment,
-    id: `PAY-${current.payments.length + 1}`,
-  } as Payment;
-  const payments = [...current.payments, newPayment];
-  let paidAmount = current.paidAmount;
-  if (payment.approvalStatus !== "pending") {
-    paidAmount += (payment.amount || 0);
-  }
-  const merged: Case = { ...current, payments, paidAmount, updatedDate: new Date().toISOString() } as Case;
-  const dbRow = caseToDbRow(merged);
+  const payments = [...(current.payments || []), payment];
+  const paidAmount = payments.reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0);
+  const dbRow = caseToDbRow({ ...current, payments, paidAmount, updatedDate: new Date().toISOString() } as Case, data.tenant_id);
   dbRow.id = dbId;
-  const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
+  
+  let updateQuery = supabase.from('cases').update(dbRow).eq('id', dbId);
+  if (tenantId) {
+    updateQuery = updateQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await updateQuery;
   if (error) {
     return false;
   }
   return true;
 }
 
-export async function addNote(caseId: string, note: Omit<Note, "id">): Promise<boolean> {
-  let { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+export async function addNote(caseId: string, note: Note): Promise<boolean> {
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').select('*').eq('id', caseId);
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  let { data } = await query.single();
   if (!data) {
-    const { data: byCaseNumber } = await supabase.from('cases').select('*').eq('case_number', caseId).single();
+    let fallbackQuery = supabase.from('cases').select('*').eq('case_number', caseId);
+    if (tenantId) {
+      fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+    }
+    const { data: byCaseNumber } = await fallbackQuery.single();
     data = byCaseNumber;
   }
   if (!data) return false;
+  
   const current = mapSupabaseCaseToLocal(data);
   const dbId = data.id;
-  const newNote: Note = { ...note, id: `NOTE-${current.notes.length + 1}` } as Note;
-  const notes = [newNote, ...current.notes];
-  const merged: Case = { ...current, notes, updatedDate: new Date().toISOString() } as Case;
-  const dbRow = caseToDbRow(merged);
+  const notes = [...(current.notes || []), note];
+  const dbRow = caseToDbRow({ ...current, notes, updatedDate: new Date().toISOString() } as Case, data.tenant_id);
   dbRow.id = dbId;
-  const { error } = await supabase.from('cases').update(dbRow).eq('id', dbId);
+  
+  let updateQuery = supabase.from('cases').update(dbRow).eq('id', dbId);
+  if (tenantId) {
+    updateQuery = updateQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await updateQuery;
   if (error) {
     return false;
   }
@@ -185,14 +252,31 @@ export async function addNote(caseId: string, note: Omit<Note, "id">): Promise<b
 }
 
 export async function deleteCase(caseId: string): Promise<boolean> {
-  let { data } = await supabase.from('cases').select('id').eq('id', caseId).single();
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').select('id').eq('id', caseId);
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  let { data } = await query.single();
   if (!data) {
-    const { data: byCaseNumber } = await supabase.from('cases').select('id').eq('case_number', caseId).single();
+    let fallbackQuery = supabase.from('cases').select('id').eq('case_number', caseId);
+    if (tenantId) {
+      fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+    }
+    const { data: byCaseNumber } = await fallbackQuery.single();
     data = byCaseNumber;
   }
+  
   const dbId = data?.id;
   if (!dbId) return false;
-  const { error } = await supabase.from('cases').delete().eq('id', dbId);
+  
+  let deleteQuery = supabase.from('cases').delete().eq('id', dbId);
+  if (tenantId) {
+    deleteQuery = deleteQuery.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await deleteQuery;
   if (error) {
     return false;
   }
@@ -200,16 +284,26 @@ export async function deleteCase(caseId: string): Promise<boolean> {
 }
 
 export async function bulkDeleteCases(caseIds: string[]): Promise<boolean> {
-  const { error } = await supabase.from('cases').delete().in('id', caseIds);
+  const tenantId = getCachedTenantId();
+  let query = supabase.from('cases').delete().in('id', caseIds);
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
+  }
+  
+  const { error } = await query;
   if (error) {
     return false;
   }
   return true;
 }
 
-function caseToDbRow(c: Case): any {
+function caseToDbRow(c: Case, tenantId?: string | null): any {
   const isValidUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-  return {
+  
+  // Get tenant ID from parameter or cache
+  const effectiveTenantId = tenantId || getCachedTenantId();
+  
+  const row: any = {
     id: c.id,
     case_number: (c as any).case_number || c.id,
     client_id: c.customerId || null,
@@ -258,9 +352,9 @@ function caseToDbRow(c: Case): any {
       paymentVerified: c.paymentVerified,
       paymentVerifiedAt: c.paymentVerifiedAt,
       paymentVerifiedBy: c.paymentVerifiedBy,
-      sirAtifApproval: c.sirAtifApproval,
-      sirAtifApprovalAt: c.sirAtifApprovalAt,
-      sirAtifApprovalNote: c.sirAtifApprovalNote,
+      ownerApproval: c.ownerApproval,
+      ownerApprovalAt: c.ownerApprovalAt,
+      ownerApprovalNote: c.ownerApprovalNote,
       cancellationReason: c.cancellationReason,
       cancelledAt: c.cancelledAt,
       cancelledBy: c.cancelledBy,
@@ -275,6 +369,13 @@ function caseToDbRow(c: Case): any {
     },
     updated_at: new Date().toISOString(),
   };
+  
+  // Add tenant_id for tenant isolation
+  if (effectiveTenantId) {
+    row.tenant_id = effectiveTenantId;
+  }
+  
+  return row;
 }
 
 function mapSupabaseCaseToLocal(raw: any): Case {
@@ -324,9 +425,9 @@ function mapSupabaseCaseToLocal(raw: any): Case {
     paymentVerified: meta.paymentVerified || false,
     paymentVerifiedAt: meta.paymentVerifiedAt,
     paymentVerifiedBy: meta.paymentVerifiedBy,
-    sirAtifApproval: meta.sirAtifApproval || false,
-    sirAtifApprovalAt: meta.sirAtifApprovalAt,
-    sirAtifApprovalNote: meta.sirAtifApprovalNote,
+    ownerApproval: meta.ownerApproval || false,
+    ownerApprovalAt: meta.ownerApprovalAt,
+    ownerApprovalNote: meta.ownerApprovalNote,
     cancellationReason: meta.cancellationReason,
     cancelledAt: meta.cancelledAt,
     cancelledBy: meta.cancelledBy,
@@ -340,3 +441,6 @@ function mapSupabaseCaseToLocal(raw: any): Case {
     companyCountry: meta.companyCountry,
   } as Case;
 }
+
+// Re-export mapSupabaseCaseToLocal for other modules
+export { mapSupabaseCaseToLocal };

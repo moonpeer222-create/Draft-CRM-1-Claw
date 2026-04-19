@@ -387,7 +387,7 @@ export function VisualTimelineStepper({ caseData, onStageClick, compact = false 
                     {state === "upcoming" && isGated && isHovered && (
                       <div className="flex items-center gap-1.5 mt-0.5 text-xs text-amber-500">
                         <Lock className="w-3 h-3" />
-                        {stage.requiresApproval && (isUrdu ? "سر عاطف کی منظوری" : "Sir Atif approval")}
+                        {stage.requiresApproval && (isUrdu ? "مالک کی منظوری" : "Platform Owner approval")}
                         {stage.requiresDocChecklist && !stage.requiresApproval && (isUrdu ? "دستاویزات تصدیق" : "Doc verification")}
                         {stage.requiresPaymentVerification && !stage.requiresDocChecklist && (isUrdu ? "ادائیگی تصدیق" : "Payment verified")}
                       </div>

@@ -13,7 +13,7 @@ import { useOptimisticMutation } from "../../lib/optimisticMutation";
 import { pushCases } from "../../lib/syncService";
 import { copyToClipboard } from "../../lib/clipboard";
 import { supabase } from "../../lib/supabase";
-import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { getCurrentTenantId } from "../../lib/tenantContext";
 import { createCase, updateCase, updateCaseStatus, addPayment, addNote, deleteCase, bulkDeleteCases } from "../../lib/caseApi";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router";
@@ -32,7 +32,7 @@ import { PaymentConfirmationModal } from "../../components/PaymentConfirmationMo
 import { EmojiMoodTracker } from "../../components/visaverse/EmojiMoodTracker";
 import { ARScannerButton } from "../../components/visaverse/ARScanner";
 import { visaverseApi } from "../../lib/api";
-import { SirAtifApprovalButton } from "../../components/SirAtifApprovalButton";
+import { OwnerApprovalButton } from "../../components/OwnerApprovalButton";
 import { CancellationReopenModal } from "../../components/CancellationReopenModal";
 import { EditableCaseFields } from "../../components/EditableCaseFields";
 import { LiveDocumentThumbnail } from "../../components/LiveDocumentThumbnail";
@@ -288,7 +288,21 @@ export function AdminCaseManagement() {
 
   const loadCases = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase.from('cases').select('*').order('created_at', { ascending: false });
+    const tenantId = await getCurrentTenantId();
+    
+    if (!tenantId) {
+      toast.error("No tenant context available. Please log in again.");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Query cases filtered by tenant_id - TENANT ISOLATION
+    const { data, error } = await supabase
+      .from('cases')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
+      
     if (error) {
       toast.error("Failed to load cases from server");
     } else {
@@ -1326,9 +1340,9 @@ export function AdminCaseManagement() {
                       )}
                     </div>
 
-                    {/* Sir Atif Digital Approval — only for master admin on visa pipeline cases */}
+                    {/* Platform Owner Digital Approval — only for master admin on visa pipeline cases */}
                     {isMasterAdmin && selectedCase.pipelineType === "visa" && (
-                      <SirAtifApprovalButton
+                      <OwnerApprovalButton
                         caseData={selectedCase}
                         darkMode={dc}
                         isUrdu={isUrdu}
