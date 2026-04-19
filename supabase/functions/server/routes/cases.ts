@@ -459,4 +459,317 @@ cases.get("/stats/summary", authMiddleware(), async (c) => {
   }
 });
 
+// GET /cases/overdue - Alias to /cases/stats/overdue for frontend compatibility
+cases.get("/overdue", authMiddleware(), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const overdueCases = await db.cases.getOverdue(session.tenantId || undefined);
+    
+    return c.json({ 
+      success: true, 
+      data: {
+        count: overdueCases.length,
+        cases: overdueCases.slice(0, 10)
+      }
+    });
+  } catch (err) {
+    console.error("GET /cases/overdue error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// POST /cases/:caseId/payments - Add payment to case
+cases.post("/:caseId/payments", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    const body = await c.req.json();
+    
+    // Verify case exists and user has access
+    const caseData = await db.cases.getById(caseId);
+    if (!caseData) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    if (caseData.tenant_id && caseData.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    const payment = await db.payments.create({
+      case_id: caseId,
+      amount: body.amount,
+      currency: body.currency || 'PKR',
+      payment_method: body.payment_method,
+      status: body.status || 'pending',
+      description: body.description,
+      reference_number: body.reference_number,
+      paid_by: body.paid_by,
+      paid_at: body.paid_at,
+      tenant_id: session.tenantId,
+      created_by: session.userId
+    });
+    
+    // Create audit log
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "payment_added",
+      entity_type: "payment",
+      entity_id: payment.id,
+      details: { 
+        case_id: caseId,
+        amount: body.amount,
+        currency: body.currency || 'PKR'
+      },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, data: payment });
+  } catch (err) {
+    console.error("POST /cases/:caseId/payments error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// GET /cases/:caseId/payments - Get payments for case
+cases.get("/:caseId/payments", authMiddleware(), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    
+    // Verify case exists and user has access
+    const caseData = await db.cases.getById(caseId);
+    if (!caseData) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    if (caseData.tenant_id && caseData.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    const payments = await db.payments.getByCase(caseId);
+    
+    return c.json({ success: true, data: payments });
+  } catch (err) {
+    console.error("GET /cases/:caseId/payments error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// POST /cases/:caseId/notes - Add note to case
+cases.post("/:caseId/notes", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    const body = await c.req.json();
+    
+    // Verify case exists and user has access
+    const caseData = await db.cases.getById(caseId);
+    if (!caseData) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    if (caseData.tenant_id && caseData.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    if (!body.content || body.content.trim() === '') {
+      return c.json({ success: false, error: "Note content is required" }, 400);
+    }
+    
+    const note = await db.notes.create({
+      case_id: caseId,
+      content: body.content,
+      note_type: body.note_type || 'general',
+      created_by: session.userId,
+      author_name: session.fullName,
+      tenant_id: session.tenantId,
+      is_private: body.is_private || false
+    });
+    
+    // Create audit log
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "note_added",
+      entity_type: "note",
+      entity_id: note.id,
+      details: { 
+        case_id: caseId,
+        note_type: body.note_type || 'general'
+      },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, data: note });
+  } catch (err) {
+    console.error("POST /cases/:caseId/notes error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// GET /cases/:caseId/notes - Get notes for case
+cases.get("/:caseId/notes", authMiddleware(), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    
+    // Verify case exists and user has access
+    const caseData = await db.cases.getById(caseId);
+    if (!caseData) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    if (caseData.tenant_id && caseData.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    const notes = await db.notes.getByCase(caseId);
+    
+    return c.json({ success: true, data: notes });
+  } catch (err) {
+    console.error("GET /cases/:caseId/notes error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// POST /cases/:caseId/cancel - Cancel case with reason
+cases.post("/:caseId/cancel", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    const body = await c.req.json();
+    
+    // Get existing case
+    const existingCase = await db.cases.getById(caseId);
+    if (!existingCase) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    // Verify tenant access
+    if (existingCase.tenant_id && existingCase.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    // Check if already cancelled
+    if (existingCase.status === 'cancelled') {
+      return c.json({ success: false, error: "Case is already cancelled" }, 400);
+    }
+    
+    // Add timeline entry for cancellation
+    const timelineEntry = {
+      id: `TL-${Date.now()}`,
+      date: new Date().toISOString(),
+      title: `Case cancelled: ${body.reason || 'No reason provided'}`,
+      user: session.fullName,
+      previous_status: existingCase.status
+    };
+    
+    const updates = {
+      status: 'cancelled',
+      cancellation_reason: body.reason || 'No reason provided',
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: session.userId,
+      timeline: [...(existingCase.timeline || []), timelineEntry]
+    };
+    
+    const data = await db.cases.update(caseId, updates);
+    
+    // Create audit log
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "case_cancelled",
+      entity_type: "case",
+      entity_id: caseId,
+      details: { 
+        reason: body.reason || 'No reason provided',
+        previous_status: existingCase.status,
+        customer_name: existingCase.customer_name
+      },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, data });
+  } catch (err) {
+    console.error("POST /cases/:caseId/cancel error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+// POST /cases/:caseId/reopen - Reopen cancelled case
+cases.post("/:caseId/reopen", authMiddleware(["master_admin", "admin", "agent"]), async (c) => {
+  try {
+    const session = c.get("session") as ServerSession;
+    const caseId = c.req.param("caseId");
+    const body = await c.req.json();
+    
+    // Get existing case
+    const existingCase = await db.cases.getById(caseId);
+    if (!existingCase) {
+      return c.json({ success: false, error: "Case not found" }, 404);
+    }
+    
+    // Verify tenant access
+    if (existingCase.tenant_id && existingCase.tenant_id !== session.tenantId) {
+      return c.json({ success: false, error: "Unauthorized" }, 403);
+    }
+    
+    // Check if actually cancelled
+    if (existingCase.status !== 'cancelled') {
+      return c.json({ success: false, error: "Case is not cancelled, cannot reopen" }, 400);
+    }
+    
+    // Add timeline entry for reopening
+    const timelineEntry = {
+      id: `TL-${Date.now()}`,
+      date: new Date().toISOString(),
+      title: `Case reopened: ${body.reason || 'No reason provided'}`,
+      user: session.fullName,
+      previous_status: existingCase.status
+    };
+    
+    const updates = {
+      status: body.new_status || 'new',
+      reopen_reason: body.reason || 'No reason provided',
+      reopened_at: new Date().toISOString(),
+      reopened_by: session.userId,
+      cancellation_reason: null,
+      cancelled_at: null,
+      cancelled_by: null,
+      timeline: [...(existingCase.timeline || []), timelineEntry]
+    };
+    
+    const data = await db.cases.update(caseId, updates);
+    
+    // Create audit log
+    await db.auditLog.create({
+      user_id: session.userId,
+      user_email: session.email,
+      action: "case_reopened",
+      entity_type: "case",
+      entity_id: caseId,
+      details: { 
+        reason: body.reason || 'No reason provided',
+        new_status: body.new_status || 'new',
+        customer_name: existingCase.customer_name
+      },
+      ip_address: c.req.header("x-forwarded-for"),
+      user_agent: c.req.header("user-agent"),
+      tenant_id: session.tenantId
+    });
+    
+    return c.json({ success: true, data });
+  } catch (err) {
+    console.error("POST /cases/:caseId/reopen error:", err);
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
 export default cases;
