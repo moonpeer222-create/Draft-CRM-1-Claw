@@ -4,7 +4,7 @@ import { ThemeProvider, useTheme } from "../lib/ThemeContext";
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { DataSync } from "../lib/dataSync";
 import { listenForPanic, SAFE_ROUTES } from "../lib/panicMode";
-import { SyncProvider, SyncStatusBadge } from "./SyncProvider";
+
 import { NetworkStatusBanner } from "./NetworkStatusBanner";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { authApi, getSessionToken, clearSessionToken } from "../lib/api";
@@ -247,7 +247,7 @@ function InnerLayout() {
         <GlobalAIChatbot />
       </Suspense>
       
-      <SyncStatusBadge />
+      
       <Toaster 
         position="top-center" 
         expand={false} 
@@ -270,7 +270,7 @@ function InnerLayout() {
 
 export function RootLayout() {
   return (
-    <SyncProvider>
+    
       <ThemeProvider>
         <Suspense fallback={null}>
           <VisaVerseProvider>
@@ -278,6 +278,6 @@ export function RootLayout() {
           </VisaVerseProvider>
         </Suspense>
       </ThemeProvider>
-    </SyncProvider>
+    
   );
 }

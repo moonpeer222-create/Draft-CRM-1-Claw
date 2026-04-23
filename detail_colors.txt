@@ -1,0 +1,31 @@
+  const getStatusColor = (status: Case["status"]) => {
+    const colors: Record<string, string> = {
+      document_collection: dc ? "bg-blue-900/30 text-blue-400" : "bg-blue-100 text-blue-700",
+      selection_call: dc ? "bg-purple-900/30 text-purple-400" : "bg-purple-100 text-purple-700",
+      medical_token: dc ? "bg-orange-900/30 text-orange-400" : "bg-orange-100 text-orange-700",
+      check_medical: dc ? "bg-amber-900/30 text-amber-400" : "bg-amber-100 text-amber-700",
+      biometric: dc ? "bg-cyan-900/30 text-cyan-400" : "bg-cyan-100 text-cyan-700",
+      e_number_issued: dc ? "bg-teal-900/30 text-teal-400" : "bg-teal-100 text-teal-700",
+      payment_confirmation: dc ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-700",
+      original_documents: dc ? "bg-indigo-900/30 text-indigo-400" : "bg-indigo-100 text-indigo-700",
+      submitted_to_manager: dc ? "bg-violet-900/30 text-violet-400" : "bg-violet-100 text-violet-700",
+      approved: dc ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-700",
+      remaining_amount: dc ? "bg-pink-900/30 text-pink-400" : "bg-pink-100 text-pink-700",
+      protector: dc ? "bg-lime-900/30 text-lime-400" : "bg-lime-100 text-lime-700",
+      ticket_booking: dc ? "bg-sky-900/30 text-sky-400" : "bg-sky-100 text-sky-700",
+      completed: dc ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-700",
+      rejected: dc ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-700",
+    };
+    return colors[status] || colors.document_collection;
+  };
+
+  const getPriorityColor = (priority: Case["priority"]) => {
+    const colors: Record<string, string> = {
+      low: dc ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700",
+      medium: dc ? "bg-blue-900/30 text-blue-400" : "bg-blue-100 text-blue-700",
+      high: dc ? "bg-orange-900/30 text-orange-400" : "bg-orange-100 text-orange-700",
+      urgent: dc ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-700",
+    };
+    return colors[priority];
+  };
+

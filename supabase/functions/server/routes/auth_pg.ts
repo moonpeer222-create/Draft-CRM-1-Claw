@@ -33,49 +33,13 @@ auth.post("/login", async (c) => {
       return c.json({ success: false, error: `Account is ${user.status}` }, 403);
     }
     
-    // Verify password
-    const hashedInput = await hashPw(password);
-    if (user.password_hash !== hashedInput) {
-      return c.json({ success: false, error: "Invalid credentials" }, 401);
-    }
-    
-    // Check role if specified
-    if (requestedRole && user.role !== requestedRole) {
-      if (!(requestedRole === "admin" && user.role === "master_admin")) {
-        return c.json({ success: false, error: `Not a ${requestedRole} account` }, 403);
-      }
-    }
-    
-    // Create session
-    const ip = c.req.header("x-forwarded-for") || "unknown";
-    const session = await createSession(user.id, user.full_name, user.email, user.role, ip);
-    
-    // Update last login
-    await db.users.update(user.id, { last_login: new Date().toISOString() });
-    
-    // Log audit
-    await db.audit.create({
-      user_id: user.id,
-      user_email: user.email,
-      user_role: user.role,
-      action: "login",
-      entity_type: "user",
-      entity_id: user.id,
-      ip_address: ip,
-      user_agent: c.req.header("user-agent")
-    });
-    
-    return c.json({
-      success: true,
-      data: {
-        token: session.token,
-        userId: session.userId,
-        fullName: session.fullName,
-        email: session.email,
-        role: session.role,
-        expiresAt: session.expiresAt
-      }
-    });
+    // LEGACY LOGIN DISABLED: Passwords are managed by Supabase Auth.
+    // The frontend should use supabase.auth.signInWithPassword() instead.
+    return c.json({ 
+      success: false, 
+      error: "Legacy login disabled. Use Supabase Auth.",
+      code: "USE_SUPABASE_AUTH"
+    }, 501);
   } catch (err: any) {
     return c.json({ success: false, error: `Login error: ${err?.message || err}` }, 500);
   }
@@ -230,9 +194,14 @@ auth.post("/reset-password", async (c) => {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     
-    // Update password
-    const hashedPassword = await hashPw(newPassword);
-    await db.users.update(user.id, { password_hash: hashedPassword });
+    // Update password via Supabase Auth admin API
+    const adminClient = db.getDbClient();
+    const { error: authError } = await adminClient.auth.admin.updateUserById(user.id, { 
+      password: newPassword 
+    });
+    if (authError) {
+      return c.json({ success: false, error: "Failed to update password in auth system" }, 500);
+    }
     
     // Mark token as used
     await db.passwordReset.markUsed(resetToken.id);

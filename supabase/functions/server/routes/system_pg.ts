@@ -15,7 +15,7 @@ system.get("/health", async (c) => {
     // Check database connectivity
     const client = getDbClient();
     const { data: dbCheck, error: dbError } = await client
-      .from('users')
+      .from('profiles')
       .select('count', { count: 'exact', head: true });
     
     if (dbError) {
@@ -74,7 +74,7 @@ system.get("/stats", async (c) => {
       agentCodesCount,
       notificationsCount,
     ] = await Promise.all([
-      client.from('users').select('*', { count: 'exact', head: true }),
+      client.from('profiles').select('*', { count: 'exact', head: true }),
       client.from('cases').select('*', { count: 'exact', head: true }),
       client.from('sessions').select('*', { count: 'exact', head: true }),
       client.from('documents').select('*', { count: 'exact', head: true }),
@@ -366,7 +366,7 @@ system.post("/backup", async (c) => {
     
     // Define tables to backup
     const tablesToBackup = tables.length > 0 ? tables : [
-      'users',
+      'profiles',
       'cases',
       'documents',
       'attendance',

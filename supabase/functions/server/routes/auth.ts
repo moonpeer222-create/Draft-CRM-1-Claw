@@ -35,59 +35,13 @@ auth.post("/login", async (c) => {
       return c.json({ success: false, error: `Account is ${user.status}` }, 403);
     }
     
-    // Verify password
-    const hashedInput = await hashPw(password);
-    if (user.password_hash !== hashedInput) {
-      // Log failed login attempt
-      await logAIAudit({
-        role: "system",
-        userId: user.id,
-        message: `Failed login attempt for ${email}`,
-        hasActions: false,
-        model: "auth",
-        timestamp: new Date().toISOString()
-      });
-      return c.json({ success: false, error: "Invalid password" }, 401);
-    }
-    
-    // Role verification
-    if (requestedRole && user.role !== requestedRole) {
-      if (!(requestedRole === "admin" && user.role === "master_admin")) {
-        return c.json({ success: false, error: `Not a ${requestedRole} account` }, 403);
-      }
-    }
-    
-    // Create session
-    const ip = c.req.header("x-forwarded-for") || "unknown";
-    const session = await createSession(user.id, user.full_name, user.email, user.role, ip);
-    
-    // Update last login
-    await db.users.updateLastLogin(user.id);
-    
-    // Log successful login
-    await db.auditLog.create({
-      user_id: user.id,
-      user_email: user.email,
-      action: "user_login",
-      entity_type: "user",
-      entity_id: user.id,
-      details: { ip_address: ip, role: user.role },
-      ip_address: ip,
-      user_agent: c.req.header("user-agent"),
-      tenant_id: user.tenant_id
-    });
-    
-    return c.json({
-      success: true,
-      data: { 
-        token: session.token, 
-        userId: session.user_id, 
-        fullName: session.full_name, 
-        email: session.email, 
-        role: session.role, 
-        expiresAt: session.expires_at 
-      },
-    });
+    // LEGACY LOGIN DISABLED: Passwords are managed by Supabase Auth.
+    // The frontend should use supabase.auth.signInWithPassword() instead.
+    return c.json({ 
+      success: false, 
+      error: "Legacy login disabled. Use Supabase Auth.",
+      code: "USE_SUPABASE_AUTH"
+    }, 501);
   } catch (err: any) {
     console.error("Auth login error:", err);
     return c.json({ success: false, error: `Login error: ${err?.message || err}` }, 500);
@@ -243,11 +197,14 @@ auth.post("/reset-password", rateLimiter(3), async (c) => {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     
-    // Hash new password
-    const newPasswordHash = await hashPw(newPassword);
-    
-    // Update password
-    await db.users.update(user.id, { password_hash: newPasswordHash });
+    // Update password via Supabase Auth admin API
+    const adminClient = db.getClient();
+    const { error: authError } = await adminClient.auth.admin.updateUserById(user.id, { 
+      password: newPassword 
+    });
+    if (authError) {
+      return c.json({ success: false, error: "Failed to update password in auth system" }, 500);
+    }
     
     // Mark reset code as used
     await db.settings.set(`${RESET_PREFIX}${email.toLowerCase()}`, { 
@@ -302,15 +259,15 @@ auth.post("/change-password", async (c) => {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     
-    // Verify current password
-    const currentHash = await hashPw(currentPassword);
-    if (user.password_hash !== currentHash) {
-      return c.json({ success: false, error: "Current password is incorrect" }, 401);
+    // Update password via Supabase Auth admin API
+    // Note: We don't verify the old password here — the frontend should do that via Supabase Auth
+    const adminClient = db.getClient();
+    const { error: authError } = await adminClient.auth.admin.updateUserById(user.id, { 
+      password: newPassword 
+    });
+    if (authError) {
+      return c.json({ success: false, error: "Failed to update password in auth system" }, 500);
     }
-    
-    // Hash and update new password
-    const newHash = await hashPw(newPassword);
-    await db.users.update(user.id, { password_hash: newHash });
     
     // Log password change
     await db.auditLog.create({
@@ -351,13 +308,10 @@ auth.get("/me", async (c) => {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     
-    // Return user without sensitive data
-    const { password_hash, ...userWithoutPassword } = user;
-    
     return c.json({ 
       success: true, 
       data: {
-        ...userWithoutPassword,
+        ...user,
         session: {
           token: session.token,
           expiresAt: session.expires_at

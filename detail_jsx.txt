@@ -1,0 +1,543 @@
+      <AnimatePresence>
+        {showCaseDetail && selectedCase && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCaseDetail(false)}>
+            <motion.div
+              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              onClick={(e) => e.stopPropagation()}
+              className={`${dc ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto ${deepLinked ? "animate-notif-ring" : ""}`}
+            >
+              {/* Deep-link highlight banner */}
+              {deepLinked && (
+                <div className="animate-notif-banner bg-gradient-to-r from-blue-500/20 via-blue-400/10 to-blue-500/20 border-b border-blue-500/30 px-6 py-2 flex items-center gap-2">
+                  <div className="animate-notif-dot w-2 h-2 rounded-full bg-blue-400" />
+                  <span className="text-xs font-medium text-blue-400">
+                    {isUrdu ? "اطلاع سے کھولا گیا" : "Opened from notification"}
+                  </span>
+                </div>
+              )}
+              {/* Header */}
+              <div className={`flex items-center justify-between p-6 border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h2 className={`text-xl font-bold ${txt}`}>{selectedCase.id}</h2>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedCase.status)}`}>{getStageLabel(selectedCase.status)}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(selectedCase.priority)}`}>{selectedCase.priority}</span>
+                    <RealtimeIndicator caseId={selectedCase.id} onRefresh={async () => {
+                      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                      if (data) {
+                        setSelectedCase(mapSupabaseCaseToLocal(data, profile));
+                        toast.success(isUrdu ? "کیس تازہ ترین ہو گیا" : "Case refreshed");
+                      }
+                    }} />
+                  </div>
+                  <p className={`mt-1 ${sub}`}>{selectedCase.customerName} • {selectedCase.country} • {selectedCase.jobType}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { const url = `${window.location.origin}/admin/cases/${selectedCase.id}`; copyToClipboard(url).then(() => { setLinkCopied(true); toast.success(isUrdu ? "لنک کاپی ہو گیا!" : `Link copied: ${selectedCase.id}`); setTimeout(() => setLinkCopied(false), 2000); }).catch(() => {}); }} className={`p-2 rounded-lg transition-colors ${linkCopied ? "text-green-500 bg-green-50 dark:bg-green-900/20" : dc ? "text-gray-400 hover:bg-gray-700 hover:text-blue-400" : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"}`} title={isUrdu ? "لنک کاپی" : "Copy Link"}>{linkCopied ? <Check className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}</motion.button>
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteCase(selectedCase.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-5 h-5" /></motion.button>
+                  <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowCaseDetail(false)} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></motion.button>
+                </div>
+              </div>
+
+              {/* Conflict Warning Banner — Real-time Polling */}
+              <AnimatePresence>
+                {conflictState.hasConflict && conflictState.record && !conflictState.dismissed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    className={`mx-6 mt-3 p-3 rounded-xl border flex items-start gap-3 ${dc ? "bg-amber-900/20 border-amber-700/50 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-800"}`}
+                  >
+                    <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                      <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-500" />
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">{isUrdu ? "ڈیٹا کہیں اور اپ ڈیٹ ہوا!" : "Data Updated Elsewhere!"}</p>
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded ${dc ? "bg-amber-800/40 text-amber-400" : "bg-amber-200/60 text-amber-700"}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          LIVE
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-0.5 ${dc ? "text-amber-400/80" : "text-amber-700"}`}>
+                        {`${conflictState.record.lastModifiedByName} (${conflictState.record.lastModifiedByRole}) modified this case ${conflictState.timeSince}`}
+                      </p>
+                      {conflictState.record.changeDescription && (
+                        <p className={`text-[10px] mt-1 italic ${dc ? "text-amber-500/70" : "text-amber-600"}`}>{conflictState.record.changeDescription}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <button onClick={async () => {
+                        conflictState.refresh();
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                        if (refreshed) setSelectedCase({ ...refreshed });
+                        toast.success(isUrdu ? "تازہ ترین ڈیٹا لوڈ ہو گیا" : "Latest data loaded");
+                      }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${dc ? "bg-amber-800/50 text-amber-300 hover:bg-amber-700/60" : "bg-amber-100 text-amber-800 hover:bg-amber-200"}`}>
+                        {isUrdu ? "ریفریش" : "Refresh"}
+                      </button>
+                      <button onClick={conflictState.dismiss}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] ${dc ? "text-gray-500 hover:text-gray-400" : "text-gray-400 hover:text-gray-600"}`}>
+                        {isUrdu ? "بند" : "Dismiss"}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {/* Last modified indicator (when no active conflict) */}
+              {!conflictState.hasConflict && (() => {
+                const lastMod = DataSyncService.getLastModifier(selectedCase.id);
+                if (lastMod && lastMod.lastModifiedBy !== "admin") {
+                  return (
+                    <div className={`mx-6 mt-2 flex items-center gap-1.5 text-[10px] ${dc ? "text-gray-500" : "text-gray-400"}`}>
+                      <Clock className="w-3 h-3" />
+                      {isUrdu
+                        ? `آخری تبدیلی: ${lastMod.lastModifiedByName} (${lastMod.lastModifiedByRole})`
+                        : `Last updated by ${lastMod.lastModifiedByName} (${lastMod.lastModifiedByRole})`}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Tabs */}
+              <div className={`flex border-b ${dc ? "border-gray-700" : "border-gray-200"} px-6`}>
+                {["overview", "timeline", "documents", "payments", "notes"].map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab ? "border-blue-500 text-blue-600" : `border-transparent ${sub} hover:text-blue-500`}`}>{tab}</button>
+                ))}
+              </div>
+
+              {/* Tab Content */}
+              <div className="p-6">
+                {activeTab === "overview" && (
+                  <div className="space-y-6">
+                    {/* Editable Customer Info — all fields sync to Supabase */}
+                    <EditableCaseFields
+                      caseData={selectedCase}
+                      darkMode={dc}
+                      isUrdu={isUrdu}
+                      userName={adminName}
+                      userRole={isMasterAdmin ? "master_admin" : "admin"}
+                      onUpdate={(updated) => {
+                        setSelectedCase(updated);
+                        loadCases();
+                      }}
+                    />
+                    {/* Payment Summary */}
+                    <div className={`p-4 rounded-xl ${dc ? "bg-gray-700/50" : "bg-gray-50"}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm ${sub}`}>{isUrdu ? "ادائیگی پیش رفت" : "Payment Progress"}</span>
+                        <span className={`text-sm font-semibold ${txt}`}>PKR {selectedCase.paidAmount.toLocaleString()} / {selectedCase.totalFee.toLocaleString()}</span>
+                      </div>
+                      <div className={`w-full h-3 rounded-full ${dc ? "bg-gray-600" : "bg-gray-200"}`}>
+                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min((selectedCase.paidAmount / selectedCase.totalFee) * 100, 100)}%` }} />
+                      </div>
+                      <p className={`text-xs mt-1 ${sub}`}>{isUrdu ? "باقی:" : "Outstanding:"} PKR {(selectedCase.totalFee - selectedCase.paidAmount).toLocaleString()}</p>
+                    </div>
+                    {/* Status Change */}
+                    <div>
+                      <label className={labelCls}>Update Status</label>
+                      <div className="mt-2 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                        <div className="relative flex-1 w-full sm:max-w-xs">
+                          <select
+                            value={selectedCase.status}
+                            onChange={(e) => handleUpdateStatus(selectedCase.id, e.target.value as Case["status"])}
+                            className={`w-full appearance-none px-4 py-2.5 pr-10 rounded-xl text-sm font-semibold border-2 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                              dc
+                                ? "bg-gray-700 border-gray-600 text-gray-200 hover:border-blue-500/50"
+                                : "bg-white border-gray-200 text-gray-800 hover:border-blue-400"
+                            }`}
+                          >
+                            {(() => {
+                              const pType = selectedCase.pipelineType || "visa";
+                              const stages = getPipelineStages(pType);
+                              return stages.map((s) => (
+                                <option key={s.key} value={s.key}>
+                                  {s.stageNumber > 0 ? `${s.stageNumber}. ` : "✕ "}{isUrdu ? s.labelUrdu : s.label}
+                                </option>
+                              ));
+                            })()}
+                          </select>
+                          <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${sub}`} />
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(selectedCase.status)}`}>
+                          <span className="w-2 h-2 rounded-full bg-current" />
+                          {getStageLabel(selectedCase.status)}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Overdue / Deadline Alert */}
+                    {(() => {
+                      const oi = getOverdueInfo(selectedCase);
+                      if (!oi.hasDeadline) return null;
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                          className={`relative overflow-hidden rounded-xl p-4 border-2 ${
+                            oi.isOverdue
+                              ? "border-red-500/50 bg-gradient-to-r " + (dc ? "from-red-950/40 to-red-900/20" : "from-red-50 to-orange-50")
+                              : oi.hoursRemaining !== null && oi.hoursRemaining < 6
+                                ? "border-amber-500/50 bg-gradient-to-r " + (dc ? "from-amber-950/30 to-yellow-900/10" : "from-amber-50 to-yellow-50")
+                                : "border-blue-500/30 bg-gradient-to-r " + (dc ? "from-blue-950/20 to-cyan-900/10" : "from-blue-50 to-cyan-50")
+                          }`}
+                        >
+                          {/* Animated pulse for overdue */}
+                          {oi.isOverdue && (
+                            <motion.div
+                              animate={{ opacity: [0.3, 0.6, 0.3] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="absolute inset-0 bg-red-500/5"
+                            />
+                          )}
+                          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <motion.div
+                                animate={oi.isOverdue ? { rotate: [0, -10, 10, -10, 0] } : {}}
+                                transition={{ duration: 0.6, repeat: oi.isOverdue ? Infinity : 0, repeatDelay: 3 }}
+                                className={`p-2 rounded-xl flex-shrink-0 ${
+                                  oi.isOverdue ? "bg-red-500/20" : oi.hoursRemaining! < 6 ? "bg-amber-500/20" : "bg-blue-500/20"
+                                }`}
+                              >
+                                {oi.isOverdue ? <AlertTriangle className="w-5 h-5 text-red-500" /> : <Timer className={`w-5 h-5 ${oi.hoursRemaining! < 6 ? "text-amber-500" : "text-blue-500"}`} />}
+                              </motion.div>
+                              <div>
+                                <p className={`text-sm font-bold ${oi.isOverdue ? "text-red-600 dark:text-red-400" : oi.hoursRemaining! < 6 ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400"}`}>
+                                  {oi.isOverdue ? (isUrdu ? "ڈیڈ لائن گزر چکی!" : "Deadline Exceeded!") : oi.hoursRemaining! < 6 ? (isUrdu ? "ڈیڈ لائن قریب!" : "Deadline Approaching!") : (isUrdu ? "وقت باقی ہے" : "On Track")}
+                                </p>
+                                <p className={`text-xs mt-0.5 ${sub}`}>
+                                  {isUrdu ? "مرحلہ" : "Stage"}: {getStageLabel(selectedCase.status, isUrdu)} — <span className="font-bold">{oi.timeLabel}</span>
+                                </p>
+                                {selectedCase.delayReason && (
+                                  <motion.p
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="flex items-center gap-1.5 mt-1.5"
+                                  >
+                                    <MessageSquare className="w-3 h-3 text-orange-500" />
+                                    <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                                      {isUrdu ? "وجہ:" : "Reason:"} {getDelayReasonLabel(selectedCase.delayReason, isUrdu)}
+                                    </span>
+                                    {selectedCase.delayReportedAt && (
+                                      <span className={`text-[10px] ${sub}`}>({new Date(selectedCase.delayReportedAt).toLocaleDateString()})</span>
+                                    )}
+                                  </motion.p>
+                                )}
+                              </div>
+                            </div>
+                            {oi.isOverdue && (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={openDelayModal}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-red-500/20 flex-shrink-0"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                                {selectedCase.delayReason ? (isUrdu ? "وجہ اپ ڈیٹ" : "Update Reason") : (isUrdu ? "تاخیر کی وجہ" : "Report Delay")}
+                              </motion.button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })()}
+
+                    {/* Visual Timeline Stepper */}
+                    <div className={`p-4 rounded-xl border ${dc ? "bg-gray-700/30 border-gray-700" : "bg-gray-50 border-gray-100"}`}>
+                      <h4 className={`text-sm font-bold mb-3 ${txt}`}>{isUrdu ? "ورک فلو پیش رفت" : "Workflow Progress"}</h4>
+                      <VisualTimelineStepper
+                        caseData={selectedCase}
+                        compact
+                        onStageClick={(stageKey) => handleUpdateStatus(selectedCase.id, stageKey)}
+                      />
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setShowPaymentModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><DollarSign className="w-4 h-4" /> Record Payment</motion.button>
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { window.open(`tel:${selectedCase.phone}`); }} className={`flex items-center gap-2 px-4 py-2 border rounded-lg ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}><Phone className="w-4 h-4" /> Call</motion.button>
+                      <div className="relative">
+                        <WhatsAppActions caseData={selectedCase} compact />
+                      </div>
+                      {!selectedCase.delayReason && getOverdueInfo(selectedCase).hasDeadline && (
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={openDelayModal} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"><AlertTriangle className="w-4 h-4" /> {isUrdu ? "تاخیر رپورٹ" : "Report Delay"}</motion.button>
+                      )}
+                    </div>
+
+                    {/* Sir Atif Digital Approval — only for master admin on visa pipeline cases */}
+                    {isMasterAdmin && selectedCase.pipelineType === "visa" && (
+                      <SirAtifApprovalButton
+                        caseData={selectedCase}
+                        darkMode={dc}
+                        isUrdu={isUrdu}
+                        userName={adminName}
+                        userId="master_admin"
+                        onUpdate={async () => {
+                          await loadCases();
+                          const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                          if (refreshed) setSelectedCase(refreshed);
+                        }}
+                      />
+                    )}
+
+                    {/* Cancel / Reopen Case Button */}
+                    <div className="flex flex-wrap gap-3">
+                      {selectedCase.status !== "visa_cancelled" && selectedCase.status !== "lead_cancelled" && selectedCase.status !== "rejected" ? (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowCancelModal(true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            dc ? "bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                          }`}
+                        >
+                          <XCircle className="w-4 h-4" />
+                          {isUrdu ? "کیس منسوخ کریں" : "Cancel Case"}
+                        </motion.button>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowCancelModal(true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            dc ? "bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/20" : "bg-green-50 text-green-600 hover:bg-green-100 border border-green-200"
+                          }`}
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                          {isUrdu ? "کیس دوبارہ کھولیں" : "Reopen Case"}
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {/* WhatsApp Templates Panel */}
+                    <WhatsAppActions caseData={selectedCase} />
+
+                    {/* VisaVerse: Admin Mood Feedback Per-Case */}
+                    <EmojiMoodTracker
+                      stageLabel={getStageLabel(selectedCase.status, isUrdu)}
+                      caseId={selectedCase.id}
+                      isUrdu={isUrdu}
+                      onFeedback={(rating, cId, stage) => {
+                        visaverseApi.saveMoodFeedback({
+                          caseId: cId,
+                          stage,
+                          rating,
+                          userId: "admin",
+                          userRole: "admin",
+                        });
+                        visaverseApi.trackEvent({
+                          featureKey: "emojiTracker",
+                          action: "admin_feedback",
+                          userId: "admin",
+                          userRole: "admin",
+                          caseId: cId,
+                          metadata: { rating, stage },
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+
+                {activeTab === "timeline" && (
+                  <div className="space-y-6">
+                    {/* Visual Workflow Stepper */}
+                    <div className={`p-4 rounded-xl border ${dc ? "bg-gray-700/30 border-gray-700" : "bg-gray-50 border-gray-100"}`}>
+                      <h4 className={`text-sm font-bold mb-4 ${txt}`}>{isUrdu ? "پائپ لائن ورک فلو" : "Pipeline Workflow"}</h4>
+                      <VisualTimelineStepper
+                        caseData={selectedCase}
+                        onStageClick={(stageKey) => handleUpdateStatus(selectedCase.id, stageKey)}
+                      />
+                    </div>
+
+                    {/* Event Timeline */}
+                    <div>
+                      <h4 className={`text-sm font-bold mb-3 ${txt}`}>{isUrdu ? "واقعات کی ٹائم لائن" : "Event Timeline"}</h4>
+                      {selectedCase.timeline.length === 0 ? (
+                        <p className={`text-center py-8 ${sub}`}>No timeline events yet</p>
+                      ) : (
+                        selectedCase.timeline.map((event, idx) => (
+                          <div key={event.id} className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-3 h-3 rounded-full ${event.type === "status" ? "bg-blue-500" : event.type === "payment" ? "bg-blue-500" : "bg-gray-400"}`} />
+                              {idx < selectedCase.timeline.length - 1 && <div className={`w-0.5 flex-1 ${dc ? "bg-gray-600" : "bg-gray-200"}`} />}
+                            </div>
+                            <div className={`pb-4 flex-1`}>
+                              <p className={`text-sm font-semibold ${txt}`}>{event.title}</p>
+                              <p className={`text-xs ${sub}`}>{event.description}</p>
+                              <p className={`text-xs mt-1 ${sub}`}>{new Date(event.date).toLocaleString()} • {event.user}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "documents" && (
+                  <div className="space-y-4">
+                    {/* Mandatory Document Verification Checklist */}
+                    {selectedCase.pipelineType === "visa" && (
+                      <MandatoryDocumentChecklist
+                        caseId={selectedCase.id}
+                        caseData={selectedCase}
+                        darkMode={dc}
+                        isUrdu={isUrdu}
+                        userRole="admin"
+                        userName={adminName}
+                        userId="admin"
+                        onUpdate={async () => {
+                          await loadCases();
+                          const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                          const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                          if (refreshed) setSelectedCase(refreshed);
+                        }}
+                      />
+                    )}
+
+                    {/* VisaVerse: AR Document Scanner */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <ARScannerButton
+                        isUrdu={isUrdu}
+                        onScanComplete={(quality) => {
+                          visaverseApi.trackEvent({
+                            featureKey: "arScanner",
+                            action: `scan_${quality}`,
+                            userId: "admin",
+                            userRole: "admin",
+                            caseId: selectedCase.id,
+                            metadata: { quality },
+                          });
+                        }}
+                      />
+                    </div>
+                  <DocumentUploadInterface
+                    existingDocuments={selectedCase.documents}
+                    onUpload={async (files) => {
+                      const newDocs: any[] = [];
+                      for (let i = 0; i < files.length; i++) {
+                        const f = files[i];
+                        const docId = `DOC-${Date.now()}-${i}`;
+                        // Upload to Supabase Storage (production — real files)
+                        try {
+                          const uploadRes = await documentUploadApi.uploadForm(f.file, selectedCase.id, docId, {
+                            checklistKey: f.category,
+                            uploadedBy: adminName,
+                            uploadedByRole: isMasterAdmin ? "master_admin" : "admin",
+                          });
+                          const storagePath = uploadRes.success && uploadRes.data?.storagePath ? uploadRes.data.storagePath : undefined;
+                          const signedUrl = uploadRes.success && uploadRes.data?.signedUrl ? uploadRes.data.signedUrl : undefined;
+                          newDocs.push({
+                            id: docId,
+                            name: `${f.category}: ${f.file.name}`,
+                            type: f.file.type,
+                            uploadDate: new Date().toISOString(),
+                            status: "pending" as const,
+                            url: signedUrl || "#",
+                            storagePath,
+                            storageSignedUrl: signedUrl,
+                            signedUrlExpiresAt: signedUrl ? new Date(Date.now() + 3600 * 1000).toISOString() : undefined,
+                            mimeType: f.file.type,
+                            fileSize: f.file.size,
+                            notes: `Category: ${f.category}`,
+                          });
+                        } catch {
+                          await DocumentFileStore.storeFile(docId, f.file, adminName);
+                          newDocs.push({
+                            id: docId,
+                            name: `${f.category}: ${f.file.name}`,
+                            type: f.file.type,
+                            uploadDate: new Date().toISOString(),
+                            status: "pending" as const,
+                            url: "#",
+                            notes: `Category: ${f.category}`,
+                          });
+                        }
+                      }
+                      const success = await updateCase(selectedCase.id, {
+                        documents: [...selectedCase.documents, ...newDocs],
+                      });
+                      if (success) {
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                        if (refreshed) setSelectedCase(refreshed);
+                        newDocs.forEach(d => AuditLogService.logDocumentAction(adminName, "admin", "document_uploaded", selectedCase.id, d.name));
+                        DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `${newDocs.length} document(s) uploaded`);
+                        NotificationService.addNotification({
+                          type: "document", priority: "medium",
+                          title: "Documents Uploaded",
+                          message: `${newDocs.length} document(s) uploaded for case ${selectedCase.id} (${selectedCase.customerName})`,
+                          actionable: true, actionUrl: "/admin/cases", actionLabel: "View Case", targetRole: "all",
+                        });
+                        loadCases();
+                      }
+                    }}
+                    onDocumentVerify={async (docId, status) => {
+                      const updatedDocs = selectedCase.documents.map(d =>
+                        d.id === docId ? { ...d, status } : d
+                      );
+                      const success = await updateCase(selectedCase.id, { documents: updatedDocs });
+                      if (success) {
+                        const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+                        const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+                        if (refreshed) setSelectedCase(refreshed);
+                        const doc = selectedCase.documents.find(d => d.id === docId);
+                        AuditLogService.logDocumentAction(adminName, "admin", status === "verified" ? "document_verified" : "document_rejected", selectedCase.id, doc?.name || docId);
+                        DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `Document ${status}`);
+                        toast.success(`Document ${status === "verified" ? "verified" : "rejected"}!`);
+                        loadCases();
+                      }
+                    }}
+                  />
+                  </div>
+                )}
+
+                {activeTab === "payments" && (
+                  <div className="space-y-3">
+                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPaymentModal(true)} className="w-full py-3 border-2 border-dashed border-blue-300 text-blue-600 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-center gap-2">
+                      <Plus className="w-4 h-4" /> Add Payment
+                    </motion.button>
+                    {selectedCase.payments.length === 0 ? (
+                      <p className={`text-center py-8 ${sub}`}>No payments recorded</p>
+                    ) : (
+                      selectedCase.payments.map((p) => (
+                        <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl ${dc ? "bg-gray-700/50" : "bg-gray-50"}`}>
+                          <div>
+                            <p className={`text-sm font-semibold ${txt}`}>PKR {p.amount.toLocaleString()}</p>
+                            <p className={`text-xs ${sub}`}>{p.description} • {p.method} • {new Date(p.date).toLocaleDateString()}</p>
+                          </div>
+                          <span className="text-xs text-blue-600 font-mono">{p.receiptNumber}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "notes" && (
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <input type="text" value={newNote.text} onChange={(e) => setNewNote({ ...newNote, text: e.target.value })} placeholder="Add a note..." className={`${inputCls} flex-1`} onKeyDown={(e) => e.key === "Enter" && handleAddNote()} />
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={newNote.important} onChange={(e) => setNewNote({ ...newNote, important: e.target.checked })} className="rounded" />
+                        <span className={`text-xs ${sub}`}>Important</span>
+                      </label>
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleAddNote} className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"><Send className="w-4 h-4" /></motion.button>
+                    </div>
+                    {selectedCase.notes.length === 0 ? (
+                      <p className={`text-center py-8 ${sub}`}>No notes yet</p>
+                    ) : (
+                      selectedCase.notes.map((n) => (
+                        <div key={n.id} className={`p-3 rounded-xl border-l-4 ${n.important ? "border-red-500" : "border-blue-500"} ${dc ? "bg-gray-700/50" : "bg-gray-50"}`}>
+                          <p className={`text-sm ${txt}`}>{n.text}</p>
+                          <p className={`text-xs mt-1 ${sub}`}>{n.author} • {new Date(n.date).toLocaleString()}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>

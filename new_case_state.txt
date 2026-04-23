@@ -1,0 +1,122 @@
+  const [newCase, setNewCase] = useState({
+    customerName: "",
+    fatherName: "",
+    phone: "",
+    email: "",
+    cnic: "",
+    passport: "",
+    dateOfBirth: "",
+    maritalStatus: "single" as Case["maritalStatus"],
+    address: "",
+    city: "Lahore",
+    country: "Saudi Arabia",
+    jobType: "Driver",
+    jobDescription: "",
+    education: "High School",
+    experience: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    emergencyContactRelation: "father",
+    agentName: "Faizan",
+    totalFee: 50000,
+    priority: "medium" as Case["priority"],
+    uploadedDocs: [] as string[],
+  });
+
+  const [newPayment, setNewPayment] = useState({
+    amount: 0,
+    method: "cash" as Payment["method"],
+    description: "",
+    receiptNumber: "",
+  });
+
+  const [newNote, setNewNote] = useState({
+    text: "",
+    important: false,
+  });
+
+  // File upload state
+  interface UploadedFile {
+    id: string;
+    file: File;
+    preview: string;
+    category: string;
+  }
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILES = 10;
+  const ALLOWED_TYPES = [
+    "image/jpeg", "image/png",
+    "application/pdf",
+  ];
+  const ALLOWED_EXTENSIONS = ".jpg,.jpeg,.png,.pdf";
+  const DOC_CATEGORIES = [
+    "Passport Copy", "CNIC Front", "CNIC Back", "Photos (4x6)",
+    "Educational Cert", "Experience Letter", "Police Character Cert",
+    "Medical Report", "Other",
+  ];
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith("image/")) return Image;
+    if (type === "application/pdf") return FileText;
+    return FileIcon;
+  };
+
+  const processFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const remaining = MAX_FILES - uploadedFiles.length;
+    if (remaining <= 0) {
+      toast.error(isUrdu ? `زیادہ سے زیادہ ${MAX_FILES} فائلز` : `Maximum ${MAX_FILES} files allowed`);
+      return;
+    }
+    const toProcess = fileArray.slice(0, remaining);
+    let added = 0;
+    toProcess.forEach((file) => {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error(`${file.name}: Unsupported file type`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name}: File exceeds 5MB limit`);
+        return;
+      }
+      if (uploadedFiles.some((uf) => uf.file.name === file.name && uf.file.size === file.size)) {
+        toast.error(`${file.name} already added`);
+        return;
+      }
+      const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+      setUploadedFiles((prev) => [...prev, {
+        id: `UF-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        file, preview, category: "Other",
+      }]);
+      added++;
+    });
+    if (added > 0) toast.success(`${added} file(s) added`);
+  }, [uploadedFiles, isUrdu]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) { processFiles(e.target.files); e.target.value = ""; }
+  };
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragOver(false);
+    if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files);
+  }, [processFiles]);
+  const removeFile = (fileId: string) => {
+    setUploadedFiles((prev) => { const f = prev.find((x) => x.id === fileId); if (f?.preview) URL.revokeObjectURL(f.preview); return prev.filter((x) => x.id !== fileId); });
+    toast.info("File removed");
+  };
+  const updateFileCategory = (fileId: string, category: string) => {
+    setUploadedFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, category } : f)));
+  };
+

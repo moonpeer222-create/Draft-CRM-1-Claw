@@ -163,8 +163,8 @@ admin.get("/users", authMiddleware(["master_admin", "admin"]), async (c) => {
     
     // Remove sensitive data
     const sanitized = users.map((u: any) => {
-      const { password_hash, ...safe } = u;
-      return safe;
+      const { id, email, full_name, role, status, phone, avatar_url, department, employee_id, tenant_id, organization_id, created_at, updated_at } = u;
+      return { id, email, full_name, role, status, phone, avatar_url, department, employee_id, tenant_id, organization_id, created_at, updated_at };
     });
     
     return c.json({ success: true, data: sanitized, count: sanitized.length });
@@ -191,14 +191,23 @@ admin.post("/users", authMiddleware(["master_admin", "admin"]), rateLimiter(10),
       return c.json({ success: false, error: "Email already exists" }, 409);
     }
     
-    // Hash password
-    const { hashPw } = await import("../lib/auth.ts");
-    const password_hash = await hashPw(body.password);
-    
-    // Create user
-    const user = await db.users.create({
+    // Create user in Supabase Auth first
+    const adminClient = getDbClient();
+    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email: body.email,
-      password_hash,
+      password: body.password,
+      email_confirm: true,
+      user_metadata: { full_name: body.full_name }
+    });
+    
+    if (authError) {
+      return c.json({ success: false, error: `Auth creation failed: ${authError.message}` }, 400);
+    }
+    
+    const userId = authData.user.id;
+    
+    // Update the auto-created profile with CRM-specific fields
+    const user = await db.users.update(userId, {
       full_name: body.full_name,
       role: body.role,
       status: body.status || 'active',
@@ -206,7 +215,6 @@ admin.post("/users", authMiddleware(["master_admin", "admin"]), rateLimiter(10),
       department: body.department,
       employee_id: body.employee_id,
       tenant_id: session.tenantId,
-      metadata: body.metadata || {}
     });
     
     // Create audit log
@@ -215,7 +223,7 @@ admin.post("/users", authMiddleware(["master_admin", "admin"]), rateLimiter(10),
       user_email: session.email,
       action: "user_created",
       entity_type: "user",
-      entity_id: user.id,
+      entity_id: userId,
       details: { 
         new_user_email: body.email,
         new_user_role: body.role 
@@ -225,10 +233,7 @@ admin.post("/users", authMiddleware(["master_admin", "admin"]), rateLimiter(10),
       tenant_id: session.tenantId
     });
     
-    // Return without password
-    const { password_hash: _, ...safeUser } = user;
-    
-    return c.json({ success: true, data: safeUser });
+    return c.json({ success: true, data: user });
   } catch (err) {
     console.error("Create user error:", err);
     return c.json({ success: false, error: String(err) }, 500);
@@ -258,10 +263,15 @@ admin.put("/users/:userId", authMiddleware(["master_admin", "admin"]), async (c)
       return c.json({ success: false, error: "Only master admin can change roles" }, 403);
     }
     
-    // Handle password update
+    // Handle password update via Supabase Auth
     if (updates.password) {
-      const { hashPw } = await import("../lib/auth.ts");
-      updates.password_hash = await hashPw(updates.password);
+      const adminClient = getDbClient();
+      const { error: authError } = await adminClient.auth.admin.updateUserById(userId, { 
+        password: updates.password 
+      });
+      if (authError) {
+        return c.json({ success: false, error: `Password update failed: ${authError.message}` }, 400);
+      }
       delete updates.password;
     }
     
@@ -288,10 +298,7 @@ admin.put("/users/:userId", authMiddleware(["master_admin", "admin"]), async (c)
       tenant_id: session.tenantId
     });
     
-    // Return without password
-    const { password_hash, ...safeUser } = updated;
-    
-    return c.json({ success: true, data: safeUser });
+    return c.json({ success: true, data: updated });
   } catch (err) {
     console.error("Update user error:", err);
     return c.json({ success: false, error: String(err) }, 500);

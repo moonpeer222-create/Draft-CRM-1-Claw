@@ -203,6 +203,93 @@ function AgentLayout() { return <AgentGuard><UnifiedLayout forceRole="agent" /><
 function CustomerLayout() { return <CustomerGuard><UnifiedLayout forceRole="customer" /></CustomerGuard>; }
 function OperatorLayout() { return <OperatorGuard><UnifiedLayout forceRole="operator" /></OperatorGuard>; }
 
+// ── Portal Route Groups ─────────────────────────────────────────────
+
+const adminRoutes = {
+  path: "admin",
+  element: <AdminLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><AdminDashboard /></SuspenseWrap> },
+    { path: "reports", element: <SuspenseWrap><AdminReports /></SuspenseWrap> },
+    { path: "team", element: <SuspenseWrap><AdminTeam /></SuspenseWrap> },
+    { path: "attendance", element: <SuspenseWrap><AdminAttendance /></SuspenseWrap> },
+    { path: "financials", element: <SuspenseWrap><AdminFinancials /></SuspenseWrap> },
+    { path: "settings", element: <SuspenseWrap><AdminSettings /></SuspenseWrap> },
+    { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
+    { path: "cases/:caseId", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
+    { path: "business-intelligence", element: <SuspenseWrap><AdminBusinessIntelligence /></SuspenseWrap> },
+    { path: "user-management", element: <SuspenseWrap><AdminUserManagement /></SuspenseWrap> },
+    { path: "profile", element: <SuspenseWrap><AdminProfile /></SuspenseWrap> },
+    { path: "overdue-cases", element: <SuspenseWrap><AdminOverdueCases /></SuspenseWrap> },
+    { path: "agent-codes", element: <SuspenseWrap><AdminAgentCodes /></SuspenseWrap> },
+    { path: "analytics", element: <SuspenseWrap><AdminAnalytics /></SuspenseWrap> },
+    { path: "leaderboard", element: <SuspenseWrap><AdminLeaderboard /></SuspenseWrap> },
+    { path: "documents", element: <SuspenseWrap><AdminDocuments /></SuspenseWrap> },
+    { path: "panic-test", element: <SuspenseWrap><AdminPanicTest /></SuspenseWrap> },
+    { path: "passport-tracker", element: <SuspenseWrap><AdminPassportTracker /></SuspenseWrap> },
+    { path: "approval-queue", element: <SuspenseWrap><AdminApprovalQueue /></SuspenseWrap> },
+    { path: "audit-log", element: <SuspenseWrap><AdminAuditLog /></SuspenseWrap> },
+    { path: "backup", element: <SuspenseWrap><AdminBackup /></SuspenseWrap> },
+    { path: "sync-history", element: <SuspenseWrap><AdminSyncHistory /></SuspenseWrap> },
+    { path: "ai-chatbot", element: <SuspenseWrap><AdminAIChatbot /></SuspenseWrap> },
+    { path: "voice-assistant", element: <SuspenseWrap><AdminVoiceAssistant /></SuspenseWrap> },
+    { path: "health", element: <SuspenseWrap><AdminHealthDashboard /></SuspenseWrap> },
+  ],
+};
+
+const masterRoutes = {
+  path: "master",
+  element: <MasterLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><MasterDashboard /></SuspenseWrap> },
+    { path: "tenants", element: <SuspenseWrap><MasterTenantsList /></SuspenseWrap> },
+    { path: "ai-chatbot", element: <SuspenseWrap><MasterAIChatbot /></SuspenseWrap> },
+    { path: "voice-assistant", element: <SuspenseWrap><MasterVoiceAssistant /></SuspenseWrap> },
+    { path: "profile", element: <SuspenseWrap><MasterProfile /></SuspenseWrap> },
+    { path: "ai-tools", element: <SuspenseWrap><MasterAITools /></SuspenseWrap> },
+    { path: "qwen-test", element: <SuspenseWrap><MasterQwenTest /></SuspenseWrap> },
+    { path: "audit", element: <SuspenseWrap><MasterAuditDashboard /></SuspenseWrap> },
+  ],
+};
+
+const agentRoutes = {
+  path: "agent",
+  element: <AgentLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><AgentDashboard /></SuspenseWrap> },
+    { path: "cases", element: <SuspenseWrap><AgentCases /></SuspenseWrap> },
+    { path: "calendar", element: <SuspenseWrap><AgentCalendar /></SuspenseWrap> },
+    { path: "performance", element: <SuspenseWrap><AgentPerformance /></SuspenseWrap> },
+    { path: "attendance", element: <SuspenseWrap><AgentAttendance /></SuspenseWrap> },
+    { path: "profile", element: <SuspenseWrap><AgentProfile /></SuspenseWrap> },
+    { path: "ai-chatbot", element: <SuspenseWrap><AgentAIChatbot /></SuspenseWrap> },
+    { path: "voice-assistant", element: <SuspenseWrap><AgentVoiceAssistant /></SuspenseWrap> },
+  ],
+};
+
+const customerRoutes = {
+  path: "customer",
+  element: <CustomerLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><CustomerDashboard /></SuspenseWrap> },
+    { path: "documents", element: <SuspenseWrap><CustomerDocuments /></SuspenseWrap> },
+    { path: "payments", element: <SuspenseWrap><CustomerPayments /></SuspenseWrap> },
+    { path: "notifications", element: <SuspenseWrap><CustomerNotifications /></SuspenseWrap> },
+    { path: "ai-chatbot", element: <SuspenseWrap><CustomerAIChatbot /></SuspenseWrap> },
+    { path: "voice-assistant", element: <SuspenseWrap><CustomerVoiceAssistant /></SuspenseWrap> },
+  ],
+};
+
+const operatorRoutes = {
+  path: "operator",
+  element: <OperatorLayout />,
+  children: [
+    { index: true, element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
+    { path: "ai-chatbot", element: <SuspenseWrap><OperatorAIChatbot /></SuspenseWrap> },
+    { path: "voice-assistant", element: <SuspenseWrap><OperatorVoiceAssistant /></SuspenseWrap> },
+  ],
+};
+
 // ── Router ───────────────────────────────────────────────────────────
 const routeConfig = [
   {
@@ -220,31 +307,6 @@ const routeConfig = [
       { path: "customer/login", element: <SuspenseWrap><CustomerLogin /></SuspenseWrap> },
       { path: "operator/login", element: <SuspenseWrap><OperatorLogin /></SuspenseWrap> },
 
-// ── Admin Portal Routes ─────────────────────────────────────────────
-const adminRoutes = {
-  path: "admin",
-  element: <AdminLayout />,
-  children: [
-    { index: true, element: <SuspenseWrap><AdminDashboard /></SuspenseWrap> },
-          { path: "reports", element: <SuspenseWrap><AdminReports /></SuspenseWrap> },
-          { path: "team", element: <SuspenseWrap><AdminTeam /></SuspenseWrap> },
-          { path: "attendance", element: <SuspenseWrap><AdminAttendance /></SuspenseWrap> },
-          { path: "financials", element: <SuspenseWrap><AdminFinancials /></SuspenseWrap> },
-          { path: "settings", element: <SuspenseWrap><AdminSettings /></SuspenseWrap> },
-          { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
-          { path: "cases/:caseId", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
-          { path: "business-intelligence", element: <SuspenseWrap><AdminBusinessIntelligence /></SuspenseWrap> },
-          { path: "user-management", element: <SuspenseWrap><AdminUserManagement /></SuspenseWrap> },
-          { path: "profile", element: <SuspenseWrap><AdminProfile /></SuspenseWrap> },
-          { path: "overdue-cases", element: <SuspenseWrap><AdminOverdueCases /></SuspenseWrap> },
-          { path: "agent-codes", element: <SuspenseWrap><AdminAgentCodes /></SuspenseWrap> },
-          { path: "analytics", element: <SuspenseWrap><AdminAnalytics /></SuspenseWrap> },
-          { path: "leaderboard", element: <SuspenseWrap><AdminLeaderboard /></SuspenseWrap> },
-          { path: "documents", element: <SuspenseWrap><AdminDocuments /></SuspenseWrap> },
-          { path: "panic-test", element: <SuspenseWrap><AdminPanicTest /></SuspenseWrap> },
-          { path: "passport-tracker", element: <SuspenseWrap><AdminPassportTracker /></SuspenseWrap> },
-          { path: "approval-queue", element: <SuspenseWrap><AdminApprovalQueue /></SuspenseWrap> },
-          { path: "audit-log", element: <SuspenseWrap><AdminAuditLog /></SuspenseWrap> },
       // ── Portals ──────────────────────────────────────────────────
       adminRoutes,
       masterRoutes,
@@ -264,4 +326,4 @@ const adminRoutes = {
   },
 ];
 
-export const router = import.meta.env.VITE_USE_HASH_ROUTER === "true" ? createHashRouter(routeConfig) : createBrowserRouter(routeConfig);
+export const router = import.meta.env.VITE_USE_HASH_ROUTER === "true" ? createHashRouter(routeConfig) : createBrowserRouter(routeConfig);

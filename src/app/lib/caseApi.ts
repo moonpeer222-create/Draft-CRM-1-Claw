@@ -17,10 +17,9 @@ export async function createCase(caseData: Partial<Case>): Promise<Case | null> 
   const caseNumber = `EMR-${year}-${String(nextNum).padStart(4, "0")}`;
   const id = crypto.randomUUID();
 
-  const WALK_IN_CUSTOMER_ID = '0330893b-e56b-48f1-91b4-3395399550de';
   const newCase: Case = {
     id,
-    customerId: WALK_IN_CUSTOMER_ID,
+    customerId: caseData.customerId || null,
     customerName: caseData.customerName || "",
     fatherName: caseData.fatherName || "",
     phone: caseData.phone || "",
@@ -213,7 +212,7 @@ function caseToDbRow(c: Case): any {
     id: c.id,
     case_number: (c as any).case_number || c.id,
     client_id: c.customerId || null,
-    organization_id: '00000000-0000-0000-0000-000000000001',
+    organization_id: (c as any).organization_id || undefined,
     agent_id: isValidUuid(c.agentId || '') ? c.agentId : null,
     visa_type: c.jobType || c.visa_type || null,
     destination_country: c.country || null,

@@ -1,0 +1,154 @@
+  const handleAddPayment = async () => {
+    if (!selectedCase || newPayment.amount <= 0) {
+      toast.error("Please enter a valid payment amount");
+      return;
+    }
+    setIsLoading(true);
+
+    const success = await addPayment(selectedCase.id, {
+      ...newPayment,
+      date: new Date().toISOString(),
+      collectedBy: "Admin",
+    });
+
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
+      toast.success(`Payment of PKR ${newPayment.amount.toLocaleString()} recorded!`);
+      AuditLogService.logPaymentAction(adminName, "admin", "payment_added", selectedCase.id, newPayment.amount);
+      DataSyncService.markModified(selectedCase.id, "admin", adminName, "admin", "case", `Payment PKR ${newPayment.amount.toLocaleString()} recorded`);
+      NotificationService.notifyPaymentReceived(selectedCase.id, newPayment.amount, selectedCase.customerName);
+      setShowPaymentModal(false);
+      setNewPayment({ amount: 0, method: "cash", description: "", receiptNumber: "" });
+      loadCases();
+    } else {
+      toast.error("Failed to record payment");
+    }
+    setIsLoading(false);
+  };
+
+  const handleAddNote = async () => {
+    if (!selectedCase || !newNote.text) {
+      toast.error("Please enter a note");
+      return;
+    }
+    const success = await addNote(selectedCase.id, {
+      ...newNote,
+      author: "Admin",
+      date: new Date().toISOString(),
+    });
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
+      toast.success("Note added successfully!");
+      setNewNote({ text: "", important: false });
+      loadCases();
+    } else {
+      toast.error("Failed to add note");
+    }
+  };
+
+  const handleUpdateStatus = async (caseId: string, status: Case["status"]) => {
+    const currentCase = selectedCase;
+    const snapshot = localStorage.getItem("crm_cases");
+
+    // Use pipelineApi for stage advancement (server validates hard-locks)
+    try {
+      const res = await pipelineApi.advanceStage(caseId, status, "admin", adminName);
+      if (!res.success) {
+        if (res.blockers && Array.isArray(res.blockers)) {
+          toast.error("Stage locked — requirements not met");
+          res.blockers.forEach((b: string) => toast.error(b));
+        } else {
+          toast.error(res.error || "Stage update failed");
+        }
+        return;
+      }
+    } catch {
+      // Fallback to local if server unavailable
+    }
+
+    const success = await updateCaseStatus(caseId, status);
+    if (success) {
+      const { data } = await supabase.from('cases').select('*').eq('id', caseId).single();
+      const refreshed = data ? mapSupabaseCaseToLocal(data) : null;
+      if (refreshed) setSelectedCase(refreshed);
+      toast.success(`Case status updated to ${status}!`);
+      if (currentCase) {
+        NotificationService.notifyCaseStatusChanged(caseId, currentCase.customerName, currentCase.status, status);
+        AuditLogService.logCaseStageChanged(adminName, "admin", caseId, currentCase.status, status);
+        DataSyncService.markModified(caseId, "admin", adminName, "admin", "case", `Status changed to ${status}`);
+        const { customerEmail, agentEmail } = extractEmailsFromCase(currentCase);
+        sendCaseStatusEmail({
+          caseId,
+          customerName: currentCase.customerName,
+          customerEmail,
+          agentName: currentCase.agentName,
+          agentEmail,
+          oldStatus: currentCase.status,
+          newStatus: status,
+          phone: currentCase.phone,
+          country: currentCase.country,
+        });
+      }
+
+      // Auto-migrate lead to visa pipeline
+      if (shouldAutoMigrateToVisa(status)) {
+        try {
+          await pipelineApi.migrateToVisa(caseId);
+          toast.success("Case auto-migrated to Visa Pipeline!");
+        } catch (err) {
+        }
+      }
+
+      loadCases();
+
+      try {
+        await pushCases();
+      } catch (err) {
+        if (snapshot) localStorage.setItem("crm_cases", snapshot);
+        loadCases();
+        if (currentCase) setSelectedCase(currentCase);
+        toast.error(`Server sync failed — status change reverted. ${err}`);
+      }
+    }
+  };
+
+  const handleReportDelay = () => {
+    if (!selectedCase || !selectedDelayReason) {
+      toast.error(isUrdu ? "براہ کرم تاخیر کی وجہ منتخب کریں" : "Please select a delay reason");
+      return;
+    }
+    setIsLoading(true);
+    const lt = toast.loading(isUrdu ? "تاخیر کی اطلاع درج ہو رہی ہے..." : "Reporting delay...");
+    setTimeout(() => {
+      const updated = reportDelay(selectedCase.id, selectedDelayReason, delayNote || undefined);
+      if (updated) {
+        setSelectedCase(updated);
+        toast.dismiss(lt);
+        toast.success(isUrdu ? "تاخیر کی وجہ محفوظ ہو گئی!" : `Delay reported: ${getDelayReasonLabel(selectedDelayReason)}`);
+        NotificationService.addNotification({
+          type: "alert", priority: "high",
+          title: isUrdu ? "تاخیر کی اطلاع" : "Delay Reported",
+          message: `Case ${selectedCase.id} (${selectedCase.customerName}) delayed at ${getStageLabel(selectedCase.status)}. Reason: ${getDelayReasonLabel(selectedDelayReason)}${delayNote ? `. Note: ${delayNote}` : ""}`,
+          actionable: true, actionUrl: "/admin/cases", actionLabel: "View Case", targetRole: "admin",
+        });
+        setShowDelayModal(false);
+        setSelectedDelayReason("");
+        setDelayNote("");
+        setDelayStep("reason");
+        loadCases();
+      }
+      setIsLoading(false);
+    }, 800);
+  };
+
+  const openDelayModal = () => {
+    setSelectedDelayReason("");
+    setDelayNote("");
+    setDelayStep("reason");
+    setShowDelayModal(true);
+  };
+

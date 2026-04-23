@@ -509,7 +509,7 @@ sync.post("/resolve-conflicts", authMiddleware(), async (c) => {
                   updated_at: now()
                 });
               } else if (entityType === 'user' && validateUUID(entityId)) {
-                const { password_hash, password, ...safeUpdates } = clientData;
+                const { password, ...safeUpdates } = clientData;
                 await db.users.update(entityId, safeUpdates);
               }
               resolutionResult = { strategy: 'client_wins', action: 'applied_client_changes' };
@@ -529,7 +529,7 @@ sync.post("/resolve-conflicts", authMiddleware(), async (c) => {
                   updated_at: now()
                 });
               } else if (entityType === 'user' && validateUUID(entityId)) {
-                const { password_hash, password, ...safeUpdates } = mergedData;
+                const { password, ...safeUpdates } = mergedData;
                 await db.users.update(entityId, safeUpdates);
               }
               resolutionResult = { strategy: 'merge', action: 'applied_merged_data' };
@@ -657,7 +657,7 @@ sync.get("/health", authMiddleware(), async (c) => {
 
     // Check database connectivity
     try {
-      const { data, error } = await client.from('users').select('id').limit(1);
+      const { data, error } = await client.from('profiles').select('id').limit(1);
       healthChecks.database = {
         status: error ? 'error' : 'healthy',
         response_time_ms: Date.now() - startTime,

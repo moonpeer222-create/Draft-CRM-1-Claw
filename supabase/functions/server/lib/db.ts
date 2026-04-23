@@ -27,19 +27,15 @@ export function resetDbClient(): void {
   _dbClient = null;
 }
 
-// Raw SQL query helper with parameterized queries
-export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-  const client = getDbClient();
-  const { data, error } = await client.rpc('exec_sql', { sql, params });
-  if (error) throw error;
-  return data || [];
-}
+// NOTE: The `users` table was dropped in migration 000006. All user data lives in `profiles`.
+// Required columns on profiles: status, phone, department, employee_id, last_login
+// Run the SQL migration in supabase/migrations/000007_fix_profiles_columns.sql first.
 
-// ============ USERS ============
+// ============ PROFILES (formerly users) ============
 export const users = {
   async create(userData: {
+    id?: string;
     email: string;
-    password_hash: string;
     full_name: string;
     role: string;
     status?: string;
@@ -48,11 +44,11 @@ export const users = {
     department?: string;
     employee_id?: string;
     tenant_id?: string;
-    metadata?: Record<string, any>;
+    organization_id?: string;
   }) {
     const client = getDbClient();
     const { data, error } = await client
-      .from('users')
+      .from('profiles')
       .insert({ ...userData, created_at: new Date().toISOString() })
       .select()
       .single();
@@ -63,7 +59,7 @@ export const users = {
   async findById(id: string) {
     const client = getDbClient();
     const { data, error } = await client
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', id)
       .single();
@@ -74,7 +70,7 @@ export const users = {
   async findByEmail(email: string) {
     const client = getDbClient();
     const { data, error } = await client
-      .from('users')
+      .from('profiles')
       .select('*')
       .ilike('email', email)
       .single();
@@ -90,7 +86,7 @@ export const users = {
     offset?: number;
   }) {
     const client = getDbClient();
-    let query = client.from('users').select('*');
+    let query = client.from('profiles').select('*');
     
     if (options?.role) query = query.eq('role', options.role);
     if (options?.status) query = query.eq('status', options.status);
@@ -106,7 +102,7 @@ export const users = {
   async update(id: string, updates: Record<string, any>) {
     const client = getDbClient();
     const { data, error } = await client
-      .from('users')
+      .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
@@ -121,14 +117,14 @@ export const users = {
 
   async delete(id: string) {
     const client = getDbClient();
-    const { error } = await client.from('users').delete().eq('id', id);
+    const { error } = await client.from('profiles').delete().eq('id', id);
     if (error) throw error;
     return true;
   },
 
   async count(options?: { role?: string; status?: string; tenant_id?: string }) {
     const client = getDbClient();
-    let query = client.from('users').select('*', { count: 'exact', head: true });
+    let query = client.from('profiles').select('*', { count: 'exact', head: true });
     
     if (options?.role) query = query.eq('role', options.role);
     if (options?.status) query = query.eq('status', options.status);
@@ -1268,7 +1264,6 @@ export const passportTracking = {
 
 // Export all database modules
 export const db = {
-  query,
   users,
   cases,
   sessions,

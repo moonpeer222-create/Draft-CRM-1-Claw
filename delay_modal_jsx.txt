@@ -1,0 +1,240 @@
+      <AnimatePresence>
+        {showDelayModal && selectedCase && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            onClick={() => setShowDelayModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: "spring", stiffness: 350, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`${dc ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden`}
+            >
+              {/* Header with animated gradient */}
+              <div className="relative overflow-hidden">
+                <motion.div
+                  animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-red-500/10"
+                  style={{ backgroundSize: "200% 100%" }}
+                />
+                <div className={`relative flex items-center justify-between p-5 border-b ${dc ? "border-gray-700" : "border-gray-200"}`}>
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ rotate: [0, -15, 15, -15, 0] }}
+                      transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 4 }}
+                      className="p-2 bg-red-500/20 rounded-xl"
+                    >
+                      <AlertTriangle className="w-5 h-5 text-red-500" />
+                    </motion.div>
+                    <div>
+                      <h2 className={`text-lg font-bold ${txt}`}>{isUrdu ? "تاخیر کی اطلاع" : "Report Delay"}</h2>
+                      <p className={`text-xs ${sub}`}>{selectedCase.id} — {selectedCase.customerName}</p>
+                    </div>
+                  </div>
+                  <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowDelayModal(false)} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}>
+                    <X className="w-5 h-5" />
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Stage info bar */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className={`mx-5 mt-4 p-3 rounded-xl flex items-center justify-between ${dc ? "bg-gray-700/50" : "bg-gray-50"}`}
+              >
+                <div>
+                  <p className={`text-xs ${sub}`}>{isUrdu ? "موجودہ مرحلہ" : "Current Stage"}</p>
+                  <p className={`text-sm font-bold ${txt}`}>{getStageLabel(selectedCase.status, isUrdu)}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-xs ${sub}`}>{isUrdu ? "حالت" : "Status"}</p>
+                  <p className="text-sm font-bold text-red-500">{getOverdueInfo(selectedCase).timeLabel}</p>
+                </div>
+              </motion.div>
+
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 px-5 mt-4">
+                <motion.div
+                  animate={delayStep === "reason" ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ duration: 1, repeat: delayStep === "reason" ? Infinity : 0, repeatDelay: 2 }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${delayStep === "reason" ? "bg-red-500 text-white" : "bg-blue-500 text-white"}`}
+                >
+                  {delayStep === "note" ? <CheckCircle2 className="w-3 h-3" /> : <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">1</span>}
+                  {isUrdu ? "وجہ" : "Reason"}
+                </motion.div>
+                <ChevronRight className={`w-4 h-4 ${sub}`} />
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${delayStep === "note" ? "bg-red-500 text-white" : dc ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-500"}`}>
+                  <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">2</span>
+                  {isUrdu ? "تفصیل" : "Details"}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <AnimatePresence mode="wait">
+                  {delayStep === "reason" ? (
+                    <motion.div
+                      key="step-reason"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    >
+                      <p className={`text-sm font-semibold mb-3 ${txt}`}>{isUrdu ? "تاخیر کی وجہ منتخب کریں:" : "Select delay reason:"}</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {DELAY_REASONS.map((reason, idx) => (
+                          <motion.button
+                            key={reason.value}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05, type: "spring", stiffness: 300, damping: 25 }}
+                            whileHover={{ scale: 1.02, x: 4 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              setSelectedDelayReason(reason.value);
+                              // Auto-advance to notes step
+                              setTimeout(() => setDelayStep("note"), 200);
+                            }}
+                            className={`flex items-center gap-3 p-3 rounded-xl text-left transition-all border-2 ${
+                              selectedDelayReason === reason.value
+                                ? "border-red-500 " + (dc ? "bg-red-950/30" : "bg-red-50")
+                                : dc ? "border-gray-700 bg-gray-700/30 hover:border-gray-600" : "border-gray-200 bg-white hover:border-gray-300"
+                            }`}
+                          >
+                            <motion.div
+                              animate={selectedDelayReason === reason.value ? { scale: [1, 1.2, 1] } : {}}
+                              transition={{ duration: 0.3 }}
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                selectedDelayReason === reason.value ? "border-red-500 bg-red-500" : dc ? "border-gray-500" : "border-gray-300"
+                              }`}
+                            >
+                              {selectedDelayReason === reason.value && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full bg-white" />
+                              )}
+                            </motion.div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold ${selectedDelayReason === reason.value ? "text-red-600 dark:text-red-400" : txt}`}>
+                                {isUrdu ? reason.labelUrdu : reason.label}
+                              </p>
+                            </div>
+                            <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${selectedDelayReason === reason.value ? "text-red-500 translate-x-1" : sub}`} />
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="step-note"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    >
+                      {/* Selected reason summary */}
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex items-center gap-2 p-3 rounded-xl mb-4 ${dc ? "bg-red-950/30 border border-red-900/50" : "bg-red-50 border border-red-200"}`}
+                      >
+                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className={`text-xs ${sub}`}>{isUrdu ? "منتخب وجہ:" : "Selected reason:"}</p>
+                          <p className="text-sm font-bold text-red-600 dark:text-red-400">
+                            {getDelayReasonLabel(selectedDelayReason, isUrdu)}
+                          </p>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setDelayStep("reason")}
+                          className={`text-xs px-2 py-1 rounded-lg ${dc ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}
+                        >
+                          {isUrdu ? "تبدیل" : "Change"}
+                        </motion.button>
+                      </motion.div>
+
+                      <p className={`text-sm font-semibold mb-2 ${txt}`}>{isUrdu ? "اضافی تفصیل (اختیاری):" : "Additional notes (optional):"}</p>
+                      <motion.textarea
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        value={delayNote}
+                        onChange={(e) => setDelayNote(e.target.value)}
+                        rows={3}
+                        placeholder={isUrdu ? "تفصیلات یہاں لکھیں..." : "Describe the delay situation in detail..."}
+                        className={`${inputCls} resize-none`}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className={`mt-3 p-3 rounded-xl ${dc ? "bg-gray-700/50" : "bg-amber-50"}`}
+                      >
+                        <p className={`text-xs ${dc ? "text-amber-400" : "text-amber-700"} flex items-start gap-2`}>
+                          <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                          {isUrdu
+                            ? "یہ نوٹ کیس ٹائم لائن میں شامل ہو جائے گا اور ایجنٹ کو مطلع کیا جائے گا۔"
+                            : "This will be logged in the case timeline and the assigned agent will be notified."
+                          }
+                        </p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Footer */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className={`flex gap-3 p-5 border-t ${dc ? "border-gray-700" : "border-gray-200"}`}
+              >
+                {delayStep === "note" && (
+                  <motion.button
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setDelayStep("reason")}
+                    className={`px-5 py-2.5 rounded-xl border text-sm font-medium ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    {isUrdu ? "واپس" : "Back"}
+                  </motion.button>
+                )}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowDelayModal(false)}
+                  className={`flex-1 py-2.5 rounded-xl border text-sm font-medium ${dc ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                >
+                  {isUrdu ? "منسوخ" : "Cancel"}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={delayStep === "reason" ? () => { if (selectedDelayReason) setDelayStep("note"); else toast.error(isUrdu ? "وجہ منتخب کریں" : "Select a reason first"); } : handleReportDelay}
+                  disabled={delayStep === "note" && (isLoading || !selectedDelayReason)}
+                  className="flex-1 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+                >
+                  {delayStep === "reason" ? (
+                    <>{isUrdu ? "اگلا" : "Next"} <ChevronRight className="w-4 h-4" /></>
+                  ) : isLoading ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <>{isUrdu ? "تاخیر رپورٹ کریں" : "Submit Delay Report"}</>
+                  )}
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>

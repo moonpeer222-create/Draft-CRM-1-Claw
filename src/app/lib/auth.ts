@@ -48,7 +48,7 @@ export class AuthService {
 
       // Fetch user profile
       const { data: profile, error: profileError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
@@ -59,7 +59,7 @@ export class AuthService {
 
       // Update last login
       await supabase
-        .from('users')
+        .from('profiles')
         .update({ last_login: new Date().toISOString() })
         .eq('id', data.user.id);
 
@@ -129,7 +129,7 @@ export class AuthService {
 
       // Create user profile
       const { data: profile, error: profileError } = await supabase
-        .from('users')
+        .from('profiles')
         .insert({
           id: authData.user.id,
           email: userData.email,
@@ -180,7 +180,7 @@ export class AuthService {
 
       // Permission check
       const { data: targetUser } = await supabase
-        .from('users')
+        .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
@@ -220,7 +220,7 @@ export class AuthService {
       }
 
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
@@ -249,7 +249,7 @@ export class AuthService {
 
       // Get target user
       const { data: targetUser } = await supabase
-        .from('users')
+        .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
@@ -278,7 +278,7 @@ export class AuthService {
 
       // Soft delete - mark as suspended instead of hard delete
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ status: 'suspended' })
         .eq('id', userId);
 
@@ -338,7 +338,7 @@ export class AuthService {
     }
   ): Promise<{ success: boolean; users?: DbUser[]; error?: string }> {
     try {
-      let query = supabase.from('users').select('*');
+      let query = supabase.from('profiles').select('*');
 
       // Apply filters
       if (filters?.role) {
@@ -373,7 +373,7 @@ export class AuthService {
   ): Promise<{ success: boolean; user?: DbUser; error?: string }> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();

@@ -85,8 +85,6 @@ export default defineConfig({
           // Supabase
           'supabase-vendor': ['@supabase/supabase-js'],
           
-          // MUI (if used)
-          'mui-vendor': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
           
           // Drag & drop
           'dnd-vendor': ['react-dnd', 'react-dnd-html5-backend'],

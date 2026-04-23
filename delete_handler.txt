@@ -1,0 +1,18 @@
+  const handleDeleteCase = (caseId: string) => {
+    if (!confirm("Are you sure you want to delete this case?")) return;
+    const lt = toast.loading("Deleting case...");
+    setTimeout(async () => {
+      const success = await deleteCase(caseId);
+      if (success) {
+        toast.dismiss(lt);
+        toast.success("Case deleted successfully!");
+        setShowCaseDetail(false);
+        setSelectedCase(null);
+        loadCases();
+      } else {
+        toast.dismiss(lt);
+        toast.error("Failed to delete case");
+      }
+    }, 800);
+  };
+

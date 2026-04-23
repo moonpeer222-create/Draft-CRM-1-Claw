@@ -641,11 +641,61 @@ export const backupApi = {
   async getAll() { return request("/system/backups"); },
 };
 
+// ── Pipeline API (case stage management, checklist, approvals) ────
+export const pipelineApi = {
+  async advanceStage(caseId: string, status: string, agentId: string, agentName: string) {
+    return request(`/case/${caseId}/advance`, {
+      method: "POST",
+      body: JSON.stringify({ status, agentId, agentName }),
+    });
+  },
+  async updateChecklist(caseId: string, key: string, verified: boolean, fileRef?: string, userId?: string, userName?: string) {
+    return request(`/case/${caseId}/checklist`, {
+      method: "PATCH",
+      body: JSON.stringify({ key, verified, fileRef, userId, userName }),
+    });
+  },
+  async verifyPayment(caseId: string, verified: boolean, userId: string, userName: string) {
+    return request(`/case/${caseId}/verify-payment`, {
+      method: "POST",
+      body: JSON.stringify({ verified, userId, userName }),
+    });
+  },
+  async sirAtifApprove(caseId: string, approved: boolean, note?: string, userId?: string, userName?: string) {
+    return request(`/case/${caseId}/sir-atif-approve`, {
+      method: "POST",
+      body: JSON.stringify({ approved, note, userId, userName }),
+    });
+  },
+  async cancelCase(caseId: string, reason: string, userId: string, userName: string) {
+    return request(`/case/${caseId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason, userId, userName }),
+    });
+  },
+  async reopenCase(caseId: string, userId: string, userName: string) {
+    return request(`/case/${caseId}/reopen`, {
+      method: "POST",
+      body: JSON.stringify({ userId, userName }),
+    });
+  },
+  async migrateToVisa(caseId: string) {
+    return request(`/case/${caseId}/migrate-visa`, { method: "POST" });
+  },
+};
+
 // ── Document Storage/Upload APIs (aliases for documentStore.ts) ────
 export const documentUploadApi = {
   async upload(caseId: string, file: File, metadata?: any) {
     const formData = new FormData();
     formData.append("file", file);
+    if (metadata) formData.append("metadata", JSON.stringify(metadata));
+    return request(`/cases/${caseId}/documents/upload`, { method: "POST", body: formData });
+  },
+  async uploadForm(file: File, caseId: string, docId: string, metadata?: any) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("docId", docId);
     if (metadata) formData.append("metadata", JSON.stringify(metadata));
     return request(`/cases/${caseId}/documents/upload`, { method: "POST", body: formData });
   },
@@ -666,6 +716,37 @@ export const documentStorageApi = {
   },
   async delete(path: string) {
     return request("/storage/delete", { method: "POST", body: JSON.stringify({ path }) });
+  },
+};
+
+// ── Visaverse API (gamification, mood tracking, AR features) ────
+export const visaverseApi = {
+  async saveMoodFeedback(data: any) {
+    return request("/ai/mood-feedback", { method: "POST", body: JSON.stringify(data) });
+  },
+  async trackEvent(data: any) {
+    return request("/ai/track-event", { method: "POST", body: JSON.stringify(data) });
+  },
+};
+
+// ── Health Detailed API ─────────────────────────────────────────
+export const healthDetailedApi = {
+  async getDetailed() {
+    return request("/system/health/detailed");
+  },
+  async getServiceStatus() {
+    return request("/system/health/services");
+  },
+};
+
+// ── AI Audit API ────────────────────────────────────────────────
+export const aiAuditApi = {
+  async getLog(options?: { limit?: number; offset?: number }) {
+    const query = options ? "?" + new URLSearchParams(options as any).toString() : "";
+    return request(`/ai/audit-log${query}`);
+  },
+  async getStats() {
+    return request("/ai/stats");
   },
 };
 

@@ -54,8 +54,8 @@ sync.get("/", authMiddleware(), async (c) => {
 
     // Remove sensitive user data
     const sanitizedUsers = usersRes.map((u: any) => {
-      const { password_hash, ...safe } = u;
-      return safe;
+      const { id, email, full_name, role, status, phone, avatar_url, department, employee_id, tenant_id, organization_id, created_at, updated_at } = u;
+      return { id, email, full_name, role, status, phone, avatar_url, department, employee_id, tenant_id, organization_id, created_at, updated_at };
     });
 
     return c.json({
@@ -150,7 +150,7 @@ sync.post("/", authMiddleware(), async (c) => {
         for (const user of body.users) {
           if (user.id) {
             // Update existing, but don't overwrite password
-            const { password_hash, password, ...safeUpdates } = user;
+            const { password, ...safeUpdates } = user;
             await db.users.update(user.id, safeUpdates);
           }
         }
