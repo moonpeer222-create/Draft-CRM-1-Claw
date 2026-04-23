@@ -6,7 +6,7 @@ import {
   Crown, Briefcase, Users, DollarSign, CheckCircle, Clock,
   AlertTriangle, TrendingUp, Activity, Shield, BarChart3,
   ArrowRight, Sparkles, Timer, Calculator,
-  ChevronDown, ChevronUp, Bot,
+  ChevronDown, ChevronUp, Bot, FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
@@ -17,7 +17,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
 import { supabase } from "../../lib/supabase";
 import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
-import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
+import { api } from "../../lib/api";
 
 export function MasterDashboard() {
   const { darkMode, isUrdu, fontClass } = useTheme();
@@ -36,18 +36,26 @@ export function MasterDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const { profile } = useSupabaseAuth();
 
-  // Fetch cases and users from Supabase
+  // Fetch cases and users from API
   useEffect(() => {
     const fetchCases = async () => {
-      const { data, error } = await supabase.from("cases").select("*");
-      if (!error && data) {
-        setCases(data.map(mapSupabaseCaseToLocal));
+      try {
+        const response = await api.cases.list();
+        if (response.success && response.data) {
+          setCases(response.data.map(mapSupabaseCaseToLocal));
+        }
+      } catch (error) {
+        console.error("Failed to fetch cases:", error);
       }
     };
     const fetchUsers = async () => {
-      const { data, error } = await supabase.from("profiles").select("*");
-      if (!error && data) {
-        setUsers(data.map((u: any) => ({ ...u, fullName: u.full_name, status: "active" })));
+      try {
+        const response = await api.users.list();
+        if (response.success && response.data) {
+          setUsers(response.data.map((u: any) => ({ ...u, fullName: u.full_name || u.fullName, status: "active" })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
       }
     };
     fetchCases();
@@ -123,6 +131,7 @@ export function MasterDashboard() {
   const quickActions = [
     { icon: Briefcase, label: isUrdu ? "کیس مینجمنٹ" : "Case Management", path: "/admin/cases", desc: isUrdu ? "تمام کیسز دیکھیں" : "View all cases" },
     { icon: Users, label: isUrdu ? "ٹیم مینجمنٹ" : "Team Management", path: "/admin/team", desc: isUrdu ? "ایجنٹس کا انتظام" : "Manage agents" },
+    { icon: FileText, label: isUrdu ? "دستاویزات" : "Documents", path: "/master/documents", desc: isUrdu ? "ڈاکیومنٹ لائبریری" : "Document library" },
     { icon: BarChart3, label: isUrdu ? "تجزیات" : "Analytics", path: "/admin/analytics", desc: isUrdu ? "تفصیلی رپورٹس" : "Detailed reports" },
     { icon: Bot, label: isUrdu ? "AI چیٹ بوٹ" : "AI Chatbot", path: "/master/ai-chatbot", desc: isUrdu ? "AI اسسٹنٹ" : "AI Assistant" },
     { icon: DollarSign, label: isUrdu ? "مالیات" : "Financials", path: "/admin/financials", desc: isUrdu ? "مالی خلاصہ" : "Financial overview" },
@@ -473,8 +482,12 @@ export function MasterDashboard() {
             darkMode={dc}
             isUrdu={isUrdu}
             onDataReset={async () => {
-              const { data } = await supabase.from("cases").select("*");
-              setCases((data || []).map(mapSupabaseCaseToLocal));
+              try {
+                const response = await api.cases.list();
+                setCases((response.data || []).map(mapSupabaseCaseToLocal));
+              } catch (error) {
+                console.error("Failed to refresh cases:", error);
+              }
             }}
           />
         </main>

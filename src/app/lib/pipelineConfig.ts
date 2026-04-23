@@ -18,7 +18,7 @@ export interface PipelineStage {
   deadlineHours: number | null; // SLA timer — null = no deadline
   isFinal?: boolean;
   isCancelled?: boolean;
-  requiresApproval?: boolean;       // Needs Sir Atif approval before advancing
+  requiresApproval?: boolean;       // Needs Platform Owner approval before advancing
   requiresDocChecklist?: boolean;   // All mandatory docs must be verified
   requiresPaymentVerification?: boolean; // 2 Lac payment must be confirmed
 }
@@ -48,7 +48,7 @@ export const VISA_PIPELINE_STAGES: PipelineStage[] = [
   { key: "e_number_granted", label: "E Number Granted", labelUrdu: "ای نمبر جاری", stageNumber: 11, deadlineHours: 24 },
   { key: "finger_process", label: "Finger Process", labelUrdu: "فنگر پروسیس", stageNumber: 12, deadlineHours: 24 },
   {
-    key: "case_handover_sir_atif", label: "Case Hand Over to Sir Atif", labelUrdu: "کیس سر عاطف کو حوالے",
+    key: "case_handover_to_owner", label: "Case Hand Over to Platform Owner", labelUrdu: "کیس مالک کو حوالے",
     stageNumber: 13, deadlineHours: 24,
     requiresApproval: true,
     requiresDocChecklist: true,
@@ -111,7 +111,7 @@ export function canAdvanceStage(
   caseData: {
     documentChecklist?: Record<string, boolean>;
     paymentVerified?: boolean;
-    sirAtifApproval?: boolean;
+    ownerApproval?: boolean;
   }
 ): { canAdvance: boolean; blockers: string[] } {
   const nextStage = getNextStage(type, currentKey);
@@ -135,8 +135,8 @@ export function canAdvanceStage(
   }
 
   if (nextStage.requiresApproval) {
-    if (!caseData.sirAtifApproval) {
-      blockers.push("Sir Atif must digitally approve before proceeding");
+    if (!caseData.ownerApproval) {
+      blockers.push("Platform Owner must digitally approve before proceeding");
     }
   }
 

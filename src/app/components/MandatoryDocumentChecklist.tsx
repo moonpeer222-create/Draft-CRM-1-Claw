@@ -1,6 +1,6 @@
 /**
  * MandatoryDocumentChecklist — Verification section with Yes/No toggles and file upload
- * Hard-locks "Case Hand Over to Sir Atif" and "Case Submitted to Agency" until all docs verified + 2 Lac paid.
+ * Hard-locks "Case Hand Over to Platform Owner" and "Case Submitted to Agency" until all docs verified + 2 Lac paid.
  */
 import { useState, useRef } from "react";
 import {
@@ -21,8 +21,8 @@ interface Props {
     paymentVerified?: boolean;
     paymentVerifiedAt?: string;
     paymentVerifiedBy?: string;
-    sirAtifApproval?: boolean;
-    sirAtifApprovalAt?: string;
+    ownerApproval?: boolean;
+    ownerApprovalAt?: string;
   };
   darkMode: boolean;
   isUrdu: boolean;
@@ -161,8 +161,8 @@ export function MandatoryDocumentChecklist({
           <p className={`text-xs mt-2 flex items-center gap-1.5 ${sub}`}>
             <Lock className="w-3 h-3" />
             {isUrdu
-              ? `${status.pending} دستاویزات باقی ہیں — "سر عاطف کو حوالے" مرحلہ مقفل ہے`
-              : `${status.pending} documents remaining — "Case Hand Over to Sir Atif" stage is locked`}
+              ? `${status.pending} دستاویزات باقی ہیں — "مالک کو حوالے" مرحلہ مقفل ہے`
+              : `${status.pending} documents remaining — "Case Hand Over to Platform Owner" stage is locked`}
           </p>
         )}
       </div>
@@ -305,35 +305,35 @@ export function MandatoryDocumentChecklist({
         </div>
       </div>
 
-      {/* Sir Atif Approval Status */}
+      {/* Platform Owner Approval Status */}
       {(userRole === "admin" || userRole === "master_admin") && (
         <div className={`p-4 rounded-xl border ${brd} ${cardBg}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                caseData.sirAtifApproval
+                caseData.ownerApproval
                   ? "bg-purple-500 text-white"
                   : dc ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-400"
               }`}>
-                {caseData.sirAtifApproval ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                {caseData.ownerApproval ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               </div>
               <div>
                 <p className={`text-sm font-bold ${txt}`}>
-                  {isUrdu ? "سر عاطف کی منظوری" : "Sir Atif's Approval"}
+                  {isUrdu ? "مالک کی منظوری" : "Platform Owner's Approval"}
                 </p>
                 <p className={`text-xs ${sub}`}>
-                  {caseData.sirAtifApproval
+                  {caseData.ownerApproval
                     ? (isUrdu ? "منظور شدہ — ایجنسی جمع کرانے کا اختیار" : "Approved — Agency submission unlocked")
                     : (isUrdu ? "ایجنسی جمع کرانے سے پہلے منظوری ضروری ہے" : "Required before agency submission")}
                 </p>
               </div>
             </div>
             <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-              caseData.sirAtifApproval
+              caseData.ownerApproval
                 ? "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400"
                 : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
             }`}>
-              {caseData.sirAtifApproval ? (isUrdu ? "منظور" : "Approved") : (isUrdu ? "زیر التواء" : "Pending")}
+              {caseData.ownerApproval ? (isUrdu ? "منظور" : "Approved") : (isUrdu ? "زیر التواء" : "Pending")}
             </span>
           </div>
         </div>

@@ -90,7 +90,7 @@ const VOICE_COMMANDS = {
       },
       roleResponsibilities: {
         en: "Role responsibilities: Sales representative handles lead qualification, WhatsApp follow-up, office visit scheduling, target 5 mature clients per day. Computer operator handles document scanning, PDF preparation, CRM plus manual register entry, payment logging with owner confirmation. Owner handles payment confirmations, vendor communication, E-Number visa protector handling, and final approvals. Expert or main person handles client consultation, answering questions professionally, and closing deals.",
-        ur: "رول ذمہ داریاں: سیلز ریپریزنٹیٹو لیڈ کوالیفکیشن، واٹس ایپ فالو اپ، آفس وزٹ شیڈولنگ، ٹارگٹ روزانہ 5 میچور کلائنٹس۔ کمپیوٹر آپریٹر دستاویزات سکیننگ، PDF تیاری، CRM اور مینول رجسٹر میں اندراج، ادائیگی لاگنگ مالک کی تصدیق سے۔ مالک سر عاطف یا وسی ادائیگی کی تصدیقات، وینڈر سے بات چیت، ای نمبر ویزا پروٹیکٹر ہینڈلنگ، اور فائنل منظوریاں۔ ایکسپرٹ شخص کلائنٹ مشاورت، سوالات کا پیشہ ورانہ جواب، اور ڈیل کلوز کرنا۔"
+        ur: "رول ذمہ داریاں: سیلز ریپریزنٹیٹو لیڈ کوالیفکیشن، واٹس ایپ فالو اپ، آفس وزٹ شیڈولنگ، ٹارگٹ روزانہ 5 میچور کلائنٹس۔ کمپیوٹر آپریٹر دستاویزات سکیننگ، PDF تیاری، CRM اور مینول رجسٹر میں اندراج، ادائیگی لاگنگ مالک کی تصدیق سے۔ مالک مالک یا وسی ادائیگی کی تصدیقات، وینڈر سے بات چیت، ای نمبر ویزا پروٹیکٹر ہینڈلنگ، اور فائنل منظوریاں۔ ایکسپرٹ شخص کلائنٹ مشاورت، سوالات کا پیشہ ورانہ جواب، اور ڈیل کلوز کرنا۔"
       },
       login: {
         en: "Login guide: Agents enter their 6 digit access code from WhatsApp and click Activate Session. Valid for 6 hours. Admin goes to admin login with email and password. Session expired? Request new code via WhatsApp or call Admin at zero three one eight six nine eight six two five nine.",
