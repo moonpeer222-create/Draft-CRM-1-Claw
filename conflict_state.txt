@@ -1,6 +1,0 @@
-  const conflictState = useConflictPolling({
-    entityId: selectedCase?.id || null,
-    currentUserId: "admin",
-    enabled: showCaseDetail && !!selectedCase,
-    intervalMs: 5000,
-  });

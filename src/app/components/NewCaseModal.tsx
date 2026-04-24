@@ -9,9 +9,9 @@ import { AuditLogService } from '../lib/auditLog';
 import { DataSyncService } from '../lib/dataSync';
 import { modalVariants } from '../lib/animations';
 import { SearchableCountrySelect } from '../components/SearchableCountrySelect';
-import { Case } from '../lib/mockData';
+import { Case, Payment } from '../lib/mockData';
 
-export function NewCaseModal({ isOpen, onClose, adminName, onSuccess }) {
+export function NewCaseModal({ isOpen, onClose, adminName, onSuccess }: { isOpen: boolean; onClose: () => void; adminName: string; onSuccess?: () => void }) {
   const { darkMode, isUrdu, fontClass } = useTheme();
   const dc = darkMode;
   const txt = dc ? "text-white" : "text-gray-900";
@@ -66,6 +66,8 @@ export function NewCaseModal({ isOpen, onClose, adminName, onSuccess }) {
   }
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxAlt, setLightboxAlt] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024;

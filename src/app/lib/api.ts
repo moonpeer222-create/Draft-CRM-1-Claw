@@ -1,5 +1,6 @@
 // API Client for Supabase Edge Functions (Individual Functions)
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { getSession } from "./supabase";
 
 // Edge Function URLs (deployed to nsglpnxboaxkrgtmlsps)
 const EDGE_URLS = {
@@ -126,6 +127,10 @@ async function request<T = any>(
   let hadRetries = false;
   let timeoutId: any = null;
 
+  // Get user's Supabase JWT for authenticated requests
+  const session = await getSession();
+  const authToken = session?.access_token || publicAnonKey;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // Add timeout to prevent hanging requests
@@ -134,7 +139,11 @@ async function request<T = any>(
 
       const res = await fetch(`${getEdgeUrl(path)}${path}`, {
         ...options,
-        headers: { ...headers(), ...(options.headers || {}) },
+        headers: {
+          ...headers(),
+          Authorization: `Bearer ${authToken}`,
+          ...(options.headers || {}),
+        },
         signal: controller.signal,
       });
 
@@ -751,7 +760,7 @@ export const aiAuditApi = {
 };
 
 // ── Exports ───────────────────────────────────────────────────────
-export default {
+export const api = {
   request,
   healthCheck,
   auth: authApi,
@@ -761,4 +770,13 @@ export default {
   ai: aiApi,
   notifications: notificationsApi,
   attendance: attendanceApi,
+  users: usersApi,
+  settings: settingsApi,
+  agentCodes: agentCodesApi,
+  codeHistory: codeHistoryApi,
+  adminProfile: adminProfileApi,
+  agentProfile: agentProfileApi,
+  leaveRequests: leaveRequestsApi,
 };
+
+export default api;

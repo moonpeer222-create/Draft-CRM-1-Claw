@@ -104,7 +104,7 @@ export function AdminMobileMenu({ isOpen, onClose }: Props) {
     if (!isOpen) return;
     const fetchCases = async () => {
       const { data } = await supabase.from('cases').select('*');
-      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const cases = (data || []).map((raw: any) => mapSupabaseCaseToLocal(raw));
       setTotalCases(cases.length);
       setCompletedCases(cases.filter(c => c.status === "stamped").length);
       setOverdueCount(cases.filter((c) => getOverdueInfo(c).isOverdue).length);

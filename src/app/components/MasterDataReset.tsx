@@ -49,7 +49,7 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
   useEffect(() => {
     const fetchCounts = async () => {
       const { data } = await supabase.from("cases").select("*");
-      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const cases = (data || []).map((raw: any) => mapSupabaseCaseToLocal(raw));
       setServerCounts({
         cases: cases.length,
         docs: cases.reduce((sum, c) => sum + (c.documents?.length || 0), 0),

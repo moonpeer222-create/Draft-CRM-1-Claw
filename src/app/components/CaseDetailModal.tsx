@@ -11,10 +11,12 @@ import { useTheme } from '../lib/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { mapSupabaseCaseToLocal } from '../lib/caseMappers';
 import { 
-  updateCase, updateCaseStatus, addPayment, addNote, deleteCase, 
+  updateCase, updateCaseStatus, addPayment, addNote, deleteCase
+} from '../lib/caseApi';
+import { 
   getStageLabel, getPipelineStages, getOverdueInfo, getDelayReasonLabel, 
   reportDelay, shouldAutoMigrateToVisa, DELAY_REASONS
-} from '../lib/caseApi';
+} from '../lib/mockData';
 import { pipelineApi, visaverseApi, documentUploadApi } from '../lib/api';
 import { NotificationService } from '../lib/notifications';
 import { AuditLogService } from '../lib/auditLog';
@@ -27,7 +29,7 @@ import { RealtimeIndicator } from './RealtimeIndicator';
 import { EditableCaseFields } from './EditableCaseFields';
 import { VisualTimelineStepper } from './VisualTimelineStepper';
 import { WhatsAppActions } from './WhatsAppActions';
-import { SirAtifApprovalButton } from './SirAtifApprovalButton';
+// import { SirAtifApprovalButton } from './SirAtifApprovalButton';
 import { EmojiMoodTracker } from './visaverse/EmojiMoodTracker';
 import { ARScannerButton } from './visaverse/ARScanner';
 import { MandatoryDocumentChecklist } from './MandatoryDocumentChecklist';
@@ -37,7 +39,7 @@ import { PaymentConfirmationModal } from './PaymentConfirmationModal';
 import { CancellationReopenModal } from './CancellationReopenModal';
 import { ImageLightbox } from './ImageLightbox';
 import { useLocation, useParams, useSearchParams } from 'react-router';
-import { Case, Payment } from '../lib/mockData';
+import { Case, Payment, Note } from '../lib/mockData';
 
 interface CaseDetailModalProps {
   isOpen: boolean;

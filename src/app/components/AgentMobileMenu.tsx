@@ -87,7 +87,7 @@ export function AgentMobileMenu({ isOpen, onClose }: Props) {
     if (!isOpen) return;
     const fetchCases = async () => {
       const { data } = await supabase.from('cases').select('*');
-      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const cases = (data || []).map((raw: any) => mapSupabaseCaseToLocal(raw));
       const myCases = cases.filter(c => c.agentId === session?.agentId);
       setTotalCount(myCases.length);
       setCompletedCount(myCases.filter(c => c.status === "stamped").length);

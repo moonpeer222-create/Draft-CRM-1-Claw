@@ -13,18 +13,22 @@ jobs:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
 
-    - name: 🧹 Lint Code (Checking for errors)
-      run: npm run lint --if-present
-
     - name: 🛠️ Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    - name: 📦 Install and Build
-      run: |
-        npm install
-        npm run build
+    - name: 📦 Install Dependencies
+      run: npm install
+
+    - name: 🔍 TypeScript Type Check
+      run: npx tsc --noEmit
+
+    - name: 🧹 Lint Code
+      run: npm run lint --if-present
+
+    - name: 📦 Build
+      run: npm run build
       env:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

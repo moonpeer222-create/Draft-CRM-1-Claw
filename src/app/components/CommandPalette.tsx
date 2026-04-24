@@ -42,7 +42,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
   const [cases, setCases] = useState<any[]>([]);
   useEffect(() => {
     supabase.from('cases').select('*').then(({ data }) => {
-      setCases((data || []).map(mapSupabaseCaseToLocal));
+      setCases((data || []).map((raw: any) => mapSupabaseCaseToLocal(raw)));
     });
   }, []);
 

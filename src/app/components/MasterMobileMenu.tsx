@@ -45,7 +45,7 @@ export function MasterMobileMenu({ isOpen, onClose }: MasterMobileMenuProps) {
   useEffect(() => {
     const fetchCases = async () => {
       const { data } = await supabase.from('cases').select('*');
-      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const cases = (data || []).map((raw: any) => mapSupabaseCaseToLocal(raw));
       setOverdueCount(cases.filter(c => getOverdueInfo(c).isOverdue).length);
     };
     fetchCases();

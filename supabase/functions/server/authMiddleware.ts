@@ -12,7 +12,8 @@
  */
 
 import * as kv from "./kv_store.tsx";
-import { decode } from "npm:hono/jwt"; // Lightweight decoding for initial check
+import { decode } from "npm:hono/jwt";
+import { getDbClient } from "./lib/db.ts";
 
 // ── Types ──────────────────────────────────────────────────
 export interface ServerSession {
@@ -117,41 +118,59 @@ export async function destroyUserSessions(userId: string): Promise<number> {
 
 /** 
  * Try to get session from a Supabase JWT.
- * This is the modern, secure way. 
+ * Verifies the user exists in auth.users via admin API,
+ * then looks up their profile for role and tenant.
  */
 async function getSessionFromJWT(authHeader: string): Promise<ServerSession | null> {
   const token = authHeader.replace(/^Bearer\s+/i, "");
-  if (!token) return null;
+  if (!token || token.length < 20) return null;
 
   try {
-    const secret = Deno.env.get("SUPABASE_JWT_SECRET");
-    if (!secret) {
-      console.warn("SUPABASE_JWT_SECRET is missing! Falling back to unverified decoding (INSECURE)");
-      const { payload } = decode(token);
-      return payloadToSession(payload);
+    // Decode the JWT to extract user ID without verifying signature
+    // (Signature verification would require SUPABASE_JWT_SECRET)
+    const { payload } = decode(token);
+    if (!payload || !payload.sub) return null;
+
+    const userId = payload.sub;
+
+    // Verify the user exists and is valid via Supabase Auth admin API
+    const adminClient = getDbClient();
+    const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(userId);
+
+    if (userError || !userData?.user) {
+      console.warn("JWT user not found in auth system:", userId);
+      return null;
     }
 
-    // In a real environment, you'd use hono/jwt's verify
-    // For this audit/overhaul, we assume verification and extract details
-    const { payload } = decode(token);
-    return payloadToSession(payload);
+    // Look up the profile for CRM-specific fields (role, tenant_id)
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('role, tenant_id, full_name, email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.warn("Profile lookup failed for user:", userId, profileError.message);
+    }
+
+    const role = profile?.role || payload.app_metadata?.role || payload.user_metadata?.role || "agent";
+    const tenantId = profile?.tenant_id || payload.app_metadata?.tenant_id || payload.user_metadata?.tenant_id || null;
+    const fullName = profile?.full_name || payload.user_metadata?.full_name || userData.user.email || "Unknown User";
+    const email = profile?.email || payload.email || userData.user.email || "";
+
+    return {
+      userId,
+      tenantId,
+      fullName,
+      email,
+      role: role as ServerSession["role"],
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(payload.exp * 1000).toISOString(),
+    };
   } catch (err) {
     console.error("JWT Session error:", err);
     return null;
   }
-}
-
-function payloadToSession(payload: any): ServerSession | null {
-  if (!payload || !payload.sub) return null;
-  return {
-    userId: payload.sub,
-    tenantId: payload.app_metadata?.tenant_id || payload.user_metadata?.tenant_id || null,
-    fullName: payload.user_metadata?.full_name || "Unknown User",
-    email: payload.email || "",
-    role: payload.app_metadata?.role || "agent",
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(payload.exp * 1000).toISOString(),
-  };
 }
 
 // ── Hono Middleware ────────────────────────────────────────
