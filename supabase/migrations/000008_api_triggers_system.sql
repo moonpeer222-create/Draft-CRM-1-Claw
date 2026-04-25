@@ -45,8 +45,8 @@ CREATE POLICY "Admins can manage API connections"
     );
 
 -- Indexes
-CREATE INDEX idx_api_connections_tenant ON public.api_connections(tenant_id);
-CREATE INDEX idx_api_connections_status ON public.api_connections(status);
+CREATE INDEX IF NOT EXISTS idx_api_connections_tenant ON public.api_connections(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_api_connections_status ON public.api_connections(status);
 
 -- =====================================================
 -- 2. Automation Triggers Table
@@ -104,9 +104,9 @@ CREATE POLICY "Admins can manage triggers"
     );
 
 -- Indexes
-CREATE INDEX idx_automation_triggers_tenant ON public.automation_triggers(tenant_id);
-CREATE INDEX idx_automation_triggers_event ON public.automation_triggers(event_type) WHERE enabled = true;
-CREATE INDEX idx_automation_triggers_connection ON public.automation_triggers(connection_id);
+CREATE INDEX IF NOT EXISTS idx_automation_triggers_tenant ON public.automation_triggers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_triggers_event ON public.automation_triggers(event_type) WHERE enabled = true;
+CREATE INDEX IF NOT EXISTS idx_automation_triggers_connection ON public.automation_triggers(connection_id);
 
 -- =====================================================
 -- 3. Webhook Endpoints Table
@@ -159,8 +159,8 @@ CREATE POLICY "Admins can manage webhook endpoints"
     );
 
 -- Indexes
-CREATE INDEX idx_webhook_endpoints_tenant ON public.webhook_endpoints(tenant_id);
-CREATE INDEX idx_webhook_endpoints_path ON public.webhook_endpoints(endpoint_path) WHERE active = true;
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant ON public.webhook_endpoints(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_path ON public.webhook_endpoints(endpoint_path) WHERE active = true;
 
 -- =====================================================
 -- 4. Webhook Logs Table
@@ -208,10 +208,10 @@ CREATE POLICY "System can insert webhook logs"
     WITH CHECK (true); -- Edge functions will insert logs
 
 -- Indexes
-CREATE INDEX idx_webhook_logs_tenant ON public.webhook_logs(tenant_id);
-CREATE INDEX idx_webhook_logs_endpoint ON public.webhook_logs(endpoint_id);
-CREATE INDEX idx_webhook_logs_created ON public.webhook_logs(created_at DESC);
-CREATE INDEX idx_webhook_logs_status ON public.webhook_logs(status);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_tenant ON public.webhook_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_endpoint ON public.webhook_logs(endpoint_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_created ON public.webhook_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_status ON public.webhook_logs(status);
 
 -- =====================================================
 -- 5. Trigger Execution Logs Table
@@ -250,10 +250,10 @@ CREATE POLICY "Users can view their tenant's execution logs"
     ));
 
 -- Indexes
-CREATE INDEX idx_trigger_logs_tenant ON public.trigger_execution_logs(tenant_id);
-CREATE INDEX idx_trigger_logs_trigger ON public.trigger_execution_logs(trigger_id);
-CREATE INDEX idx_trigger_logs_executed ON public.trigger_execution_logs(executed_at DESC);
-CREATE INDEX idx_trigger_logs_status ON public.trigger_execution_logs(status);
+CREATE INDEX IF NOT EXISTS idx_trigger_logs_tenant ON public.trigger_execution_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_trigger_logs_trigger ON public.trigger_execution_logs(trigger_id);
+CREATE INDEX IF NOT EXISTS idx_trigger_logs_executed ON public.trigger_execution_logs(executed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trigger_logs_status ON public.trigger_execution_logs(status);
 
 -- =====================================================
 -- 6. Updated_at Trigger Function
