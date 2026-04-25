@@ -3,6 +3,21 @@
 
 -- Use built-in gen_random_uuid() (PostgreSQL 13+, no extension needed)
 
+-- Clean up any partially-created tables from previous failed runs
+DROP TABLE IF EXISTS documents CASCADE;
+DROP TABLE IF EXISTS passport_tracking CASCADE;
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS leave_requests CASCADE;
+DROP TABLE IF EXISTS agent_codes CASCADE;
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS cases CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
+DROP TABLE IF EXISTS ai_audit_log CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS settings CASCADE;
+
 -- Users table (replaces crm:users_db)
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
