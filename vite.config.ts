@@ -3,7 +3,6 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-import { cloudflare } from "@cloudflare/vite-plugin";
 
 function figmaAssetResolver() {
   return {
@@ -18,7 +17,7 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
-  plugins: [figmaAssetResolver(), react(), tailwindcss(), cloudflare()],
+  plugins: [figmaAssetResolver(), react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
