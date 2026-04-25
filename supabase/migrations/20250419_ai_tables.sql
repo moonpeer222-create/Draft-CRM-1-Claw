@@ -104,7 +104,7 @@ CREATE POLICY tenant_isolation_notes ON notes
 INSERT INTO settings (key, value, description)
 VALUES (
   'ai_tables_migrated',
-  '{"version": "1.0", "date": "' || now() || '"}'::jsonb,
+  jsonb_build_object('version', '1.0', 'date', now()),
   'AI tables migration completed'
 )
 ON CONFLICT (key) DO UPDATE SET 
