@@ -25,13 +25,15 @@ CREATE TABLE IF NOT EXISTS public.api_connections (
 -- Enable RLS
 ALTER TABLE public.api_connections ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for api_connections
+-- RLS Policies for api_connections (idempotent)
+DROP POLICY IF EXISTS "Users can view their tenant's API connections" ON public.api_connections;
 CREATE POLICY "Users can view their tenant's API connections"
     ON public.api_connections FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM public.profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Admins can manage API connections" ON public.api_connections;
 CREATE POLICY "Admins can manage API connections"
     ON public.api_connections FOR ALL
     USING (
@@ -82,13 +84,15 @@ CREATE TABLE IF NOT EXISTS public.automation_triggers (
 -- Enable RLS
 ALTER TABLE public.automation_triggers ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (idempotent)
+DROP POLICY IF EXISTS "Users can view their tenant's triggers" ON public.automation_triggers;
 CREATE POLICY "Users can view their tenant's triggers"
     ON public.automation_triggers FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM public.profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Admins can manage triggers" ON public.automation_triggers;
 CREATE POLICY "Admins can manage triggers"
     ON public.automation_triggers FOR ALL
     USING (
@@ -135,13 +139,15 @@ CREATE TABLE IF NOT EXISTS public.webhook_endpoints (
 -- Enable RLS
 ALTER TABLE public.webhook_endpoints ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (idempotent)
+DROP POLICY IF EXISTS "Users can view their tenant's webhook endpoints" ON public.webhook_endpoints;
 CREATE POLICY "Users can view their tenant's webhook endpoints"
     ON public.webhook_endpoints FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM public.profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Admins can manage webhook endpoints" ON public.webhook_endpoints;
 CREATE POLICY "Admins can manage webhook endpoints"
     ON public.webhook_endpoints FOR ALL
     USING (
@@ -188,13 +194,15 @@ CREATE TABLE IF NOT EXISTS public.webhook_logs (
 -- Enable RLS
 ALTER TABLE public.webhook_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (idempotent)
+DROP POLICY IF EXISTS "Users can view their tenant's webhook logs" ON public.webhook_logs;
 CREATE POLICY "Users can view their tenant's webhook logs"
     ON public.webhook_logs FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM public.profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "System can insert webhook logs" ON public.webhook_logs;
 CREATE POLICY "System can insert webhook logs"
     ON public.webhook_logs FOR INSERT
     WITH CHECK (true); -- Edge functions will insert logs
@@ -233,7 +241,8 @@ CREATE TABLE IF NOT EXISTS public.trigger_execution_logs (
 -- Enable RLS
 ALTER TABLE public.trigger_execution_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (idempotent)
+DROP POLICY IF EXISTS "Users can view their tenant's execution logs" ON public.trigger_execution_logs;
 CREATE POLICY "Users can view their tenant's execution logs"
     ON public.trigger_execution_logs FOR SELECT
     USING (tenant_id IN (
@@ -257,15 +266,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply to all tables with updated_at
+-- Apply to all tables with updated_at (idempotent)
+DROP TRIGGER IF EXISTS update_api_connections_updated_at ON public.api_connections;
 CREATE TRIGGER update_api_connections_updated_at
     BEFORE UPDATE ON public.api_connections
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_automation_triggers_updated_at ON public.automation_triggers;
 CREATE TRIGGER update_automation_triggers_updated_at
     BEFORE UPDATE ON public.automation_triggers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_webhook_endpoints_updated_at ON public.webhook_endpoints;
 CREATE TRIGGER update_webhook_endpoints_updated_at
     BEFORE UPDATE ON public.webhook_endpoints
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
