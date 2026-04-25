@@ -3,7 +3,7 @@
  * 
  * ARCHITECTURE:
  * - BroadcastChannel: Instant kill across ALL tabs on SAME device (< 100ms)
- * - Server Polling: Cross-device kill via Supabase KV (< 3 seconds)
+ * - Server Polling: Cross-device kill via Supabase Edge Function (< 3 seconds)
  * - Safe Routes: Login pages can clear panic WITHOUT being killed themselves
  * 
  * WORKFLOW:
@@ -20,10 +20,9 @@
  * - This ensures user can always access login to disable panic
  */
 
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { adminApi } from "./api";
 
 const PANIC_CHANNEL = "emerald-crm-panic-channel";
-const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
 
 // Track consecutive poll failures to avoid console spam
 let consecutivePollFailures = 0;
@@ -133,14 +132,9 @@ export async function triggerPanic() {
 
   // 1. Set server flag for cross-device detection
   try {
-    await fetch(`${SERVER_URL}/api/panic/trigger`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-      },
-    });
+    await adminApi.enablePanicMode();
   } catch (err) {
+    // Silent fail — panic should still work locally via BroadcastChannel
   }
 
   // 2. Broadcast to all tabs on THIS device (instant kill)
@@ -173,14 +167,9 @@ function isSafeRoute(): boolean {
  */
 export async function clearServerPanic() {
   try {
-    await fetch(`${SERVER_URL}/api/panic/clear`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-      },
-    });
+    await adminApi.disablePanicMode();
   } catch (err) {
+    // Silent fail — login page should still work
   }
 }
 
@@ -189,19 +178,21 @@ export async function clearServerPanic() {
  */
 async function checkServerPanic(): Promise<boolean> {
   try {
-    const response = await fetch(`${SERVER_URL}/api/panic/status`, {
-      headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-      },
-    });
-    const data = await response.json();
+    const response = await adminApi.getPanicStatus();
     // Reset failure counter on successful poll
     if (consecutivePollFailures > 0) consecutivePollFailures = 0;
-    return data.active === true;
+    
+    if (!response.success) {
+      // API returned an error response
+      return false;
+    }
+    
+    return response.data?.active === true;
   } catch (err) {
     consecutivePollFailures++;
     // Only log after MAX_SILENT_FAILURES consecutive failures to avoid console spam
     if (consecutivePollFailures === MAX_SILENT_FAILURES) {
+      console.warn("Panic mode polling has failed 10+ times. Server may be unavailable.");
     }
     return false;
   }

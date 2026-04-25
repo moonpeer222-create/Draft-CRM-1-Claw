@@ -8,7 +8,7 @@
  */
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
-const SERVER_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+const SERVER_BASE = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
 
 export interface ChatMessage {
   text: string;

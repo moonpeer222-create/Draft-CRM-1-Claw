@@ -283,7 +283,7 @@ export class CloudSyncService {
    * Upload single queue item to cloud
    */
   private static async uploadQueueItem(item: SyncQueue): Promise<void> {
-    const serverUrl = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+    const serverUrl = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${publicAnonKey}`,
@@ -349,7 +349,7 @@ export class CloudSyncService {
     this.updateSyncStatus({ isSyncing: true });
 
     try {
-      const serverUrl = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+      const serverUrl = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${publicAnonKey}`,

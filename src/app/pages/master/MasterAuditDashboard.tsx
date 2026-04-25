@@ -14,7 +14,7 @@ import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 import { toast } from "../../lib/toast";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+const BASE_URL = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
 
 export function MasterAuditDashboard() {
   const { darkMode, isUrdu, fontClass } = useTheme();

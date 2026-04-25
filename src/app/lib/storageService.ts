@@ -4,7 +4,7 @@
  */
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+const BASE_URL = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
 
 const headers = () => ({
   "Content-Type": "application/json",

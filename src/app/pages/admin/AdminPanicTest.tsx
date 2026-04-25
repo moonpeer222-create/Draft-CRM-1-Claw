@@ -5,7 +5,7 @@ import { triggerPanic } from "../../lib/panicMode";
 import { projectId, publicAnonKey } from '../../../../utils/supabase/info';
 import { toast } from "../../lib/toast";
 
-const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
 
 export function AdminPanicTest() {
   const [serverStatus, setServerStatus] = useState<{

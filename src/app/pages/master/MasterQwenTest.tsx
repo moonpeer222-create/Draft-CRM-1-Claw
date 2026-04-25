@@ -26,7 +26,7 @@ import { getPendingCount } from "../../lib/offlineQueue";
 import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
-const SERVER = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
+const SERVER = `https://${projectId}.supabase.co/functions/v1/admin_pg`;
 
 type TestStatus = "idle" | "running" | "pass" | "fail" | "warn";
 
