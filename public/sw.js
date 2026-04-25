@@ -1,13 +1,19 @@
 /**
  * Emerald Visa CRM — Service Worker
- * Offline-first strategy:
- *  - Cache-first for static assets (JS/CSS/images)
+ * Strategy:
+ *  - NEVER cache index.html (always fetch fresh — avoids stale builds)
+ *  - Cache-first for hashed static assets (JS/CSS with content-hash)
  *  - Network-first with IndexedDB queue for API mutations (POST/PUT/DELETE)
  *  - Background sync to replay queued mutations when network returns
  */
 
-const CACHE_NAME = "emerald-crm-v3";
-const STATIC_URLS = ["/", "/index.html"];
+const CACHE_NAME = "emerald-crm-v4";
+const STATIC_URLS = ["/"];
+
+// Helpers to identify asset types
+const isIndexHtml = (url) => url.pathname === "/" || url.pathname === "/index.html";
+const isHashedAsset = (url) => /\.[a-f0-9]{8,}\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?)$/.test(url.pathname);
+const isStaticAsset = (url) => url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?|ico)$/);
 
 // ── Install: pre-cache shell ──────────────────────────────────────────
 self.addEventListener("install", (event) => {
@@ -17,19 +23,17 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ────────────────────────────────────────
+// ── Activate: clean ALL old caches (including same-name stale entries) ─
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      )
+      Promise.all(keys.map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// ── Fetch: cache-first for assets, pass-through for API ──────────────
+// ── Fetch: NEVER cache index.html, cache hashed assets ────────────────
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -40,30 +44,56 @@ self.addEventListener("fetch", (event) => {
   // Don't intercept cross-origin API calls (Supabase edge functions)
   if (url.hostname.includes("supabase.co")) return;
 
-  // Cache-first for static assets
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        // Only cache successful same-origin responses
-        if (
-          response.ok &&
-          url.origin === self.location.origin &&
-          !url.pathname.startsWith("/api/")
-        ) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      }).catch(() => {
-        // Offline fallback for navigation requests
-        if (request.mode === "navigate") {
-          return caches.match("/index.html");
-        }
-        return new Response("Offline", { status: 503 });
-      });
-    })
-  );
+  // 1) index.html — ALWAYS network-first, never cache
+  if (isIndexHtml(url)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => response)
+        .catch(() => {
+          return caches.match("/index.html").then((cached) => {
+            if (cached) return cached;
+            return new Response("Offline", { status: 503 });
+          });
+        })
+    );
+    return;
+  }
+
+  // 2) Hashed assets (JS/CSS) — cache-first, cache on miss
+  if (isHashedAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3) Other static assets — stale-while-revalidate (serve cached, refresh in background)
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const networkFetch = fetch(request).then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+        return cached || networkFetch;
+      })
+    );
+    return;
+  }
+
+  // 4) Everything else (API, etc.) — pass through
 });
 
 // ── Background Sync: replay queued mutations ──────────────────────────
