@@ -2,6 +2,9 @@
 -- Creates documents table with tenant isolation and RLS
 -- Run this in Supabase SQL Editor
 
+-- Drop old table from 000005 (different schema: no tenant_id, uploader_name, description)
+DROP TABLE IF EXISTS documents CASCADE;
+
 -- ============ DOCUMENTS TABLE ============
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -11,7 +14,7 @@ CREATE TABLE IF NOT EXISTS documents (
   file_url TEXT NOT NULL,
   file_type TEXT,
   file_size INTEGER,
-  uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   uploader_name TEXT,
   description TEXT,
   metadata JSONB DEFAULT '{}',
@@ -28,10 +31,12 @@ CREATE INDEX IF NOT EXISTS idx_documents_uploaded_by ON documents(uploaded_by);
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Tenant isolation - users can only see docs from their tenant
+DROP POLICY IF EXISTS tenant_isolation_documents ON documents;
 CREATE POLICY tenant_isolation_documents ON documents
   FOR ALL USING (tenant_id = current_setting('app.current_tenant')::UUID);
 
 -- Additional policy: Users can only see documents linked to cases they have access to
+DROP POLICY IF EXISTS case_linked_documents ON documents;
 CREATE POLICY case_linked_documents ON documents
   FOR ALL USING (
     tenant_id = current_setting('app.current_tenant')::UUID
@@ -99,7 +104,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 INSERT INTO settings (key, value, description)
 VALUES (
   'documents_table_migrated',
-  '{"version": "1.0", "date": "' || now() || '"}'::jsonb,
+  jsonb_build_object('version', '1.0', 'date', now()),
   'Documents table migration completed'
 )
 ON CONFLICT (key) DO UPDATE SET 
