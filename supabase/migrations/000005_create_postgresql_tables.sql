@@ -1,12 +1,11 @@
 -- Migration: Create proper PostgreSQL tables for CRM system
 -- Replaces KV store with relational schema
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Use built-in gen_random_uuid() (PostgreSQL 13+, no extension needed)
 
 -- Users table (replaces crm:users_db)
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     full_name TEXT NOT NULL,
@@ -31,7 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
 
 -- Cases table (replaces crm:cases)
 CREATE TABLE IF NOT EXISTS cases (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_number TEXT UNIQUE NOT NULL,
     customer_name TEXT NOT NULL,
     customer_email TEXT,
@@ -98,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
 -- Agent codes table (replaces crm:agent_codes)
 CREATE TABLE IF NOT EXISTS agent_codes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code TEXT UNIQUE NOT NULL,
     agent_id UUID REFERENCES users(id),
     agent_name TEXT,
@@ -118,7 +117,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_codes_expires ON agent_codes(expires_at);
 
 -- Audit log table (replaces crm:audit_log)
 CREATE TABLE IF NOT EXISTS audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     user_email TEXT,
     user_role TEXT,
@@ -148,7 +147,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 -- Documents table (replaces crm:document_files)
 CREATE TABLE IF NOT EXISTS documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
     file_name TEXT NOT NULL,
     file_url TEXT NOT NULL,
@@ -169,7 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(document_type);
 
 -- Attendance table (replaces crm:attendance:*)
 CREATE TABLE IF NOT EXISTS attendance (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     date DATE NOT NULL,
     check_in TIMESTAMP WITH TIME ZONE,
@@ -189,7 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 
 -- Notifications table (replaces crm:notifications)
 CREATE TABLE IF NOT EXISTS notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
@@ -208,7 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 
 -- Leave requests table (replaces crm:leave_requests)
 CREATE TABLE IF NOT EXISTS leave_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
@@ -229,7 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_leave_status ON leave_requests(status);
 
 -- Passport tracking table (replaces crm:passport_tracking)
 CREATE TABLE IF NOT EXISTS passport_tracking (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
     passport_number TEXT NOT NULL,
     status TEXT DEFAULT 'with_applicant' CHECK (status IN ('with_applicant', 'with_agency', 'with_embassy', 'with_employer', 'in_transit', 'returned')),
@@ -249,7 +248,7 @@ CREATE INDEX IF NOT EXISTS idx_passport_number ON passport_tracking(passport_num
 
 -- AI Audit log table (replaces crm:ai_audit_log)
 CREATE TABLE IF NOT EXISTS ai_audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     role TEXT,
     message TEXT NOT NULL,
@@ -268,7 +267,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_audit_created ON ai_audit_log(created_at);
 
 -- Password reset tokens table
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     code TEXT NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
