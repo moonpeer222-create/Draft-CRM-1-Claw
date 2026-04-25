@@ -1,99 +1,32 @@
 /**
- * Emerald Visa CRM — Service Worker
- * Strategy:
- *  - NEVER cache index.html (always fetch fresh — avoids stale builds)
- *  - Cache-first for hashed static assets (JS/CSS with content-hash)
- *  - Network-first with IndexedDB queue for API mutations (POST/PUT/DELETE)
+ * Emerald Visa CRM — Service Worker (no asset caching)
+ *
+ * This SW does NOT cache static assets. It only provides:
  *  - Background sync to replay queued mutations when network returns
+ *  - Message handling for the offline mutation queue
+ *
+ * Caching is intentionally disabled to prevent stale builds.
  */
 
-const CACHE_NAME = "emerald-crm-v4";
-const STATIC_URLS = ["/"];
+// ── Fetch: pass everything through (no caching) ───────────────────────
+self.addEventListener("fetch", (event) => {
+  // We don't intercept any requests — let the browser / server handle everything.
+  // This prevents stale cached assets and 404s from cache mismatches.
+});
 
-// Helpers to identify asset types
-const isIndexHtml = (url) => url.pathname === "/" || url.pathname === "/index.html";
-const isHashedAsset = (url) => /\.[a-f0-9]{8,}\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?)$/.test(url.pathname);
-const isStaticAsset = (url) => url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?|ico)$/);
-
-// ── Install: pre-cache shell ──────────────────────────────────────────
+// ── Install / Activate: minimal ───────────────────────────────────────
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_URLS))
-  );
   self.skipWaiting();
 });
 
-// ── Activate: clean ALL old caches (including same-name stale entries) ─
 self.addEventListener("activate", (event) => {
+  // Clean up any old caches from previous SW versions
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
-});
-
-// ── Fetch: NEVER cache index.html, cache hashed assets ────────────────
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Bypass non-GET mutations — they are handled by the offline queue
-  if (request.method !== "GET") return;
-
-  // Don't intercept cross-origin API calls (Supabase edge functions)
-  if (url.hostname.includes("supabase.co")) return;
-
-  // 1) index.html — ALWAYS network-first, never cache
-  if (isIndexHtml(url)) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => response)
-        .catch(() => {
-          return caches.match("/index.html").then((cached) => {
-            if (cached) return cached;
-            return new Response("Offline", { status: 503 });
-          });
-        })
-    );
-    return;
-  }
-
-  // 2) Hashed assets (JS/CSS) — cache-first, cache on miss
-  if (isHashedAsset(url)) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok && url.origin === self.location.origin) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
-
-  // 3) Other static assets — stale-while-revalidate (serve cached, refresh in background)
-  if (isStaticAsset(url)) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const networkFetch = fetch(request).then((response) => {
-          if (response.ok && url.origin === self.location.origin) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-        return cached || networkFetch;
-      })
-    );
-    return;
-  }
-
-  // 4) Everything else (API, etc.) — pass through
 });
 
 // ── Background Sync: replay queued mutations ──────────────────────────
