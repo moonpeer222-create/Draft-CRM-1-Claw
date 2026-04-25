@@ -52,7 +52,7 @@ CREATE OR REPLACE VIEW master_documents_view AS
 SELECT 
   d.*,
   t.name as tenant_name,
-  c.full_name as case_client_name,
+  c.customer_name as case_client_name,
   c.status as case_status
 FROM documents d
 JOIN tenants t ON d.tenant_id = t.id
