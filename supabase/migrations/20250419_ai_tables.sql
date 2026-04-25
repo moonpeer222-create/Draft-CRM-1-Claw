@@ -2,12 +2,18 @@
 -- Creates tables for AI chat history and audit logging
 -- Run this in Supabase SQL Editor
 
+-- Drop old tables that may have different schemas from previous migrations
+DROP TABLE IF EXISTS ai_chat_history CASCADE;
+DROP TABLE IF EXISTS ai_audit_log CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS notes CASCADE;
+
 -- ============ AI CHAT HISTORY ============
 CREATE TABLE IF NOT EXISTS ai_chat_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL,
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
   content TEXT NOT NULL,
   metadata JSONB DEFAULT '{}',
@@ -23,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_chat_created ON ai_chat_history(created_at);
 CREATE TABLE IF NOT EXISTS ai_audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   user_name TEXT NOT NULL,
   role TEXT NOT NULL,
   action TEXT NOT NULL,
