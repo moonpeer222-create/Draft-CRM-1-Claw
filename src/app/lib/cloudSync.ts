@@ -12,7 +12,7 @@
  * - Cross-device data consistency
  */
 
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 import { CRMDataStore } from './mockData';
 import { DataSyncService } from './dataSync';
 import { AuditLogService } from './auditLog';
@@ -506,7 +506,7 @@ export class CloudSyncService {
       
       if (typeof localNotif === 'object' && localNotif !== null) {
         Object.keys(localNotif).forEach(key => {
-          const value = localNotif[key];
+          const value = (localNotif as any)[key];
           if (Array.isArray(value)) {
             converted.push(...value);
           } else if (typeof value === 'object' && value !== null && value.id) {

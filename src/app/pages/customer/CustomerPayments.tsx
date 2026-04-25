@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../../lib/ThemeContext";
 import { toast } from "../../lib/toast";
 import { motion, AnimatePresence } from "motion/react";
-import { Case } from "../../lib/mockData";
+import { Case, Payment } from "../../lib/mockData";
 import { updateCase } from "../../lib/caseApi";
 import { supabase } from "../../lib/supabase";
 import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
@@ -179,12 +179,14 @@ export function CustomerPayments() {
     const newPayment = {
       id: `PAY-CUST-${Date.now()}`,
       amount,
-      method: selectedMethod.toLowerCase().replace(/\s/g, "_"),
+      method: selectedMethod.toLowerCase().replace(/\s/g, "_") as Payment["method"],
       date: txDate,
       reference: txRef.trim(),
       status: "pending" as const,
       description: `Payment via ${selectedMethod} — submitted by customer`,
       receiptUrl: "",
+      receiptNumber: txRef.trim(),
+      collectedBy: "customer",
     };
 
     const updatedPayments = [...(myCase.payments || []), newPayment];
@@ -456,14 +458,14 @@ export function CustomerPayments() {
                 <div key={payment.id} className={`p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border ${dc ? "bg-gray-700/30 border-gray-600/50" : "bg-gray-50 border-gray-100"}`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      {getPaymentStatusIcon(payment.status)}
+                      {getPaymentStatusIcon((payment as any).status)}
                       <h4 className={`font-bold ${txt}`}>PKR {payment.amount.toLocaleString()}</h4>
-                      {getPaymentStatusBadge(payment.status)}
+                      {getPaymentStatusBadge((payment as any).status)}
                     </div>
                     <div className={`flex flex-wrap gap-3 text-xs ml-8 ${sub}`}>
                       <span>{isUrdu ? "تاریخ:" : "Date:"} {new Date(payment.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                       <span>{isUrdu ? "طریقہ:" : "Method:"} {payment.method}</span>
-                      {payment.reference && <span>{isUrdu ? "حوالہ:" : "Ref:"} {payment.reference}</span>}
+                      {(payment as any).reference && <span>{isUrdu ? "حوالہ:" : "Ref:"} {(payment as any).reference}</span>}
                     </div>
                     {payment.description && (
                       <p className={`text-xs mt-1 ml-8 italic ${dc ? "text-gray-500" : "text-gray-400"}`}>{payment.description}</p>

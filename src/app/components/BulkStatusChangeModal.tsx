@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from '../lib/toast';
 import { useTheme } from '../lib/ThemeContext';
-import { updateCaseStatus, getStageLabel, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES } from '../lib/mockData';
+import { CRMDataStore, getStageLabel, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES } from '../lib/mockData';
 import { Case } from '../lib/mockData';
 
 interface BulkStatusChangeModalProps {
@@ -27,7 +27,7 @@ export function BulkStatusChangeModal({ isOpen, onClose, selectedIds, onSuccess 
     const lt = toast.loading(`Updating ${ids.length} cases...`);
     
     for (const cid of ids) {
-      const result = await updateCaseStatus(cid, bulkTargetStatus);
+      const result = CRMDataStore.updateCaseStatus(cid, bulkTargetStatus);
       if (result) updated++;
     }
     

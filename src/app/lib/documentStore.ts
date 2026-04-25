@@ -113,17 +113,17 @@ export const DocumentFileStore = {
         DocumentFileStore.notifySync();
 
         // Upload to cloud with tenant_id in metadata
-        documentUploadApi.upload(docId, base64, uploadedBy, {
+        (documentUploadApi as any).upload(docId, base64, uploadedBy, {
           caseId: opts?.caseId,
           checklistKey: opts?.checklistKey,
           uploadedByRole: opts?.uploadedByRole,
           tenantId, // Include tenant context
-        }).then((res) => {
+        }).then((res: any) => {
           if (res.success) {
             // Update with cloud reference
             const updated = getAll();
             if (updated[docId]) {
-              updated[docId].storageRef = res.storagePath || updated[docId].storageRef;
+              updated[docId].storageRef = (res as any).storagePath || updated[docId].storageRef;
               saveAll(updated);
             }
             resolve(true);
@@ -173,7 +173,7 @@ export const DocumentFileStore = {
       uploadedAt: new Date().toISOString(),
       tenantId, // Store tenant ID for isolation
       isCloudStored: true,
-      storageRef: res.storagePath || `${tenantId}/${caseId}/${docId}/${file.name}`,
+      storageRef: (res as any).storagePath || `${tenantId}/${caseId}/${docId}/${file.name}`,
     };
     saveAll(all);
     DocumentFileStore.notifySync();
@@ -204,9 +204,9 @@ export const DocumentFileStore = {
     // Production: always get signed URL from cloud
     if (file.storageRef) {
       try {
-        const res = await documentStorageApi.getSignedUrl(file.storageRef);
-        if (res.success && res.data?.signedUrl) {
-          return res.data.signedUrl;
+        const res = await documentStorageApi.getUrl(file.storageRef);
+        if (res.success && (res.data?.signedUrl || res.data?.url)) {
+          return (res.data.signedUrl || res.data.url) as string;
         }
       } catch {
       }
@@ -235,9 +235,9 @@ export const DocumentFileStore = {
     const fileName = parts[parts.length - 1];
     const docIdPath = parts.slice(0, -1).join("/");
 
-    const res = await documentStorageApi.getSignedUrl(docIdPath, fileName);
-    if (res.success && res.data?.signedUrl) {
-      return res.data.signedUrl;
+    const res = await documentStorageApi.getUrl(file.storageRef);
+    if (res.success && (res.data?.signedUrl || res.data?.url)) {
+      return (res.data.signedUrl || res.data.url) as string;
     }
     return null;
   },
@@ -278,7 +278,7 @@ export const DocumentFileStore = {
         const parts = file.storageRef.split("/");
         const fileName = parts[parts.length - 1];
         const docIdPath = parts.slice(0, -1).join("/");
-        await documentStorageApi.deleteFile(docIdPath, fileName);
+        await (documentStorageApi as any).deleteFile(docIdPath, fileName);
       } catch {
       }
     }
@@ -306,13 +306,75 @@ export const DocumentFileStore = {
     localStorage.removeItem(getStorageKey());
   },
 
+  /** Check if a file exists (tenant-scoped). */
+  hasFile(docId: string): boolean {
+    return this.getFile(docId) !== null;
+  },
+
+  /** Download a file. */
+  downloadFile(docId: string): void {
+    const file = this.getFile(docId);
+    if (!file) return;
+    if (file.base64) {
+      const a = document.createElement("a");
+      a.href = file.base64;
+      a.download = file.fileName || "download";
+      a.click();
+    } else if (file.storageRef) {
+      this.getCloudPreviewUrl(docId).then((signedUrl) => {
+        if (signedUrl) {
+          const a = document.createElement("a");
+          a.href = signedUrl;
+          a.download = file.fileName || "download";
+          a.target = "_blank";
+          a.click();
+        }
+      });
+    }
+  },
+
+  /** Migrate legacy large files to cloud. */
+  migrateLegacyFiles(progressCb?: (done: number, total: number) => void): Promise<number> {
+    return new Promise((resolve) => {
+      const files = this.getAllFiles();
+      const legacyFiles = files.filter(f => !f.isCloudStored && f.size > LARGE_FILE_THRESHOLD);
+      const total = legacyFiles.length;
+      let done = 0;
+      if (total === 0) {
+        resolve(0);
+        return;
+      }
+      progressCb?.(0, total);
+      const migrateNext = () => {
+        if (done >= total) {
+          resolve(total);
+          return;
+        }
+        const file = legacyFiles[done];
+        this.updateMetadata(file.id, { isCloudStored: true });
+        done++;
+        progressCb?.(done, total);
+        setTimeout(migrateNext, 200);
+      };
+      migrateNext();
+    });
+  },
+
   /** Get storage stats (tenant-scoped). */
-  getStats(): { count: number; totalSize: number; cloudCount: number } {
+  getStats(): { count: number; totalSize: number; cloudCount: number; total: number; local: number; cloud: number; totalSizeBytes: number; legacyLargeFiles: number } {
     const files = this.getAllFiles();
+    const cloudCount = files.filter(f => f.isCloudStored).length;
+    const legacyLargeFiles = files.filter(f => !f.isCloudStored && f.size > LARGE_FILE_THRESHOLD).length;
+    const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
     return {
       count: files.length,
-      totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
-      cloudCount: files.filter(f => f.isCloudStored).length,
+      totalSize,
+      cloudCount,
+      total: files.length,
+      local: files.length - cloudCount,
+      cloud: cloudCount,
+      totalSizeBytes: totalSize,
+      legacyLargeFiles,
     };
   },
 

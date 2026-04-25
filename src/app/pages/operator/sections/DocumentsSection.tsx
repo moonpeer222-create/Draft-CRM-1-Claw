@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import {
-  FileText, Search, X, Upload, Download, Check, Eye, Loader2, Clock, CheckCircle, XCircle, RotateCcw, ShieldCheck, Filter, LayoutGrid, LayoutList, Camera,
+  FileText, Search, X, Upload, Download, Check, Eye, Loader2, Clock, CheckCircle, XCircle, RotateCcw, ShieldCheck, Filter, LayoutGrid, LayoutList, Camera, FolderPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "../../../lib/toast";

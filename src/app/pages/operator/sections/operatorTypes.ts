@@ -14,7 +14,7 @@ export interface PaymentRecord {
 export interface AttendanceEntry {
   staffName: string; status: "present" | "late" | "absent" | ""; time: string; date: string;
 }
-export interface Notification {
+export interface OperatorNotification {
   id: string; message: string; messageUr: string; type: "status" | "payment" | "flag" | "report"; time: string; read: boolean;
 }
 

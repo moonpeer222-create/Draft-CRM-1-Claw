@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  FolderPlus, Plus, X, Check, User, MapPin, Phone, FileText, ChevronRight, Clipboard, AlertTriangle, Flag, Loader2,
+  FolderPlus, Plus, X, Check, CheckCircle2, User, MapPin, Phone, FileText, ChevronRight, Clipboard, AlertTriangle, Flag, Loader2,
   Building2, Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";

@@ -140,7 +140,7 @@ export class SyncedCRMDataStore {
   // ============================================================
 
   static addDocument(caseId: string, document: any, userId: string): Case | null {
-    const updatedCase = CRMDataStore.addDocument(caseId, document);
+    const updatedCase = (CRMDataStore as any).addDocument(caseId, document);
     
     if (updatedCase) {
       CloudSyncService.queueChange(
@@ -156,7 +156,7 @@ export class SyncedCRMDataStore {
   }
 
   static verifyDocument(caseId: string, documentId: string, verified: boolean, userId: string): Case | null {
-    const updatedCase = CRMDataStore.verifyDocument(caseId, documentId, verified);
+    const updatedCase = (CRMDataStore as any).verifyDocument(caseId, documentId, verified);
     
     if (updatedCase) {
       CloudSyncService.queueChange(
@@ -230,18 +230,18 @@ export class SyncedCRMDataStore {
   // ============================================================
 
   static getCases = CRMDataStore.getCases;
-  static getCase = CRMDataStore.getCase;
-  static getCasesByAgent = CRMDataStore.getCasesByAgent;
-  static getCasesByCustomer = CRMDataStore.getCasesByCustomer;
-  static searchCases = CRMDataStore.searchCases;
+  static getCase = (CRMDataStore as any).getCase;
+  static getCasesByAgent = (CRMDataStore as any).getCasesByAgent;
+  static getCasesByCustomer = (CRMDataStore as any).getCasesByCustomer;
+  static searchCases = (CRMDataStore as any).searchCases;
   
-  static getAgents = CRMDataStore.getAgents;
-  static getCustomers = CRMDataStore.getCustomers;
+  static getAgents = (CRMDataStore as any).getAgents;
+  static getCustomers = (CRMDataStore as any).getCustomers;
   
   // Data management methods
   static saveCases = CRMDataStore.saveCases;
-  static exportData = CRMDataStore.exportData;
-  static importData = CRMDataStore.importData;
+  static exportData = (CRMDataStore as any).exportData;
+  static importData = (CRMDataStore as any).importData;
 }
 
 /**

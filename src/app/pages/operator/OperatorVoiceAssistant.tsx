@@ -73,7 +73,7 @@ export function OperatorVoiceAssistant() {
           </motion.div>
 
           <div className="rounded-2xl overflow-hidden shadow-lg">
-            <RoleBasedVoiceAssistant role="operator" embedded />
+            <RoleBasedVoiceAssistant role="operator" />
           </div>
         </main>
       </div>

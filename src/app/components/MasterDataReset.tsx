@@ -17,8 +17,6 @@ import { toast } from "../lib/toast";
 import { supabase } from "../lib/supabase";
 import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 import { forceSync, pushCases, pushUsers, pushAuditLog, pushDocumentFiles, pushNotifications, markEntityModified } from "../lib/syncService";
-import { supabase } from "../lib/supabase";
-import { mapSupabaseCaseToLocal } from "../lib/caseMappers";
 
 interface ResetOption {
   id: string;
@@ -263,8 +261,8 @@ export function MasterDataReset({ darkMode: dc, isUrdu, onDataReset }: Props) {
           category: "system",
           userId: "master_admin",
           userName: "Master Admin",
-          details: `Data reset: ${option.label}`,
-          severity: "critical",
+          role: "master_admin",
+          description: `Data reset: ${option.label}`,
         });
       } catch { /* audit log might have been cleared */ }
 

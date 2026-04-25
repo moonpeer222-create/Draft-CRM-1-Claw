@@ -75,14 +75,14 @@ export function AgentSessionTimer() {
       const record = AttendanceService.checkIn(agentId, agentName);
       setIsCheckedIn(true);
 
-      AuditLogService.log(
-        agentId,
-        agentName,
-        "agent",
-        "check-in",
-        "attendance",
-        `Agent checked in at ${record.checkIn} (${record.status})`
-      );
+      AuditLogService.log({
+        userId: agentId,
+        userName: agentName,
+        role: "agent",
+        action: "check-in",
+        category: "attendance",
+        description: `Agent checked in at ${record.checkIn} (${record.status})`
+      });
 
       if (record.status === "late") {
         toast.warning(

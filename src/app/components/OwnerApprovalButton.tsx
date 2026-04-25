@@ -53,9 +53,9 @@ export function OwnerApprovalButton({ caseData, darkMode: dc, isUrdu, userName, 
       await AuditLogService.log({
         userId,
         userName,
+        role: "master_admin",
         action: approved ? "owner_approve_case" : "owner_revoke_approval",
-        entityType: "case",
-        entityId: caseData.id,
+        category: "approval",
         description: `Platform Owner ${approved ? "approved" : "revoked approval for"} case ${caseData.id} (${caseData.customerName}). ${note ? `Note: ${note}` : ""}`,
         metadata: { caseId: caseData.id, approved, note }
       });
@@ -155,9 +155,9 @@ export function OwnerApprovalButton({ caseData, darkMode: dc, isUrdu, userName, 
             )}
           </AnimatePresence>
 
-          {caseData.ownerApprovalBy && (
+          {(caseData as any).ownerApprovalBy && (
             <p className={`text-xs mt-2 ${sub}`}>
-              {isUrdu ? "منظوری دی:" : "Approved by:"} {caseData.ownerApprovalBy}
+              {isUrdu ? "منظوری دی:" : "Approved by:"} {(caseData as any).ownerApprovalBy}
               {caseData.ownerApprovalAt && ` • ${new Date(caseData.ownerApprovalAt).toLocaleDateString()}`}
             </p>
           )}

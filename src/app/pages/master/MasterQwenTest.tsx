@@ -23,7 +23,7 @@ import { callGeminiAI, streamQwenAI } from "../../lib/geminiApi";
 import { buildCRMContext, CRM_ACTION_INSTRUCTIONS, parseActions, executeAllActions } from "../../lib/crmTools";
 import { sendCaseStatusEmail } from "../../lib/emailService";
 import { getPendingCount } from "../../lib/offlineQueue";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
 const SERVER = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;

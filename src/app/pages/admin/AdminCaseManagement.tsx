@@ -1,7 +1,8 @@
 import { Case, Payment, WORKFLOW_STAGES, getStageLabel, getStageNumber, DELAY_REASONS, getOverdueInfo, getDelayReasonLabel, reportDelay, LEAD_PIPELINE_STAGES, VISA_PIPELINE_STAGES, getPipelineStages, shouldAutoMigrateToVisa } from "../../lib/mockData";
 import { ALL_COUNTRIES, POPULAR_COUNTRIES } from "../../constants/countries";
 import { SearchableCountrySelect } from "../../components/SearchableCountrySelect";
-import { pipelineApi } from "../../lib/api";
+import { pipelineApi, documentUploadApi } from "../../lib/api";
+import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { MandatoryDocumentChecklist } from "../../components/MandatoryDocumentChecklist";
 import { NotificationService } from "../../lib/notifications";
 import { sendCaseStatusEmail, extractEmailsFromCase } from "../../lib/emailService";
@@ -427,6 +428,8 @@ export function AdminCaseManagement() {
 
     const success = await addPayment(selectedCase.id, {
       ...newPayment,
+      id: `PAY-${Date.now()}`,
+      receiptNumber: `R-${Date.now()}`,
       date: new Date().toISOString(),
       collectedBy: "Admin",
     });
@@ -457,6 +460,7 @@ export function AdminCaseManagement() {
       ...newNote,
       author: "Admin",
       date: new Date().toISOString(),
+      id: `NOTE-${Date.now()}`,
     });
     if (success) {
       const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
@@ -478,9 +482,9 @@ export function AdminCaseManagement() {
     try {
       const res = await pipelineApi.advanceStage(caseId, status, "admin", adminName);
       if (!res.success) {
-        if (res.blockers && Array.isArray(res.blockers)) {
+        if ((res as any).blockers && Array.isArray((res as any).blockers)) {
           toast.error("Stage locked — requirements not met");
-          res.blockers.forEach((b: string) => toast.error(b));
+          (res as any).blockers.forEach((b: string) => toast.error(b));
         } else {
           toast.error(res.error || "Stage update failed");
         }
@@ -1100,7 +1104,7 @@ export function AdminCaseManagement() {
                     <RealtimeIndicator caseId={selectedCase.id} onRefresh={async () => {
                       const { data } = await supabase.from('cases').select('*').eq('id', selectedCase.id).single();
                       if (data) {
-                        setSelectedCase(mapSupabaseCaseToLocal(data, profile));
+                        setSelectedCase(mapSupabaseCaseToLocal(data));
                         toast.success(isUrdu ? "کیس تازہ ترین ہو گیا" : "Case refreshed");
                       }
                     }} />

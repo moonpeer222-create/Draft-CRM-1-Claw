@@ -23,6 +23,7 @@ interface ProfileUser {
   created_at: string;
   last_seen: string | null;
   tenant_id: string | null;
+  agent_id?: string;
 }
 
 export function AdminUserManagement() {

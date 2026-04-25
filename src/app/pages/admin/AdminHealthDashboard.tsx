@@ -30,14 +30,14 @@ export function AdminHealthDashboard() {
     setLoading(true);
     try {
       const [healthRes, basicRes, auditRes] = await Promise.all([
-        healthDetailedApi.get(),
+        healthDetailedApi.getDetailed(),
         healthCheck(),
         aiAuditApi.getLog(),
       ]);
       if (healthRes.success && healthRes.data) {
         setHealth(healthRes.data);
       }
-      setBasicHealth(basicRes.success);
+      setBasicHealth(basicRes);
       if (auditRes.success && Array.isArray(auditRes.data)) {
         setAiAuditCount(auditRes.data.length);
       }

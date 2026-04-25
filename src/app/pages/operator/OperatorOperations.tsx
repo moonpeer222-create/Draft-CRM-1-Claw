@@ -18,7 +18,7 @@ import {
   DashboardSection, FoldersSection, StatusSection, PaymentsSection, ReportsSection,
   AllCasesSection, DocumentsSection,
   AppointmentsSection, AttendanceSection, AgentSupportSection, VisitsSection, ProfileSection,
-  type Notification, type AttendanceEntry, type Appointment, type OfficeVisit,
+  type OperatorNotification as Notification, type AttendanceEntry, type Appointment, type OfficeVisit,
   STORAGE, load, save,
 } from "./OperatorSections";
 import { useSupabaseAuth } from "../../context/SupabaseAuthContext";
@@ -135,8 +135,8 @@ export function OperatorOperations() {
 
   useEffect(() => {
     if ("Notification" in window) {
-      setNotifPermission(Notification.permission as any);
-      if (Notification.permission === "default") {
+      setNotifPermission(window.Notification.permission as any);
+      if (window.Notification.permission === "default") {
         const timer = setTimeout(() => setShowPermModal(true), 2000);
         return () => clearTimeout(timer);
       }
@@ -185,7 +185,7 @@ export function OperatorOperations() {
 
   const requestPermission = async () => {
     if ("Notification" in window) {
-      const result = await Notification.requestPermission();
+      const result = await window.Notification.requestPermission();
       setNotifPermission(result as any);
       setShowPermModal(false);
       if (result === "granted") toast.success(u("Notifications enabled!", "اطلاعات آن ہو گئیں!"));

@@ -1,6 +1,7 @@
 // Advanced Notification & Alert System — with Supabase sync hooks
 import { CRMDataStore } from "./mockData";
 import { useNotificationStore, type Notification } from "./notificationStore";
+export { type Notification } from "./notificationStore";
 
 export interface Alert {
   id: string;

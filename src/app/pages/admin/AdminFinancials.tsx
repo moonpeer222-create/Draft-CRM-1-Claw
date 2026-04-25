@@ -2,7 +2,7 @@ import { Case, Payment } from "../../lib/mockData";
 import { supabase } from "../../lib/supabase";
 import { mapSupabaseCaseToLocal } from "../../lib/caseMappers";
 import { addPayment } from "../../lib/caseApi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AdminSidebar } from "../../components/AdminSidebar";
 import { AdminHeader } from "../../components/AdminHeader";
@@ -64,7 +64,8 @@ export function AdminFinancials() {
       const receipt = `REC-${Math.floor(100000 + Math.random() * 900000)}`;
       await addPayment(selectedCaseId, {
         ...newPayment,
-        receiptNumber: receipt,
+        id: `PAY-${Date.now()}`,
+      receiptNumber: receipt,
         date: new Date().toISOString(),
         collectedBy: "Admin",
       });

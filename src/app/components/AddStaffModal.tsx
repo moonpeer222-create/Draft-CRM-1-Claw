@@ -73,13 +73,10 @@ export function AddStaffModal({
         return;
       }
 
-      // Determine password: agents use deterministic password for code-based login
-      const finalPassword = role === "agent" ? getAgentPassword(agentId!) : password;
-
       // Create auth user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
-        password: finalPassword,
+        password: password,
         options: { data: { full_name: fullName.trim() } },
       });
 
@@ -104,6 +101,9 @@ export function AddStaffModal({
           : 0;
         agentId = `AGENT-${lastNum + 1}`;
       }
+
+      // Determine final password: agents use deterministic password for code-based login
+      const finalPassword = role === "agent" ? getAgentPassword(agentId!) : password;
 
       // Update profile with role
       const { error: updateError } = await supabase.from("profiles").update({

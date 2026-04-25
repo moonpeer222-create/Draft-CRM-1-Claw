@@ -103,7 +103,7 @@ export function OperatorAIChatbot() {
 
           {/* AI Chatbot — operator role */}
           <div className="rounded-2xl overflow-hidden shadow-lg">
-            <RoleBasedChatbot role="operator" embedded />
+            <RoleBasedChatbot role="operator" />
           </div>
         </main>
       </div>

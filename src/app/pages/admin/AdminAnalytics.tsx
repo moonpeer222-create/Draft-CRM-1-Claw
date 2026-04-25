@@ -33,7 +33,7 @@ export function AdminAnalytics() {
     
     // Filter based on time range
     const filteredCases = cases.filter(c => {
-      const caseDate = new Date(c.createdAt);
+      const caseDate = new Date(c.createdDate);
       if (timeRange === "monthly") {
         return caseDate.getMonth() === now.getMonth() && caseDate.getFullYear() === now.getFullYear();
       } else if (timeRange === "quarterly") {
@@ -74,7 +74,7 @@ export function AdminAnalytics() {
     for (let i = 5; i >= 0; i--) {
       const targetMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthCases = cases.filter(c => {
-        const cd = new Date(c.createdAt);
+        const cd = new Date(c.createdDate);
         return cd.getMonth() === targetMonth.getMonth() && cd.getFullYear() === targetMonth.getFullYear();
       });
       monthlyTrend.push({

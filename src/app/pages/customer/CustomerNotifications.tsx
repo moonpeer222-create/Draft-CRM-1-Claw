@@ -201,8 +201,9 @@ export function CustomerNotifications() {
   }, [caseId, customerName, isUrdu]);
 
   useEffect(() => {
-    setNotifications(generateNotifications());
-    const interval = setInterval(() => setNotifications(generateNotifications()), 15000);
+    const load = async () => setNotifications(await generateNotifications());
+    load();
+    const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
   }, [generateNotifications]);
 

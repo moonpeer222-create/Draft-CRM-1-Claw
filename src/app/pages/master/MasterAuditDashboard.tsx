@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { healthDetailedApi, aiAuditApi } from "../../lib/api";
 import { AuditLogService } from "../../lib/auditLog";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 import { toast } from "../../lib/toast";
 import { useUnifiedLayout } from "../../components/UnifiedLayout";
 
@@ -41,7 +41,7 @@ export function MasterAuditDashboard() {
   const fetchHealth = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await healthDetailedApi.get();
+      const res = await healthDetailedApi.getDetailed();
       if (res.success && res.data) setHealthData(res.data);
     } catch { /* */ }
     setLoading(false);
@@ -84,7 +84,7 @@ export function MasterAuditDashboard() {
   }, []);
 
   const fetchCrmAudit = useCallback(() => {
-    const entries = AuditLogService.getEntries();
+    const entries = AuditLogService.getAll();
     setCrmAuditLog(entries);
   }, []);
 

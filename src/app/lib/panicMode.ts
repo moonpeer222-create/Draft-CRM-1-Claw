@@ -20,7 +20,7 @@
  * - This ensures user can always access login to disable panic
  */
 
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 const PANIC_CHANNEL = "emerald-crm-panic-channel";
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;

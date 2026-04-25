@@ -5,6 +5,7 @@ export const PROFILE_KEY = "crm_admin_profile";
 
 export interface AdminProfileData {
   fullName: string;
+  name?: string; // alias for fullName (backward compat)
   urduName?: string; // Add support for Urdu name
   email: string;
   phone: string;

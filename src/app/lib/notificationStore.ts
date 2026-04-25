@@ -1,5 +1,24 @@
 import { create } from 'zustand';
-import type { Notification } from '../lib/notifications';
+
+export type Notification = {
+  id: string;
+  type: "case" | "payment" | "alert" | "document" | "system" | "status" | "flag" | "report" | "deadline" | "agent" | "customer" | "attendance";
+  priority?: "high" | "medium" | "low" | "critical";
+  title?: string;
+  titleUrdu?: string;
+  message: string;
+  messageUr?: string;
+  messageUrdu?: string;
+  timestamp: string;
+  time?: string;
+  read: boolean;
+  actionable?: boolean;
+  actionUrl?: string;
+  actionLabel?: string;
+  targetRole?: string;
+  targetUserId?: string;
+  metadata?: Record<string, any>;
+}
 
 interface NotificationState {
   notifications: Notification[];

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from "react";
 import { FileText, Image, Loader2, Download, Eye, AlertCircle } from "lucide-react";
-import { documentUploadApi } from "../lib/api";
+import { documentStorageApi } from "../lib/api";
 import { DocumentFileStore } from "../lib/documentStore";
 
 interface Props {
@@ -48,14 +48,12 @@ export function LiveDocumentThumbnail({
       if (storagePath || docId) {
         try {
           const path = storagePath || `${docId}/${fileName}`;
-          const res = await documentUploadApi.batchSignedUrls([path]);
-          if (!cancelled && res.success && res.data) {
-            const url = Object.values(res.data).find(v => v !== null) as string | null;
-            if (url) {
-              setSignedUrl(url);
-              setLoading(false);
-              return;
-            }
+          const res = await documentStorageApi.getUrl(path);
+          if (!cancelled && res.success && (res.data?.url || res.data?.signedUrl)) {
+            const url = (res.data.url || res.data.signedUrl) as string;
+            setSignedUrl(url);
+            setLoading(false);
+            return;
           }
         } catch { /* fall through */ }
       }

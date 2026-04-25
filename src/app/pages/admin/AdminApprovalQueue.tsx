@@ -108,8 +108,8 @@ export function AdminApprovalQueue() {
     // Documents pending verification from cases
     allCases.forEach(c => {
       c.documents
-        .filter(d => d.status === "pending")
-        .forEach(d => {
+        .filter((d: any) => d.status === "pending")
+        .forEach((d: any) => {
           approvalItems.push({
             id: `DOC-${c.id}-${d.id}`,
             type: "document_review",

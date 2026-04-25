@@ -323,7 +323,7 @@ export function AgentCases() {
         const stored = DocumentFileStore.getFile(doc.id);
         if (!stored || !stored.isCloudStored || !stored.mimeType?.startsWith("image/")) continue;
         if (cloudPreviews[doc.id] !== undefined) continue;
-        if (DocumentFileStore.getPreviewUrl(doc.id)) continue;
+        if (await DocumentFileStore.getPreviewUrl(doc.id)) continue;
         toLoad.push(doc.id);
       }
       if (toLoad.length === 0) return;
@@ -400,11 +400,12 @@ export function AgentCases() {
       );
       AuditLogService.log({
         action: newStatus === "verified" ? "document_verified" : "document_rejected",
-        entityType: "document",
-        entityId: docId,
+        role: "agent",
+        category: "document",
         userId: agentId,
         userName: agentName,
-        details: `${agentName} ${newStatus} document ${docId} in case ${selectedCase.id}${reason ? ` — Reason: ${reason}` : ""}`,
+        description: `${agentName} ${newStatus} document ${docId} in case ${selectedCase.id}${reason ? ` — Reason: ${reason}` : ""}`,
+        metadata: { entityType: "document", entityId: docId },
       });
     }
   }, [selectedCase, agentId, agentName, isUrdu]);
@@ -453,11 +454,12 @@ export function AgentCases() {
       );
       AuditLogService.log({
         action: newStatus === "verified" ? "document_verified" : "document_rejected",
-        entityType: "document",
-        entityId: Array.from(selectedDocIds).join(","),
+        role: "agent",
+        category: "document",
         userId: agentId,
         userName: agentName,
-        details: `${agentName} bulk ${newStatus} ${names.length} documents in case ${selectedCase.id}`,
+        description: `${agentName} bulk ${newStatus} ${names.length} documents in case ${selectedCase.id}`,
+        metadata: { entityType: "document", entityId: Array.from(selectedDocIds).join(",") },
       });
     }
   }, [selectedCase, selectedDocIds, agentId, agentName, isUrdu]);
@@ -719,6 +721,7 @@ export function AgentCases() {
     setIsLoading(true);
     const receiptNumber = `REC-${Math.floor(100000 + Math.random() * 900000)}`;
     const success = await addPayment(selectedCase.id, {
+      id: crypto.randomUUID(),
       amount: newPaymentAmount,
       method: newPaymentMethod as Payment["method"],
       date: new Date().toISOString(),
@@ -760,6 +763,7 @@ export function AgentCases() {
       return;
     }
     const success = await addNote(selectedCase.id, {
+      id: crypto.randomUUID(),
       text: newNote,
       author: agentName,
       date: new Date().toISOString(),
@@ -790,7 +794,7 @@ export function AgentCases() {
 
     // Use pipelineApi for stage advancement (server validates hard-locks)
     try {
-      const res = await pipelineApi.advanceStage(selectedCase.id, status, agentId, agentName);
+      const res = await pipelineApi.advanceStage(selectedCase.id, status, agentId, agentName) as any;
       if (!res.success) {
         // Show blockers if stage is locked
         if (res.blockers && Array.isArray(res.blockers)) {

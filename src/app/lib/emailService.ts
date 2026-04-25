@@ -5,7 +5,7 @@
  * The server-side handler renders a bilingual (Urdu) HTML email
  * and delivers it via Brevo transactional email.
  */
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 const SERVER_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
 

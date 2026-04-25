@@ -29,7 +29,7 @@ export function AdminSettings() {
   const inputCls = `w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${dc ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "border-gray-300"}`;
   const itemBg = dc ? "bg-gray-700/50" : "bg-gray-50";
 
-  const [activeTab, setActiveTab] = useState("notifications");
+  const [activeTab, setActiveTab] = useState<string>("notifications");
   const [automationStates, setAutomationStates] = useState<Record<number, boolean>>({ 0: true, 1: true, 2: true });
   const [conflictMode, setConflictMode] = useState<ConflictAutoResolveMode>(getConflictAutoResolveMode());
   const [currentSyncInterval, setCurrentSyncInterval] = useState<SyncIntervalOption>(getSyncInterval());
@@ -141,7 +141,7 @@ export function AdminSettings() {
   ];
 
   // Sync intervals
-  const syncIntervals: { value: SyncIntervalOption; label: string }[] = [
+  const syncIntervals: { value: any; label: string }[] = [
     { value: "15s", label: "15 seconds" },
     { value: "30s", label: "30 seconds" },
     { value: "60s", label: "1 minute" },
@@ -333,7 +333,7 @@ export function AdminSettings() {
                     <div className="mb-4">
                       <label className={`text-sm font-medium ${txt} block mb-2`}>{isUrdu ? "تنازعات حل کرنے کا طریقہ" : "Conflict Resolution Mode"}</label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {(["last-writer-wins", "server-wins", "client-wins"] as ConflictAutoResolveMode[]).map(mode => (
+                        {(["last-writer-wins", "server-wins", "client-wins"] as unknown as ConflictAutoResolveMode[]).map(mode => (
                           <button
                             key={mode}
                             onClick={() => { setConflictMode(mode); setConflictAutoResolveMode(mode); }}
@@ -374,15 +374,15 @@ export function AdminSettings() {
                       <p className={`text-sm font-medium ${txt} mb-2`}>{isUrdu ? "تنازعات کے اعداد" : "Conflict Stats"}</p>
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div>
-                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{conflictStats.total}</p>
+                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{conflictStats.totalAll}</p>
                           <p className={`text-xs ${sub}`}>Total</p>
                         </div>
                         <div>
-                          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{conflictStats.resolved}</p>
+                          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{conflictStats.resolvedAll}</p>
                           <p className={`text-xs ${sub}`}>Resolved</p>
                         </div>
                         <div>
-                          <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{conflictStats.pending}</p>
+                          <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{conflictStats.unresolvedAll}</p>
                           <p className={`text-xs ${sub}`}>Pending</p>
                         </div>
                       </div>

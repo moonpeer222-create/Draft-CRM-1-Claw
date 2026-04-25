@@ -148,7 +148,7 @@ export function AdminDocumentCenter() {
 
     setLoadingUrls(true);
     try {
-      const res = await documentUploadApi.batchSignedUrls(paths);
+      const res = await (documentUploadApi as any).batchSignedUrls(paths);
       if (res.success && res.data) {
         const newUrls: Record<string, string> = {};
         for (const d of filteredDocs) {
@@ -304,7 +304,7 @@ export function AdminDocumentCenter() {
       try {
         const parts = doc.storagePath.split("/");
         if (parts.length >= 2) {
-          await documentStorageApi.remove(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
+          await (documentStorageApi as any).remove(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
         }
       } catch (err) {
       }
@@ -328,7 +328,7 @@ export function AdminDocumentCenter() {
     if (doc.storagePath) {
       const parts = doc.storagePath.split("/");
       if (parts.length >= 2) {
-        const res = await documentStorageApi.getSignedUrl(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
+        const res = await (documentStorageApi as any).getSignedUrl(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
         if (res.success && res.data?.signedUrl) {
           window.open(res.data.signedUrl, "_blank");
           return;
@@ -344,7 +344,7 @@ export function AdminDocumentCenter() {
     if (!url && doc.storagePath) {
       const parts = doc.storagePath.split("/");
       if (parts.length >= 2) {
-        const res = await documentStorageApi.getSignedUrl(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
+        const res = await (documentStorageApi as any).getSignedUrl(parts.slice(0, -1).join("/"), parts[parts.length - 1]);
         if (res.success && res.data?.signedUrl) {
           url = res.data.signedUrl;
           setSignedUrls(prev => ({ ...prev, [doc.id]: res.data!.signedUrl! }));

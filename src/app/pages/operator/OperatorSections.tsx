@@ -1,11 +1,13 @@
 // Re-exports for backward compatibility
-export {
+export type {
   CaseFolder,
   Appointment,
   OfficeVisit,
   PaymentRecord,
   AttendanceEntry,
-  Notification,
+  OperatorNotification,
+} from "./sections/operatorTypes";
+export {
   STORAGE,
   load,
   save,

@@ -421,8 +421,9 @@ export class AuthService {
     targetRole: DbUser['role']
   ): boolean {
     const hierarchy: Record<DbUser['role'], number> = {
-      master_admin: 4,
-      admin: 3,
+      master_admin: 5,
+      admin: 4,
+      operator: 3,
       agent: 2,
       customer: 1,
     };

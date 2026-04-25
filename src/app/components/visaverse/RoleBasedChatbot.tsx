@@ -556,7 +556,7 @@ export function RoleBasedChatbot({ role }: RoleBasedChatbotProps) {
         if (geminiResult.success && geminiResult.response) { finalize(geminiResult.response); return; }
       } catch { /* ignore */ }
       // SmartNLP offline fallback
-      const { response, updatedContext } = getSmartResponse(msg, role, contextRef.current, knowledge);
+      const { response, updatedContext } = getSmartResponse(msg, role, contextRef.current, knowledge as any);
       contextRef.current = updatedContext;
       setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text: response } : m));
       setStreamingMsgId(null);

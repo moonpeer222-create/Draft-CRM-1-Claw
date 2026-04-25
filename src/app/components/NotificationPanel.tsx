@@ -290,7 +290,7 @@ export function NotificationBell({ role, userId, compact }: NotificationPanelPro
       medium: "border-l-blue-500",
       low: "border-l-gray-400",
     };
-    return colors[priority] || "";
+    return priority ? colors[priority] || "" : "";
   };
 
   const getTimeAgo = (timestamp: string): string => {

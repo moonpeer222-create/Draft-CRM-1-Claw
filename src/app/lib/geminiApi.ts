@@ -6,7 +6,7 @@
  * NOTE: Function names kept as callGeminiAI for backward compatibility
  * across all importing components. The actual backend now uses StepFun AI via OpenRouter.
  */
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 const SERVER_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;
 

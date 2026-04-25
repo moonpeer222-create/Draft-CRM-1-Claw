@@ -95,7 +95,7 @@ export function CustomerMobileMenu({ isOpen, onClose }: Props) {
   const isOverdue = overdueInfo?.isOverdue ?? false;
 
   // Docs pending
-  const pendingDocs = myCase?.documents?.filter(d => !d.uploadedAt)?.length ?? 0;
+  const pendingDocs = myCase?.documents?.filter(d => !d.uploadDate)?.length ?? 0;
   const totalDocs = myCase?.documents?.length ?? 0;
   const uploadedDocs = totalDocs - pendingDocs;
 

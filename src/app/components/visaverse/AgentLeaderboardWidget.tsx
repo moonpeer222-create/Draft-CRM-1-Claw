@@ -36,7 +36,7 @@ export function AgentLeaderboardWidget({ isUrdu = false }: { isUrdu?: boolean })
   const [cases, setCases] = useState<any[]>([]);
   useEffect(() => {
     supabase.from('cases').select('*').then(({ data }) => {
-      setCases((data || []).map(mapSupabaseCaseToLocal));
+      setCases((data || []).map(c => mapSupabaseCaseToLocal(c)));
     });
   }, []);
 

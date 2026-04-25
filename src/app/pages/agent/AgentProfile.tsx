@@ -112,7 +112,7 @@ export function AgentProfile() {
   useEffect(() => {
     const fetchCases = async () => {
       const { data } = await supabase.from('cases').select('*');
-      const cases = (data || []).map(mapSupabaseCaseToLocal);
+      const cases = (data || []).map(c => mapSupabaseCaseToLocal(c));
       setMyCases(cases.filter(c => c.agentName === agentName || c.agentId === agentId));
     };
     fetchCases();
@@ -524,7 +524,7 @@ export function AgentProfile() {
                 <div className={`${card} rounded-2xl shadow-lg border p-6 ${dc ? "border-gray-700" : "border-gray-100"}`}>
                   <h3 className={`font-bold mb-4 ${txt}`}>{isUrdu ? "ملک کی تقسیم" : "Country Breakdown"}</h3>
                   <div className="space-y-3">
-                    {Object.entries(countryBreakdown).sort(([, a], [, b]) => b - a).map(([country, count]) => {
+                    {(Object.entries(countryBreakdown) as [string, number][]).sort(([, a], [, b]) => b - a).map(([country, count]) => {
                       const pct = myCases.length > 0 ? Math.round((count / myCases.length) * 100) : 0;
                       return (
                         <div key={country}>

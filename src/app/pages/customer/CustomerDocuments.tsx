@@ -420,7 +420,7 @@ export function CustomerDocuments() {
 
                         {isUploaded && existingDoc && (() => {
                           const stored = DocumentFileStore.getFile(existingDoc.id);
-                          const previewUrl = DocumentFileStore.getPreviewUrl(existingDoc.id);
+                          const previewUrl = DocumentFileStore.getPreviewUrlSync(existingDoc.id);
                           const isPdf = stored?.mimeType?.includes("pdf");
                           return (
                             <div className="ml-8 mt-1.5">
@@ -468,7 +468,7 @@ export function CustomerDocuments() {
 
                       <div className="flex gap-2 flex-shrink-0">
                         {isUploaded && existingDoc && (() => {
-                          const previewUrl = DocumentFileStore.getPreviewUrl(existingDoc.id);
+                          const previewUrl = DocumentFileStore.getPreviewUrlSync(existingDoc.id);
                           const stored = DocumentFileStore.getFile(existingDoc.id);
                           const hasViewable = previewUrl || (existingDoc.url && existingDoc.url !== "#");
                           const isPdf = stored?.mimeType?.includes("pdf");
@@ -545,7 +545,7 @@ export function CustomerDocuments() {
               <div className="space-y-2">
                 {extras.map(doc => {
                   const stored = DocumentFileStore.getFile(doc.id);
-                  const previewUrl = DocumentFileStore.getPreviewUrl(doc.id);
+                  const previewUrl = DocumentFileStore.getPreviewUrlSync(doc.id);
                   const isPdf = stored?.mimeType?.includes("pdf");
                   return (
                     <div key={doc.id} className={`flex items-center justify-between p-3 rounded-lg ${dc ? "bg-gray-700/50" : "bg-gray-50"}`}>

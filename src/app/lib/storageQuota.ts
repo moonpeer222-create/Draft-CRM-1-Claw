@@ -155,7 +155,7 @@ export async function exportAllData(
 
       for (const file of cloudFiles) {
         try {
-          const res = await documentStorageApi.getSignedUrl(file.id, file.fileName);
+          const res = await (documentStorageApi as any).getSignedUrl(file.id, file.fileName);
           if (res.success && res.data?.signedUrl) {
             result.cloudFiles.push({
               docId: file.id,

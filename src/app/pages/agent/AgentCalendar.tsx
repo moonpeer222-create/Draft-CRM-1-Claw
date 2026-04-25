@@ -1,4 +1,5 @@
 import { AgentSidebar } from "../../components/AgentSidebar";
+import { AgentHeader } from "../../components/AgentHeader";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../../lib/ThemeContext";

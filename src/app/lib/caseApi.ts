@@ -141,7 +141,7 @@ export async function updateCaseStatus(caseId: string, status: Case["status"]): 
   const currentStageNumber = getStageNumber(status);
   const stageLabel = getStageLabel(status);
   const deadlineHours = getStageDeadlineHours(status);
-  const newDeadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString();
+  const newDeadline = new Date(Date.now() + (deadlineHours ?? 24) * 60 * 60 * 1000).toISOString();
 
   const timelineEntry = {
     stage: currentStageNumber,
@@ -308,7 +308,7 @@ function caseToDbRow(c: Case, tenantId?: string | null): any {
     client_id: c.customerId || null,
     organization_id: (c as any).organization_id || undefined,
     agent_id: isValidUuid(c.agentId || '') ? c.agentId : null,
-    visa_type: c.jobType || c.visa_type || null,
+    visa_type: c.jobType || (c as any).visa_type || null,
     destination_country: c.country || null,
     status: c.status || c.pipelineStageKey || "new_case",
     priority: c.priority || "medium",

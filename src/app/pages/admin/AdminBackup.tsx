@@ -145,8 +145,8 @@ export function AdminBackup() {
     setIsLoading(true);
     try {
       const [settingsRes, historyRes] = await Promise.all([
-        backupApi.getSettings(),
-        backupApi.getHistory(),
+        (backupApi as any).getSettings(),
+        (backupApi as any).getHistory(),
       ]);
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
       if (historyRes.success && historyRes.data) setHistory(historyRes.data as BackupHistoryEntry[]);
@@ -161,7 +161,7 @@ export function AdminBackup() {
 
   const handleSaveSettings = async () => {
     const lt = toast.loading(isUrdu ? "ترتیبات محفوظ ہو رہی ہیں..." : "Saving settings...");
-    const res = await backupApi.saveSettings(settings);
+    const res = await (backupApi as any).saveSettings(settings);
     toast.dismiss(lt);
     res.success
       ? toast.success(isUrdu ? "ترتیبات محفوظ ہو گئیں!" : "Settings saved!")
@@ -184,7 +184,7 @@ export function AdminBackup() {
 
     const lt = toast.loading(isUrdu ? "بیک اپ بھیجا جا رہا ہے..." : "Sending backup...");
     try {
-      const res = await backupApi.sendNow({
+      const res = await (backupApi as any).sendNow({
         recipients: settings.recipients,
         selectedContent: settings.selectedContent,
         format: settings.format,
@@ -196,7 +196,7 @@ export function AdminBackup() {
 
       if (res.success) {
         toast.success(isUrdu ? `بیک اپ بھیجا گیا! (${res.data?.sizeKB} KB)` : `Backup sent! (${res.data?.sizeKB} KB)`);
-        const historyRes = await backupApi.getHistory();
+        const historyRes = await (backupApi as any).getHistory();
         if (historyRes.success && historyRes.data) setHistory(historyRes.data as BackupHistoryEntry[]);
       } else {
         toast.error(res.error || "Failed to send backup");
@@ -214,7 +214,7 @@ export function AdminBackup() {
     setBrevoTestResult(null);
     const lt = toast.loading(isUrdu ? "بریو ٹیسٹ ہو رہا ہے..." : "Testing Brevo...");
     try {
-      const res = await backupApi.testBrevo(settings.recipients[0] || "");
+      const res = await (backupApi as any).testBrevo(settings.recipients[0] || "");
       toast.dismiss(lt);
       if (res.success && res.data) {
         setBrevoTestResult(res.data);
@@ -239,7 +239,7 @@ export function AdminBackup() {
   };
 
   const handleDeleteHistoryEntry = async (id: string) => {
-    const res = await backupApi.deleteHistoryEntry(id);
+    const res = await (backupApi as any).deleteHistoryEntry(id);
     if (res.success) {
       setHistory((prev) => prev.filter((h) => h.id !== id));
       toast.success(isUrdu ? "اندراج حذف ہو گیا" : "Entry deleted");
@@ -248,7 +248,7 @@ export function AdminBackup() {
 
   const handleCleanup = async () => {
     const lt = toast.loading(isUrdu ? "صاف ہو رہا ہے..." : "Cleaning up...");
-    const res = await backupApi.cleanup();
+    const res = await (backupApi as any).cleanup();
     toast.dismiss(lt);
     if (res.success) {
       toast.success(isUrdu ? `${res.data?.removed || 0} پرانے حذف ہوئے` : `${res.data?.removed || 0} old entries removed`);

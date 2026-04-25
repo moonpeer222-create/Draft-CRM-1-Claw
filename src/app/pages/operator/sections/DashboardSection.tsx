@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { type Case } from "../../../lib/mockData";
-import { load, STORAGE, AttendanceEntry, PaymentRecord, Appointment, OfficeVisit, Notification } from "./operatorTypes";
+import { load, STORAGE, AttendanceEntry, PaymentRecord, Appointment, OfficeVisit, OperatorNotification as Notification } from "./operatorTypes";
 
 export function DashboardSection({ u, dc, card, txt, sub, bigBtn, cases, agents, allStaff, notifications, addNotification }: any) {
   const confirmedIds: string[] = load("emr-op-confirmed", []);

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Shield, Zap, CheckCircle, XCircle, Clock, Globe, RefreshCw, AlertTriangle } from "lucide-react";
 import { triggerPanic } from "../../lib/panicMode";
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '../../../../utils/supabase/info';
 import { toast } from "../../lib/toast";
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-5cdc87b7`;

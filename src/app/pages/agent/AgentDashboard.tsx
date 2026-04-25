@@ -418,8 +418,8 @@ export function AgentDashboard() {
                   <div className={`rounded-xl shadow-sm p-4 md:p-6 ${dc ? "bg-gray-800/80 border border-gray-700/50" : "bg-white"}`}>
                     <VideoGenerator
                       customerName={myCases[0]?.customerName || "Customer"}
-                      stageName={myCases[0]?.stage || "Processing"}
-                      nextStage={myCases[0]?.stage === "Document Collection" ? "Medical Scheduled" : "Next Stage"}
+                      stageName={(myCases[0] as any)?.stage || "Processing"}
+                      nextStage={(myCases[0] as any)?.stage === "Document Collection" ? "Medical Scheduled" : "Next Stage"}
                       isUrdu={isUrdu}
                     />
                   </div>

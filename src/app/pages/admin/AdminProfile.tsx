@@ -89,7 +89,7 @@ export function AdminProfile() {
 
   const { profile: sbProfile } = useSupabaseAuth();
   const [profile, setProfile] = useState<AdminProfileData>(getAdminProfile(sbProfile));
-  const [activeTab, setActiveTab] = useState<"personal" | "security" | "notifications" | "activity">("personal");
+  const [activeTab, setActiveTab] = useState<"personal" | "security" | "notifications" | "activity" | "preferences">("personal");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<AdminProfileData>(profile);
   const [showPasswordModal, setShowPasswordModal] = useState(false);

@@ -152,7 +152,7 @@ function AdminGuard({ children }: { children: ReactNode }) {
   }
   
   // Force onboarding if owner hasn't completed it
-  if (profile.role === 'master_admin' && profile.tenants && !profile.tenants.onboarding_completed) {
+  if (profile.role === 'master_admin' && (profile as any).tenants && !(profile as any).tenants.onboarding_completed) {
      return <Navigate to="/onboarding" replace />;
   }
   
@@ -326,4 +326,4 @@ const routeConfig = [
   },
 ];
 
-export const router = import.meta.env.VITE_USE_HASH_ROUTER === "true" ? createHashRouter(routeConfig) : createBrowserRouter(routeConfig);
+export const router = import.meta.env.VITE_USE_HASH_ROUTER === "true" ? createHashRouter(routeConfig) : createBrowserRouter(routeConfig);

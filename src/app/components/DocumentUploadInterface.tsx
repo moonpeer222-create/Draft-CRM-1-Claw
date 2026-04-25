@@ -90,15 +90,11 @@ export function DocumentUploadInterface({
         // Fetch fresh signed URL from Supabase Storage
         if (docAny.storagePath) {
           try {
-            const parts = (docAny.storagePath as string).split("/");
-            if (parts.length >= 2) {
-              const fileName = parts[parts.length - 1];
-              const docIdPath = parts.slice(0, -1).join("/");
-              const res = await documentStorageApi.getSignedUrl(docIdPath, fileName);
-              if (res.success && res.data?.signedUrl) {
-                previews[doc.id] = isImage ? res.data.signedUrl : res.data.signedUrl;
-                continue;
-              }
+            const res = await documentStorageApi.getUrl(docAny.storagePath);
+            if (res.success && (res.data?.signedUrl || res.data?.url)) {
+              const url = (res.data.signedUrl || res.data.url) as string;
+              previews[doc.id] = url;
+              continue;
             }
           } catch { /* ignore */ }
         }
@@ -106,7 +102,7 @@ export function DocumentUploadInterface({
         // Fallback: try DocumentFileStore
         const stored = DocumentFileStore.getFile(doc.id);
         if (stored?.mimeType?.startsWith("image/")) {
-          const localUrl = DocumentFileStore.getPreviewUrl(doc.id);
+          const localUrl = DocumentFileStore.getPreviewUrlSync(doc.id);
           if (localUrl) { previews[doc.id] = localUrl; continue; }
           const cloudUrl = await DocumentFileStore.getCloudPreviewUrl(doc.id);
           previews[doc.id] = cloudUrl;
@@ -588,7 +584,7 @@ export function DocumentUploadInterface({
                   </span>
 
                   {/* Download button */}
-                  {((doc as any).storagePath || docPreviews[doc.id] || DocumentFileStore.hasFile(doc.id)) && (
+                  {((doc as any).storagePath || docPreviews[doc.id] || DocumentFileStore.getFile(doc.id) !== null) && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -603,12 +599,9 @@ export function DocumentUploadInterface({
                         const docAny = doc as any;
                         if (docAny.storagePath) {
                           try {
-                            const parts = (docAny.storagePath as string).split("/");
-                            const fileName = parts[parts.length - 1];
-                            const docIdPath = parts.slice(0, -1).join("/");
-                            const res = await documentStorageApi.getSignedUrl(docIdPath, fileName);
-                            if (res.success && res.data?.signedUrl) {
-                              window.open(res.data.signedUrl, "_blank");
+                            const res = await documentStorageApi.getUrl(docAny.storagePath);
+                            if (res.success && (res.data?.signedUrl || res.data?.url)) {
+                              window.open((res.data.signedUrl || res.data.url) as string, "_blank");
                               toast.success(isUrdu ? "ڈاؤن لوڈ شروع" : "Download started");
                               return;
                             }

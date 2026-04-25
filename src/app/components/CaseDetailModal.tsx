@@ -19,6 +19,7 @@ import {
 } from '../lib/mockData';
 import { pipelineApi, visaverseApi, documentUploadApi } from '../lib/api';
 import { NotificationService } from '../lib/notifications';
+import { copyToClipboard } from '../lib/clipboard';
 import { AuditLogService } from '../lib/auditLog';
 import { DataSyncService } from '../lib/dataSync';
 import { sendCaseStatusEmail, extractEmailsFromCase } from '../lib/emailService';
@@ -147,6 +148,7 @@ export function CaseDetailModal({
     setIsLoading(true);
     const success = await addPayment(selectedCase.id, {
       ...newPayment,
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       collectedBy: "Admin",
     });
@@ -173,6 +175,7 @@ export function CaseDetailModal({
     }
     const success = await addNote(selectedCase.id, {
       ...newNote,
+      id: crypto.randomUUID(),
       author: "Admin",
       date: new Date().toISOString(),
     });
@@ -192,9 +195,10 @@ export function CaseDetailModal({
     try {
       const res = await pipelineApi.advanceStage(caseId, status, "admin", adminName);
       if (!res.success) {
-        if (res.blockers && Array.isArray(res.blockers)) {
+        const blockers = (res as any).blockers;
+        if (blockers && Array.isArray(blockers)) {
           toast.error("Stage locked — requirements not met");
-          res.blockers.forEach((b: string) => toast.error(b));
+          blockers.forEach((b: string) => toast.error(b));
         } else {
           toast.error(res.error || "Stage update failed");
         }
@@ -350,7 +354,7 @@ export function CaseDetailModal({
                   <p className={`mt-1 ${sub}`}>{selectedCase.customerName} • {selectedCase.country} • {selectedCase.jobType}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { const url = `${window.location.origin}/admin/cases/${selectedCase.id}`; NotificationService.copyToClipboard(url).then(() => { setLinkCopied(true); toast.success(isUrdu ? "لنک کاپی ہو گیا!" : `Link copied: ${selectedCase.id}`); setTimeout(() => setLinkCopied(false), 2000); }).catch(() => {}); }} className={`p-2 rounded-lg transition-colors ${linkCopied ? "text-green-500 bg-green-50 dark:bg-green-900/20" : dc ? "text-gray-400 hover:bg-gray-700 hover:text-blue-400" : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"}`} title={isUrdu ? "لنک کاپی" : "Copy Link"}>{linkCopied ? <Check className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}</motion.button>
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { const url = `${window.location.origin}/admin/cases/${selectedCase.id}`; copyToClipboard(url).then(() => { setLinkCopied(true); toast.success(isUrdu ? "لنک کاپی ہو گیا!" : `Link copied: ${selectedCase.id}`); setTimeout(() => setLinkCopied(false), 2000); }).catch(() => {}); }} className={`p-2 rounded-lg transition-colors ${linkCopied ? "text-green-500 bg-green-50 dark:bg-green-900/20" : dc ? "text-gray-400 hover:bg-gray-700 hover:text-blue-400" : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"}`} title={isUrdu ? "لنک کاپی" : "Copy Link"}>{linkCopied ? <Check className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}</motion.button>
                   <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteCase(selectedCase.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-5 h-5" /></motion.button>
                   <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => onClose()} className={`p-2 rounded-full ${dc ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}><X className="w-5 h-5" /></motion.button>
                 </div>
@@ -428,7 +432,7 @@ export function CaseDetailModal({
                       <button onClick={() => setShowPaymentModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Record Payment</button>
                       <WhatsAppActions caseData={selectedCase} compact />
                     </div>
-                    <SirAtifApprovalButton caseData={selectedCase} darkMode={dc} isUrdu={isUrdu} userName={adminName} userId="admin" onUpdate={onSuccess} />
+                    {/* <SirAtifApprovalButton caseData={selectedCase} darkMode={dc} isUrdu={isUrdu} userName={adminName} userId="admin" onUpdate={onSuccess} /> */}
                     <button onClick={() => setShowCancelModal(true)} className="px-4 py-2 border border-red-500 text-red-500 rounded-lg">{isUrdu ? "منسوخ" : "Cancel Case"}</button>
                   </div>
                 )}

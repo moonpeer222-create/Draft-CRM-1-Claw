@@ -1,4 +1,5 @@
 import { AgentSidebar } from "../../components/AgentSidebar";
+import { AgentHeader } from "../../components/AgentHeader";
 import {
   CheckCircle, MapPin, Camera, Clock, Calendar,
   LogIn, LogOut, TrendingUp, Award, X, Send,

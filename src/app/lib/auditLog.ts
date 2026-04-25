@@ -51,7 +51,11 @@ export type AuditAction =
   | "case_cancelled"
   | "case_reopened"
   | "sir_atif_approved"
-  | "sir_atif_revoked";
+  | "sir_atif_revoked"
+  | "check-in"
+  | "data_reset"
+  | "owner_approve_case"
+  | "owner_revoke_approval";
 
 const STORAGE_KEY = "crm_audit_log";
 const MAX_ENTRIES = 500;

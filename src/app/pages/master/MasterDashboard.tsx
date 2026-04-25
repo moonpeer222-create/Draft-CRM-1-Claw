@@ -40,7 +40,7 @@ export function MasterDashboard() {
   useEffect(() => {
     const fetchCases = async () => {
       try {
-        const response = await api.cases.list();
+        const response = await api.cases.getAll();
         if (response.success && response.data) {
           setCases(response.data.map(mapSupabaseCaseToLocal));
         }
@@ -50,7 +50,7 @@ export function MasterDashboard() {
     };
     const fetchUsers = async () => {
       try {
-        const response = await api.users.list();
+        const response = await api.users.getAll();
         if (response.success && response.data) {
           setUsers(response.data.map((u: any) => ({ ...u, fullName: u.full_name || u.fullName, status: "active" })));
         }
@@ -483,7 +483,7 @@ export function MasterDashboard() {
             isUrdu={isUrdu}
             onDataReset={async () => {
               try {
-                const response = await api.cases.list();
+                const response = await api.cases.getAll();
                 setCases((response.data || []).map(mapSupabaseCaseToLocal));
               } catch (error) {
                 console.error("Failed to refresh cases:", error);

@@ -179,9 +179,9 @@ export async function checkServer(): Promise<boolean> {
   updateTenantContext();
   try {
     const res = await healthCheck();
-    syncState.serverAvailable = res.success === true;
-    setServerAvailable(res.success === true);
-    return res.success === true;
+    syncState.serverAvailable = res === true;
+    setServerAvailable(res === true);
+    return res === true;
   } catch {
     syncState.serverAvailable = false;
     setServerAvailable(false);
@@ -264,7 +264,7 @@ export async function initialSync(): Promise<boolean> {
             auditLog: [],
             documentFiles: [],
           };
-          await syncApi.upload(emptyPayload);
+          await (syncApi as any).upload(emptyPayload);
         } catch (err) {
         }
       }
@@ -283,7 +283,7 @@ export async function initialSync(): Promise<boolean> {
       return false;
     }
 
-    const res = await syncApi.download();
+    const res = await (syncApi as any).download();
     if (!res.success || !res.data) {
       // Server is up but no data yet - push local data to server
       await pushLocalToServer();
@@ -321,7 +321,7 @@ export async function initialSync(): Promise<boolean> {
         if (local && pushFn) {
           try {
             const parsed = JSON.parse(local);
-            if (Array.isArray(parsed) && parsed.length > 0) pushFn(parsed);
+            if (Array.isArray(parsed) && parsed.length > 0) await pushFn(parsed);
           } catch { /* ignore */ }
         }
         conflictEntries.push({ entity: entityKey, winner: "local", localTs: localTimestamps[entityKey] || null, serverTs: serverTimestamps[entityKey] || null, detail: `Local newer, pushed to server` });
@@ -333,7 +333,7 @@ export async function initialSync(): Promise<boolean> {
         if (local) {
           try {
             const parsed = JSON.parse(local);
-            if (Array.isArray(parsed) && parsed.length > 0) pushFn(parsed);
+            if (Array.isArray(parsed) && parsed.length > 0) await pushFn(parsed);
           } catch { /* ignore */ }
         }
         conflictEntries.push({ entity: entityKey, winner: "local", localTs: localTimestamps[entityKey] || null, serverTs: null, detail: `Server empty, pushed local` });
@@ -349,7 +349,7 @@ export async function initialSync(): Promise<boolean> {
         // Local is newer — push to server
         const local = localStorage.getItem(localKey);
         if (local && pushFn) {
-          try { pushFn(JSON.parse(local)); } catch { /* ignore */ }
+          try { await pushFn(JSON.parse(local)); } catch { /* ignore */ }
         }
         conflictEntries.push({ entity: entityKey, winner: "local", localTs: localTimestamps[entityKey] || null, serverTs: serverTimestamps[entityKey] || null, detail: `Local newer, pushed to server` });
       } else if (serverData) {
@@ -358,7 +358,7 @@ export async function initialSync(): Promise<boolean> {
       } else if (hasLocal && pushFn) {
         const local = localStorage.getItem(localKey);
         if (local) {
-          try { pushFn(JSON.parse(local)); } catch { /* ignore */ }
+          try { await pushFn(JSON.parse(local)); } catch { /* ignore */ }
         }
         conflictEntries.push({ entity: entityKey, winner: "local", localTs: localTimestamps[entityKey] || null, serverTs: null, detail: `Server empty, pushed local` });
       } else {
@@ -383,7 +383,7 @@ export async function initialSync(): Promise<boolean> {
       }
       if (!hasServer) {
         // Only local — push to server
-        try { await casesApi.saveAll(localCases); } catch { /* ignore */ }
+        try { await (casesApi as any).saveAll(localCases); } catch { /* ignore */ }
         conflictEntries.push({ entity: "cases", winner: "local", localTs: localTimestamps.cases || null, serverTs: null, detail: `Server empty, pushed ${localCases.length} local cases` });
         return;
       }
@@ -478,7 +478,7 @@ export async function initialSync(): Promise<boolean> {
 
       // Save merged result locally and push to server
       localStorage.setItem(getCasesKey(), JSON.stringify(merged));
-      try { await casesApi.saveAll(merged); } catch { /* ignore */ }
+      try { await (casesApi as any).saveAll(merged); } catch { /* ignore */ }
 
       const parts: string[] = [];
       if (deepMerged > 0) parts.push(`${deepMerged} deep-merged`);
@@ -591,21 +591,21 @@ export async function initialSync(): Promise<boolean> {
     // Per-record merge for cases: merge by case ID using updatedDate as tiebreaker
     await mergeCasesPerRecord(data.cases, localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeArray("agentCodes", data.agentCodes, getAgentCodesKey(), (d) => agentCodesApi.saveAll(d));
-    await mergeArray("codeHistory", data.codeHistory, getCodeHistoryKey(), (d) => codeHistoryApi.save(d));
+    await mergeArray("agentCodes", data.agentCodes, getAgentCodesKey(), (d) => (agentCodesApi as any).saveAll(d));
+    await mergeArray("codeHistory", data.codeHistory, getCodeHistoryKey(), (d) => (codeHistoryApi as any).save(d));
 
     // Per-record merge for notifications (by id, using timestamp)
     await mergeRecordsById("notifications", data.notifications, getNotificationsKey(),
       (r) => r.timestamp || "1970-01-01",
-      (d) => notificationsApi.save(d), localTimestamps, serverTimestamps, conflictEntries);
+      (d) => (notificationsApi as any).save(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for users (by id, using updatedAt)
     await mergeRecordsById("users", data.users, getUsersDbKey(),
       (r) => r.updatedAt || r.createdAt || "1970-01-01",
-      (d) => usersApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
+      (d) => (usersApi as any).saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeObject("adminProfile", data.adminProfile, getAdminProfileKey(), (d) => adminProfileApi.save(d));
-    await mergeObject("settings", data.settings, getSettingsKey(), (d) => settingsApi.save(d));
+    await mergeObject("adminProfile", data.adminProfile, getAdminProfileKey(), (d) => (adminProfileApi as any).save(d));
+    await mergeObject("settings", data.settings, getSettingsKey(), (d) => (settingsApi as any).save(d));
 
     // Restore theme preferences from synced settings (cross-device)
     restoreThemeFromSettings();
@@ -613,12 +613,12 @@ export async function initialSync(): Promise<boolean> {
     // Per-record merge for attendance (by id, using checkOut/checkIn as timestamp)
     await mergeRecordsById("attendance", data.attendance, getAttendanceKey(),
       (r) => r.checkOut || r.checkIn || r.date || "1970-01-01",
-      (d) => attendanceApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
+      (d) => (attendanceApi as any).saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for leave requests (by id, using reviewedAt/submittedAt)
     await mergeRecordsById("leaveRequests", data.leaveRequests, getLeaveRequestsKey(),
       (r) => r.reviewedAt || r.submittedAt || "1970-01-01",
-      (d) => leaveRequestsApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
+      (d) => (leaveRequestsApi as any).saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
     // Per-record merge for passport tracking (by id, using latest history entry or checkedOutAt)
     await mergeRecordsById("passportTracking", data.passportTracking, getPassportTrackingKey(),
@@ -627,10 +627,10 @@ export async function initialSync(): Promise<boolean> {
         if (hist && Array.isArray(hist) && hist.length > 0) return hist[hist.length - 1].movedAt || r.checkedOutAt || "1970-01-01";
         return r.actualReturnAt || r.checkedOutAt || "1970-01-01";
       },
-      (d) => passportTrackingApi.saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
+      (d) => (passportTrackingApi as any).saveAll(d), localTimestamps, serverTimestamps, conflictEntries);
 
-    await mergeArray("auditLog", data.auditLog, getAuditLogKey(), (d) => auditLogApi.saveAll(d));
-    await mergeArray("documentFiles", data.documentFiles, getDocumentFilesKey(), (d) => documentFilesApi.saveAll(d));
+    await mergeArray("auditLog", data.auditLog, getAuditLogKey(), (d) => (auditLogApi as any).saveAll(d));
+    await mergeArray("documentFiles", data.documentFiles, getDocumentFilesKey(), (d) => (documentFilesApi as any).saveAll(d));
 
     // Save conflict log
     saveConflictLog({ syncedAt: new Date().toISOString(), entries: conflictEntries });
@@ -699,7 +699,7 @@ export async function pushLocalToServer(): Promise<boolean> {
     // Add tenant context to payload metadata
     (payload as any)._tenantId = tenantId;
 
-    const res = await syncApi.upload(payload);
+    const res = await (syncApi as any).upload(payload);
     return res.success;
   } catch (err) {
     return false;
@@ -745,7 +745,7 @@ export async function pushCases() {
   try {
     // Always push — even empty array — so server data gets wiped too
     const parsed = localCases ? JSON.parse(localCases) : [];
-    await casesApi.saveAll(parsed);
+    await (casesApi as any).saveAll(parsed);
   } catch (err) {
   }
 }
@@ -758,7 +758,7 @@ export async function pushAgentCodes() {
   const localCodes = localStorage.getItem(getAgentCodesKey());
   if (localCodes) {
     try {
-      await agentCodesApi.saveAll(JSON.parse(localCodes));
+      await (agentCodesApi as any).saveAll(JSON.parse(localCodes));
     } catch (err) {
     }
   }
@@ -772,7 +772,7 @@ export async function pushAdminProfile() {
   const localProfile = localStorage.getItem(getAdminProfileKey());
   if (localProfile) {
     try {
-      await adminProfileApi.save(JSON.parse(localProfile));
+      await (adminProfileApi as any).save(JSON.parse(localProfile));
     } catch (err) {
     }
   }
@@ -785,7 +785,7 @@ export async function pushAgentProfile(name: string) {
   const localProfile = localStorage.getItem(key);
   if (localProfile) {
     try {
-      await agentProfileApi.save(name, JSON.parse(localProfile));
+      await (agentProfileApi as any).save(name, JSON.parse(localProfile));
     } catch (err) {
     }
   }
@@ -798,7 +798,7 @@ export async function pushCodeHistory() {
   const localHistory = localStorage.getItem(getCodeHistoryKey());
   if (localHistory) {
     try {
-      await codeHistoryApi.save(JSON.parse(localHistory));
+      await (codeHistoryApi as any).save(JSON.parse(localHistory));
     } catch (err) {
     }
   }
@@ -816,7 +816,7 @@ export async function pushNotifications() {
       if (Array.isArray(parsed) && parsed.length > 100) {
         parsed = parsed.slice(0, 100);
       }
-      await notificationsApi.save(parsed);
+      await (notificationsApi as any).save(parsed);
     } catch (err) {
     }
   }
@@ -829,7 +829,7 @@ export async function pushUsers() {
   const localUsers = localStorage.getItem(getUsersDbKey());
   if (localUsers) {
     try {
-      await usersApi.saveAll(JSON.parse(localUsers));
+      await (usersApi as any).saveAll(JSON.parse(localUsers));
     } catch (err) {
     }
   }
@@ -842,7 +842,7 @@ export async function pushAttendance() {
   const localAttendance = localStorage.getItem(getAttendanceKey());
   if (localAttendance) {
     try {
-      await attendanceApi.saveAll(JSON.parse(localAttendance));
+      await (attendanceApi as any).saveAll(JSON.parse(localAttendance));
     } catch (err) {
     }
   }
@@ -855,7 +855,7 @@ export async function pushLeaveRequests() {
   const localLeave = localStorage.getItem(getLeaveRequestsKey());
   if (localLeave) {
     try {
-      await leaveRequestsApi.saveAll(JSON.parse(localLeave));
+      await (leaveRequestsApi as any).saveAll(JSON.parse(localLeave));
     } catch (err) {
     }
   }
@@ -869,7 +869,7 @@ export async function pushAgentAvatar(name: string) {
   const localAvatar = localStorage.getItem(avatarKey);
   try {
     // Push the avatar string (or null to remove)
-    await agentAvatarApi.save(name, localAvatar || null);
+    await (agentAvatarApi as any).save(name, localAvatar || null);
   } catch (err) {
   }
 }
@@ -878,7 +878,7 @@ export async function pushAgentAvatar(name: string) {
 export async function pullAgentAvatar(name: string): Promise<string | null> {
   updateTenantContext();
   try {
-    const res = await agentAvatarApi.get(name);
+    const res = await (agentAvatarApi as any).get(name);
     if (res.success && res.data) {
       const avatarKey = `crm_agent_avatar_${name}`;
       localStorage.setItem(getTenantScopedKey(avatarKey), res.data as string);
@@ -897,7 +897,7 @@ export async function pushPassportTracking() {
   const local = localStorage.getItem(getPassportTrackingKey());
   if (local) {
     try {
-      await passportTrackingApi.saveAll(JSON.parse(local));
+      await (passportTrackingApi as any).saveAll(JSON.parse(local));
     } catch (err) {
     }
   }
@@ -916,7 +916,7 @@ export async function pushAuditLog() {
       if (Array.isArray(parsed) && parsed.length > 300) {
         parsed = parsed.slice(0, 300);
       }
-      await auditLogApi.saveAll(parsed);
+      await (auditLogApi as any).saveAll(parsed);
     } catch (err) {
     }
   }
@@ -930,7 +930,7 @@ export async function pushDocumentFiles() {
   const local = localStorage.getItem(getDocumentFilesKey());
   if (local) {
     try {
-      await documentFilesApi.saveAll(JSON.parse(local));
+      await (documentFilesApi as any).saveAll(JSON.parse(local));
     } catch (err) {
     }
   }
@@ -944,7 +944,7 @@ export async function pushSettings() {
   const local = localStorage.getItem(getSettingsKey());
   if (local) {
     try {
-      await settingsApi.save(JSON.parse(local));
+      await (settingsApi as any).save(JSON.parse(local));
     } catch (err) {
     }
   }
@@ -1288,7 +1288,7 @@ async function checkAutoExport() {
     }
 
     // Trigger auto-export
-    const res = await backupApi.autoExport(config.recipients);
+    const res = await (backupApi as any).autoExport(config.recipients);
     if (res.success) {
       localStorage.setItem(getLastAutoExportKey(), new Date().toISOString());
     } else {

@@ -224,7 +224,7 @@ export function NewCaseModal({ isOpen, onClose, adminName, onSuccess }: { isOpen
       setNewCase({ customerName: "", fatherName: "", phone: "", email: "", cnic: "", passport: "", dateOfBirth: "", maritalStatus: "single", address: "", city: "Lahore", country: "Saudi Arabia", jobType: "Driver", jobDescription: "", education: "High School", experience: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "father", agentName: "Faizan", totalFee: 50000, priority: "medium", uploadedDocs: [] });
       uploadedFiles.forEach((f) => { if (f.preview) URL.revokeObjectURL(f.preview); });
       setUploadedFiles([]);
-      onSuccess();
+      onSuccess?.();
       setIsLoading(false);
     }, 1200);
   };
