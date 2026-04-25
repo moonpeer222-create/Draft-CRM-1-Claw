@@ -236,6 +236,7 @@ const adminRoutes = {
     { path: "ai-chatbot", element: <SuspenseWrap><AdminAIChatbot /></SuspenseWrap> },
     { path: "voice-assistant", element: <SuspenseWrap><AdminVoiceAssistant /></SuspenseWrap> },
     { path: "health", element: <SuspenseWrap><AdminHealthDashboard /></SuspenseWrap> },
+    { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
   ],
 };
 
@@ -251,6 +252,9 @@ const masterRoutes = {
     { path: "ai-tools", element: <SuspenseWrap><MasterAITools /></SuspenseWrap> },
     { path: "qwen-test", element: <SuspenseWrap><MasterQwenTest /></SuspenseWrap> },
     { path: "audit", element: <SuspenseWrap><MasterAuditDashboard /></SuspenseWrap> },
+    { path: "audit-dashboard", element: <SuspenseWrap><MasterAuditDashboard /></SuspenseWrap> },
+    { path: "stepfun-test", element: <SuspenseWrap><MasterQwenTest /></SuspenseWrap> },
+    { path: "settings", element: <Navigate to="/admin/settings" replace /> },
   ],
 };
 
