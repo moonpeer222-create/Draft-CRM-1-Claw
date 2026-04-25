@@ -760,6 +760,51 @@ export const aiAuditApi = {
 };
 
 // ── Exports ───────────────────────────────────────────────────────
+export const integrationsApi = {
+  async listConnections() {
+    return request("/integrations/connections", {}, true);
+  },
+  async createConnection(data: any) {
+    return request("/integrations/connections", { method: "POST", body: JSON.stringify(data) }, true);
+  },
+  async updateConnection(id: string, data: any) {
+    return request(`/integrations/connections/${id}`, { method: "PUT", body: JSON.stringify(data) }, true);
+  },
+  async deleteConnection(id: string) {
+    return request(`/integrations/connections/${id}`, { method: "DELETE" }, true);
+  },
+  async listTriggers() {
+    return request("/integrations/triggers", {}, true);
+  },
+  async createTrigger(data: any) {
+    return request("/integrations/triggers", { method: "POST", body: JSON.stringify(data) }, true);
+  },
+  async updateTrigger(id: string, data: any) {
+    return request(`/integrations/triggers/${id}`, { method: "PUT", body: JSON.stringify(data) }, true);
+  },
+  async deleteTrigger(id: string) {
+    return request(`/integrations/triggers/${id}`, { method: "DELETE" }, true);
+  },
+  async executeTrigger(id: string, eventData: any) {
+    return request(`/integrations/triggers/${id}/execute`, { method: "POST", body: JSON.stringify({ event_data: eventData }) }, true);
+  },
+  async listWebhooks() {
+    return request("/integrations/webhooks", {}, true);
+  },
+  async createWebhook(data: any) {
+    return request("/integrations/webhooks", { method: "POST", body: JSON.stringify(data) }, true);
+  },
+  async deleteWebhook(id: string) {
+    return request(`/integrations/webhooks/${id}`, { method: "DELETE" }, true);
+  },
+  async listWebhookLogs(limit = 50) {
+    return request(`/integrations/webhooks/logs?limit=${limit}`, {}, true);
+  },
+  async listExecutionLogs(limit = 50) {
+    return request(`/integrations/execution-logs?limit=${limit}`, {}, true);
+  },
+};
+
 export const api = {
   request,
   healthCheck,
@@ -777,6 +822,7 @@ export const api = {
   adminProfile: adminProfileApi,
   agentProfile: agentProfileApi,
   leaveRequests: leaveRequestsApi,
+  integrations: integrationsApi,
 };
 
 export default api;

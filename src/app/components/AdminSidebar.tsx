@@ -165,6 +165,7 @@ export function AdminSidebar() {
       { sectionName: isUrdu ? "سسٹم" : "System", path: "/admin/sync-history" },
       { sectionName: isUrdu ? "سسٹم" : "System", path: "/admin/user-management" },
       { sectionName: isUrdu ? "سسٹم" : "System", path: "/admin/settings" },
+      { sectionName: isUrdu ? "سسٹم" : "System", path: "/admin/integrations" },
       { sectionName: isUrdu ? "سسٹم" : "System", path: "/admin/profile" },
     ];
     const match = allSubPaths.find(sp => sp.path === location.pathname);
@@ -256,6 +257,7 @@ export function AdminSidebar() {
         { name: isUrdu ? "ڈیٹا بیک اپ" : "Data Backup", path: "/admin/backup", icon: Database },
         { name: isUrdu ? "سنک تاریخ" : "Sync History", path: "/admin/sync-history", icon: GitMerge },
         { name: t("nav.userMgmt"), path: "/admin/user-management", icon: Shield },
+        { name: isUrdu ? "انٹیگریشنز" : "Integrations", path: "/admin/integrations", icon: Zap },
         { name: t("nav.settings"), path: "/admin/settings", icon: Settings },
         { name: isUrdu ? "پروفائل" : "Profile", path: "/admin/profile", icon: UserCircle },
       ],

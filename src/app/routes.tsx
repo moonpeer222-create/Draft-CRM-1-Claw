@@ -88,6 +88,7 @@ const OperatorOperations = lazy(() => lazyRetry(() => import("./pages/operator/O
 const OperatorAIChatbot = lazy(() => lazyRetry(() => import("./pages/operator/OperatorAIChatbot").then(m => ({ default: m.OperatorAIChatbot }))));
 const OperatorVoiceAssistant = lazy(() => lazyRetry(() => import("./pages/operator/OperatorVoiceAssistant").then(m => ({ default: m.OperatorVoiceAssistant }))));
 const AdminHealthDashboard = lazy(() => lazyRetry(() => import("./pages/admin/AdminHealthDashboard").then(m => ({ default: m.AdminHealthDashboard }))));
+const AdminIntegrations = lazy(() => lazyRetry(() => import("./pages/admin/AdminIntegrations").then(m => ({ default: m.AdminIntegrations }))));
 const MasterAuditDashboard = lazy(() => lazyRetry(() => import("./pages/master/MasterAuditDashboard").then(m => ({ default: m.MasterAuditDashboard }))));
 const NotFound = lazy(() => lazyRetry(() => import("./pages/NotFound").then(m => ({ default: m.NotFound }))));
 
@@ -215,6 +216,7 @@ const adminRoutes = {
     { path: "attendance", element: <SuspenseWrap><AdminAttendance /></SuspenseWrap> },
     { path: "financials", element: <SuspenseWrap><AdminFinancials /></SuspenseWrap> },
     { path: "settings", element: <SuspenseWrap><AdminSettings /></SuspenseWrap> },
+    { path: "integrations", element: <SuspenseWrap><AdminIntegrations /></SuspenseWrap> },
     { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
     { path: "cases/:caseId", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
     { path: "business-intelligence", element: <SuspenseWrap><AdminBusinessIntelligence /></SuspenseWrap> },
