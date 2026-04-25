@@ -101,27 +101,32 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 
 -- Organizations: users can see their own org
-CREATE POLICY IF NOT EXISTS "Users can view own organization"
+DROP POLICY IF EXISTS "Users can view own organization" ON public.organizations;
+CREATE POLICY "Users can view own organization"
   ON public.organizations FOR SELECT TO authenticated
   USING (id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()));
 
 -- Payments: tenant isolation
-CREATE POLICY IF NOT EXISTS "Tenant Isolation: payments"
+DROP POLICY IF EXISTS "Tenant Isolation: payments" ON public.payments;
+CREATE POLICY "Tenant Isolation: payments"
   ON public.payments FOR ALL TO authenticated
   USING (tenant_id = public.get_auth_tenant_id());
 
 -- Notes: tenant isolation
-CREATE POLICY IF NOT EXISTS "Tenant Isolation: notes"
+DROP POLICY IF EXISTS "Tenant Isolation: notes" ON public.notes;
+CREATE POLICY "Tenant Isolation: notes"
   ON public.notes FOR ALL TO authenticated
   USING (tenant_id = public.get_auth_tenant_id());
 
 -- AI chat: users see own chats
-CREATE POLICY IF NOT EXISTS "Users can manage own AI chats"
+DROP POLICY IF EXISTS "Users can manage own AI chats" ON public.ai_chat_history;
+CREATE POLICY "Users can manage own AI chats"
   ON public.ai_chat_history FOR ALL TO authenticated
   USING (user_id = auth.uid());
 
 -- AI audit log: admins only
-CREATE POLICY IF NOT EXISTS "Admins can view AI audit log"
+DROP POLICY IF EXISTS "Admins can view AI audit log" ON public.ai_audit_log;
+CREATE POLICY "Admins can view AI audit log"
   ON public.ai_audit_log FOR SELECT TO authenticated
   USING (
     EXISTS (
