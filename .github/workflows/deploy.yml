@@ -33,17 +33,21 @@ jobs:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-    - name: 🚀 Sync Files via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: 21
-        local-dir: ./dist/
-        server-dir: ./
-        dangerous-clean-slate: true
-        exclude: |
-          **/.git*
-          **/.git*/**
-          **/node_modules/**
+    - name: 🚀 Deploy via FTP (lftp)
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq lftp > /dev/null
+        lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" ${{ secrets.FTP_SERVER }} -e "
+          set ssl:verify-certificate no;
+          set net:timeout 30;
+          set net:max-retries 3;
+          lcd ./dist;
+          cd .;
+          mirror -R --parallel=3 --transfer-all \
+            --exclude .logs/ \
+            --exclude .filebrowser/ \
+            --exclude .ssh/ \
+            --exclude .transfer_*/ \
+            --exclude domains/ \
+            --exclude .git* .;
+          bye
+        "
