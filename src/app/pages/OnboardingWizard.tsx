@@ -48,7 +48,7 @@ export function OnboardingWizard() {
       // and set onboarding_completed = true
       await new Promise(r => setTimeout(r, 1500)); // Simulate
       toast.success('Onboarding complete! Welcome to Emerald CRM.');
-      navigate('/admin/dashboard');
+      navigate('/admin');
     } catch (e) {
       toast.error('Failed to save preferences');
     } finally {

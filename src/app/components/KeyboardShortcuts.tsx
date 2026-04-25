@@ -67,11 +67,11 @@ export function KeyboardShortcuts({ role }: KeyboardShortcutsProps) {
     if (role === "master") {
       return [
         ...global,
-        { keys: ["Alt", "C"], label: "Cases", labelUr: "کیسز", action: () => navigate("/master/cases"), category: "Navigation", categoryUr: "نیویگیشن" },
-        { keys: ["Alt", "F"], label: "Financials", labelUr: "مالیات", action: () => navigate("/master/financials"), category: "Navigation", categoryUr: "نیویگیشن" },
-        { keys: ["Alt", "T"], label: "Team", labelUr: "ٹیم", action: () => navigate("/master/team"), category: "Navigation", categoryUr: "نیویگیشن" },
-        { keys: ["Alt", "R"], label: "Reports", labelUr: "رپورٹیں", action: () => navigate("/master/reports"), category: "Navigation", categoryUr: "نیویگیشن" },
-        { keys: ["Alt", "A"], label: "Analytics", labelUr: "تجزیات", action: () => navigate("/master/analytics"), category: "Navigation", categoryUr: "نیویگیشن" },
+        { keys: ["Alt", "C"], label: "Cases", labelUr: "کیسز", action: () => navigate("/admin/cases"), category: "Navigation", categoryUr: "نیویگیشن" },
+        { keys: ["Alt", "F"], label: "Financials", labelUr: "مالیات", action: () => navigate("/admin/financials"), category: "Navigation", categoryUr: "نیویگیشن" },
+        { keys: ["Alt", "T"], label: "Team", labelUr: "ٹیم", action: () => navigate("/admin/team"), category: "Navigation", categoryUr: "نیویگیشن" },
+        { keys: ["Alt", "R"], label: "Reports", labelUr: "رپورٹیں", action: () => navigate("/admin/reports"), category: "Navigation", categoryUr: "نیویگیشن" },
+        { keys: ["Alt", "A"], label: "Analytics", labelUr: "تجزیات", action: () => navigate("/admin/analytics"), category: "Navigation", categoryUr: "نیویگیشن" },
         { keys: ["Alt", "P"], label: "Profile", labelUr: "پروفائل", action: () => navigate("/master/profile"), category: "Navigation", categoryUr: "نیویگیشن" },
         { keys: ["Alt", "I"], label: "AI Chatbot", labelUr: "اے آئی چیٹ بوٹ", action: () => navigate("/master/ai-chatbot"), category: "AI Tools", categoryUr: "اے آئی ٹولز" },
       ];
