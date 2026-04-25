@@ -27,11 +27,14 @@ export const STORAGE = {
   notifications: "emr-op-notifications",
 };
 
+import { debouncedPush } from "../../../lib/operatorSync";
+
 export function load<T>(key: string, fallback: T): T {
   try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : fallback; } catch { return fallback; }
 }
+
 export function save(key: string, data: any) {
   localStorage.setItem(key, JSON.stringify(data));
   // Trigger debounced cloud sync
-  import("../../../lib/operatorSync").then(m => m.debouncedPush()).catch(() => {});
+  debouncedPush();
 }
