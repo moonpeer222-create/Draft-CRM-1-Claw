@@ -123,6 +123,7 @@ export function MasterSidebar() {
         { name: isUrdu ? "API \u06C1\u06CC\u0644\u062A\u06BE" : "API Health", path: "/admin/health", icon: Activity },
         { name: isUrdu ? "\u0633\u0646\u06A9 \u062A\u0627\u0631\u06CC\u062E" : "Sync History", path: "/admin/sync-history", icon: GitMerge },
         { name: isUrdu ? "\u062A\u0631\u062A\u06CC\u0628\u0627\u062A" : "Settings", path: "/admin/settings", icon: Settings },
+        { name: isUrdu ? "\u0627\u0646\u0679\u06CC\u06AF\u0631\u06CC\u0634\u0646\u0632" : "Integrations", path: "/admin/integrations", icon: Zap },
         { name: isUrdu ? "\u067E\u0631\u0648\u0641\u0627\u0626\u0644" : "Profile", path: "/master/profile", icon: UserCircle },
       ],
     },

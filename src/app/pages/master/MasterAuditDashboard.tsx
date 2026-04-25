@@ -199,7 +199,7 @@ export function MasterAuditDashboard() {
               )}
 
               {/* Service Checks */}
-              {healthData?.checks && (
+              {healthData?.checks && typeof healthData.checks === "object" && !Array.isArray(healthData.checks) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Object.entries(healthData.checks).map(([key, check]: [string, any]) => (
                     <div key={key} className={`${card} rounded-xl p-4 shadow border ${dc ? "border-gray-700" : "border-gray-200"}`}>
