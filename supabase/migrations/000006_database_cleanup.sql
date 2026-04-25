@@ -139,8 +139,13 @@ CREATE POLICY "Admins can view AI audit log"
 -- 6. FIX updated_at TRIGGERS (they referenced old users table)
 -- ═══════════════════════════════════════════════════════════════════
 
--- Remove trigger that referenced old users table
-DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+-- Remove trigger that referenced old users table (only if table still exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users' AND table_schema = 'public') THEN
+    DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+  END IF;
+END $$;
 
 -- Ensure the trigger function still exists
 CREATE OR REPLACE FUNCTION update_updated_at_column()
