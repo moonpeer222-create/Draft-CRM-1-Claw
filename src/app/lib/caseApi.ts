@@ -179,38 +179,44 @@ export async function updateCaseStatus(caseId: string, status: Case["status"]): 
 
 export async function addPayment(caseId: string, payment: Payment): Promise<boolean> {
   const tenantId = getCachedTenantId();
-  let query = supabase.from('cases').select('*').eq('id', caseId);
+  
+  // First, get the actual case UUID
+  let query = supabase.from('cases').select('id').eq('id', caseId);
   if (tenantId) {
     query = query.eq('tenant_id', tenantId);
   }
   
-  let { data } = await query.single();
-  if (!data) {
-    let fallbackQuery = supabase.from('cases').select('*').eq('case_number', caseId);
+  let { data: caseData } = await query.single();
+  if (!caseData) {
+    let fallbackQuery = supabase.from('cases').select('id').eq('case_number', caseId);
     if (tenantId) {
       fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
     }
     const { data: byCaseNumber } = await fallbackQuery.single();
-    data = byCaseNumber;
+    caseData = byCaseNumber;
   }
-  if (!data) return false;
+  if (!caseData) return false;
   
-  const current = mapSupabaseCaseToLocal(data);
-  const dbId = data.id;
-  const payments = [...(current.payments || []), payment];
-  const paidAmount = payments.reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0);
-  const dbRow = caseToDbRow({ ...current, payments, paidAmount, updatedDate: new Date().toISOString() } as Case, data.tenant_id);
-  dbRow.id = dbId;
+  const dbId = caseData.id;
   
-  let updateQuery = supabase.from('cases').update(dbRow).eq('id', dbId);
-  if (tenantId) {
-    updateQuery = updateQuery.eq('tenant_id', tenantId);
-  }
+  // Insert into payments table instead of metadata blob
+  const { error } = await supabase.from('payments').insert({
+    case_id: dbId,
+    amount: payment.amount || 0,
+    method: payment.method || 'cash',
+    status: payment.approvalStatus === 'approved' ? 'completed' : 'pending',
+    reference: payment.receiptNumber || null,
+    notes: payment.description || null,
+    verified: payment.approvalStatus === 'approved',
+    tenant_id: tenantId || null,
+  });
   
-  const { error } = await updateQuery;
   if (error) {
+    console.error('Failed to add payment:', error);
     return false;
   }
+  
+  // paid_amount is auto-calculated by trigger
   return true;
 }
 
@@ -312,23 +318,27 @@ function caseToDbRow(c: Case, tenantId?: string | null): any {
     destination_country: c.country || null,
     status: c.status || c.pipelineStageKey || "new_case",
     priority: c.priority || "medium",
+    
+    // Proper columns (new normalized fields)
+    customer_name: c.customerName || null,
+    father_name: c.fatherName || null,
+    phone: c.phone || null,
+    email: c.email || null,
+    cnic: c.cnic || null,
+    passport: c.passport || null,
+    address: c.address || null,
+    city: c.city || null,
+    marital_status: c.maritalStatus || "single",
+    date_of_birth: c.dateOfBirth || null,
+    education: c.education || null,
+    experience: c.experience || null,
+    total_fee: c.totalFee || 0,
+    paid_amount: c.paidAmount || 0,
+    job_description: c.jobDescription || null,
+    emergency_contact: c.emergencyContact || {},
+    
+    // Keep metadata for backward compatibility and fields not yet normalized
     metadata: {
-      customerName: c.customerName,
-      fatherName: c.fatherName,
-      phone: c.phone,
-      email: c.email,
-      cnic: c.cnic,
-      passport: c.passport,
-      country: c.country,
-      jobType: c.jobType,
-      jobDescription: c.jobDescription,
-      address: c.address,
-      city: c.city,
-      maritalStatus: c.maritalStatus,
-      dateOfBirth: c.dateOfBirth,
-      emergencyContact: c.emergencyContact,
-      education: c.education,
-      experience: c.experience,
       agentId: c.agentId,
       agentName: c.agentName,
       timeline: c.timeline,
@@ -336,8 +346,6 @@ function caseToDbRow(c: Case, tenantId?: string | null): any {
       payments: c.payments,
       medical: c.medical,
       notes: c.notes,
-      totalFee: c.totalFee,
-      paidAmount: c.paidAmount,
       pipelineType: c.pipelineType,
       pipelineStageKey: c.pipelineStageKey,
       currentStage: c.currentStage,
@@ -382,22 +390,23 @@ function mapSupabaseCaseToLocal(raw: any): Case {
   return {
     id: raw.case_number || raw.id,
     customerId: raw.client_id || meta.customerId || "",
-    customerName: meta.customerName || "Customer",
-    fatherName: meta.fatherName || "",
-    phone: meta.phone || "",
-    email: meta.email || "",
-    cnic: meta.cnic || "",
-    passport: meta.passport || "",
+    // Read from proper columns first, fallback to metadata
+    customerName: raw.customer_name || meta.customerName || "Customer",
+    fatherName: raw.father_name || meta.fatherName || "",
+    phone: raw.phone || meta.phone || "",
+    email: raw.email || meta.email || "",
+    cnic: raw.cnic || meta.cnic || "",
+    passport: raw.passport || meta.passport || "",
     country: raw.destination_country || meta.country || "",
     jobType: meta.jobType || raw.visa_type || "",
-    jobDescription: meta.jobDescription || "",
-    address: meta.address || "",
-    city: meta.city || "",
-    maritalStatus: meta.maritalStatus || "single",
-    dateOfBirth: meta.dateOfBirth || "",
-    emergencyContact: meta.emergencyContact || { name: "", phone: "", relationship: "" },
-    education: meta.education || "",
-    experience: meta.experience || "",
+    jobDescription: raw.job_description || meta.jobDescription || "",
+    address: raw.address || meta.address || "",
+    city: raw.city || meta.city || "",
+    maritalStatus: raw.marital_status || meta.maritalStatus || "single",
+    dateOfBirth: raw.date_of_birth || meta.dateOfBirth || "",
+    emergencyContact: raw.emergency_contact || meta.emergencyContact || { name: "", phone: "", relationship: "" },
+    education: raw.education || meta.education || "",
+    experience: raw.experience || meta.experience || "",
     status: raw.status || meta.status || "new_case",
     agentId: raw.agent_id || meta.agentId || "",
     agentName: meta.agentName || "",
@@ -409,35 +418,35 @@ function mapSupabaseCaseToLocal(raw: any): Case {
     medical: meta.medical || null,
     notes: meta.notes || [],
     priority: (raw.priority || meta.priority || "medium") as any,
-    totalFee: meta.totalFee || 0,
-    paidAmount: meta.paidAmount || 0,
+    totalFee: parseFloat(raw.total_fee) || meta.totalFee || 0,
+    paidAmount: parseFloat(raw.paid_amount) || meta.paidAmount || 0,
     pipelineType: meta.pipelineType || "visa",
     pipelineStageKey: raw.status || meta.pipelineStageKey || "new_case",
     currentStage: meta.currentStage || 1,
     stageStartedAt: meta.stageStartedAt || raw.created_at || new Date().toISOString(),
     stageDeadlineAt: meta.stageDeadlineAt || raw.created_at || new Date().toISOString(),
-    isOverdue: meta.isOverdue || false,
+    isOverdue: raw.is_overdue || meta.isOverdue || false,
     delayReason: meta.delayReason,
     delayReportedAt: meta.delayReportedAt,
     documentChecklist: meta.documentChecklist || {},
     documentChecklistFiles: meta.documentChecklistFiles || {},
-    paymentVerified: meta.paymentVerified || false,
-    paymentVerifiedAt: meta.paymentVerifiedAt,
-    paymentVerifiedBy: meta.paymentVerifiedBy,
-    ownerApproval: meta.ownerApproval || false,
-    ownerApprovalAt: meta.ownerApprovalAt,
-    ownerApprovalNote: meta.ownerApprovalNote,
-    cancellationReason: meta.cancellationReason,
-    cancelledAt: meta.cancelledAt,
-    cancelledBy: meta.cancelledBy,
-    reopenedAt: meta.reopenedAt,
-    reopenedBy: meta.reopenedBy,
-    reopenedFromStage: meta.reopenedFromStage,
-    assignedStaffId: meta.assignedStaffId,
-    assignedStaffName: meta.assignedStaffName,
-    assignedAt: meta.assignedAt,
-    companyName: meta.companyName,
-    companyCountry: meta.companyCountry,
+    paymentVerified: raw.payment_verified || meta.paymentVerified || false,
+    paymentVerifiedAt: raw.payment_verified_at || meta.paymentVerifiedAt,
+    paymentVerifiedBy: raw.payment_verified_by || meta.paymentVerifiedBy,
+    ownerApproval: raw.owner_approval || meta.ownerApproval || false,
+    ownerApprovalAt: raw.owner_approval_at || meta.ownerApprovalAt,
+    ownerApprovalNote: raw.owner_approval_note || meta.ownerApprovalNote,
+    cancellationReason: raw.cancellation_reason || meta.cancellationReason,
+    cancelledAt: raw.cancelled_at || meta.cancelledAt,
+    cancelledBy: raw.cancelled_by || meta.cancelledBy,
+    reopenedAt: raw.reopened_at || meta.reopenedAt,
+    reopenedBy: raw.reopened_by || meta.reopenedBy,
+    reopenedFromStage: raw.reopened_from_stage || meta.reopenedFromStage,
+    assignedStaffId: raw.assigned_staff_id || meta.assignedStaffId,
+    assignedStaffName: raw.assigned_staff_name || meta.assignedStaffName,
+    assignedAt: raw.assigned_at || meta.assignedAt,
+    companyName: raw.company_name || meta.companyName,
+    companyCountry: raw.company_country || meta.companyCountry,
   } as Case;
 }
 
