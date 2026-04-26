@@ -36,14 +36,15 @@ jobs:
     - name: 🚀 Deploy via FTP (lftp)
       run: |
         sudo apt-get update -qq && sudo apt-get install -y -qq lftp > /dev/null
-        # Use short username format that works with Hostinger
+        # Deploy to public_html directory on Hostinger
         lftp -u "u402219950","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" -e "
           set ssl:verify-certificate no;
           set net:timeout 30;
           set net:max-retries 3;
+          set mirror:overwrite-all true;
           lcd ./dist;
-          cd .;
-          mirror -R --parallel=3 --transfer-all \
+          cd public_html;
+          mirror -R --parallel=3 --overwrite \
             --exclude .logs/ \
             --exclude .filebrowser/ \
             --exclude .ssh/ \
@@ -52,3 +53,9 @@ jobs:
             --exclude .git* .;
           bye
         "
+
+    - name: ✅ Verify Deployment
+      run: |
+        echo "Checking deployed files..."
+        curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/ || echo "Site check failed"
+        echo "Deployment verification complete"
