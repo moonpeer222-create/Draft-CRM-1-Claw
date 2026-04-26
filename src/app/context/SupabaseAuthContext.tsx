@@ -44,46 +44,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // 2. Try restore agent code session from localStorage
-        const agentSession = AccessCodeService.getAgentSession();
-        if (agentSession) {
-          // Fetch profile from Supabase using agent_id
-          const { data: agents } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('role', 'agent')
-            .eq('agent_id', agentSession.agentId)
-            .limit(1);
-          const agentProfile = agents?.[0];
-          const syntheticProfile: DbUser = {
-            id: agentProfile?.id || agentSession.agentId,
-            email: agentProfile?.email || `${agentSession.agentId}@agent.local`,
-            full_name: agentSession.agentName,
-            role: 'agent',
-            organization_id: agentProfile?.organization_id || null,
-            avatar_url: agentProfile?.avatar_url || null,
-            last_seen: new Date().toISOString(),
-            created_at: agentProfile?.created_at || new Date().toISOString(),
-            agent_id: agentSession.agentId,
-            agent_name: agentSession.agentName,
-            ...(agentProfile || {}),
-          };
-          const syntheticUser = { id: syntheticProfile.id } as User;
-          const syntheticSession = {
-            access_token: 'agent-code-session',
-            refresh_token: 'agent-code-session',
-            expires_in: Math.max(0, Math.floor((agentSession.expiresAt - Date.now()) / 1000)),
-            expires_at: Math.floor(agentSession.expiresAt / 1000),
-            token_type: 'bearer',
-            user: syntheticUser,
-          } as Session;
-          if (!mounted) return;
-          setUser(syntheticUser);
-          setProfile(syntheticProfile);
-          setSession(syntheticSession);
-          setLoading(false);
-          return;
-        }
+        // 2. No synthetic sessions - agents must use real Supabase Auth
+        // If no session, user is not authenticated
       } catch {
         /* ignore */
       }
@@ -156,10 +118,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       return { error: result.error || "Invalid access code" };
     }
 
-    // Create legacy session for timer/UI compatibility
-    AccessCodeService.createAgentSession(code, result.agentId!, result.agentName!);
-
-    // Attempt real Supabase auth login using deterministic password
+    // Agents must use real Supabase Auth - no synthetic sessions
     const agentEmail = result.profile?.email;
     if (agentEmail && result.agentId) {
       const agentPassword = getAgentPassword(result.agentId);
@@ -168,40 +127,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         password: agentPassword,
       });
       if (!signInError && signInData.session) {
-        // Real session obtained — onAuthStateChange will update React state
         return { error: null };
       }
+      return { error: signInError?.message || "Agent login failed" };
     }
 
-    // Fallback: synthetic session (cases may fail RLS if DB requires authenticated)
-    const syntheticProfile: DbUser = {
-      id: result.profile?.id || result.agentId!,
-      email: result.profile?.email || `${result.agentId}@agent.local`,
-      full_name: result.agentName!,
-      role: 'agent',
-      organization_id: result.profile?.organization_id || null,
-      avatar_url: result.profile?.avatar_url || null,
-      last_seen: new Date().toISOString(),
-      created_at: result.profile?.created_at || new Date().toISOString(),
-      agent_id: result.agentId || null,
-      agent_name: result.agentName || null,
-      ...(result.profile || {}),
-    };
-
-    const syntheticUser = { id: syntheticProfile.id } as User;
-    const syntheticSession = {
-      access_token: 'agent-code-session',
-      refresh_token: 'agent-code-session',
-      expires_in: 6 * 60 * 60,
-      expires_at: Math.floor(Date.now() / 1000) + 6 * 60 * 60,
-      token_type: 'bearer',
-      user: syntheticUser,
-    } as Session;
-
-    setUser(syntheticUser);
-    setProfile(syntheticProfile);
-    setSession(syntheticSession);
-    return { error: null };
+    return { error: "Agent account not properly configured" };
   };
 
   const signOut = async () => {
