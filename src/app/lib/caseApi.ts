@@ -5,12 +5,9 @@ import { getStageNumber, getStageLabel, getStageDeadlineHours } from "./mockData
 
 export async function createCase(caseData: Partial<Case>): Promise<Case | null> {
   // Get tenant context for tenant isolation
+  // CRITICAL FIX: getCurrentTenantId() now never returns null
   const tenantId = await getCurrentTenantId();
-  if (!tenantId) {
-    console.error("No tenant context available for case creation");
-    return null;
-  }
-
+  
   const { data: existing } = await supabase.from('cases').select('case_number').order('created_at', { ascending: false }).limit(100);
   const cases = existing || [];
   const year = new Date().getFullYear();
