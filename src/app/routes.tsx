@@ -37,6 +37,7 @@ const AdminAttendance = lazy(() => lazyRetry(() => import("./pages/admin/AdminAt
 const AdminFinancials = lazy(() => lazyRetry(() => import("./pages/admin/AdminFinancials").then(m => ({ default: m.AdminFinancials }))));
 const AdminSettings = lazy(() => lazyRetry(() => import("./pages/admin/AdminSettings").then(m => ({ default: m.AdminSettings }))));
 const AdminCaseManagement = lazy(() => lazyRetry(() => import("./pages/admin/AdminCaseManagement").then(m => ({ default: m.AdminCaseManagement }))));
+const AdminCaseSettings = lazy(() => lazyRetry(() => import("./pages/admin/CaseSettings").then(m => ({ default: m.CaseSettings }))));
 const AdminBusinessIntelligence = lazy(() => lazyRetry(() => import("./pages/admin/AdminBusinessIntelligence").then(m => ({ default: m.AdminBusinessIntelligence }))));
 const AdminUserManagement = lazy(() => lazyRetry(() => import("./pages/admin/AdminUserManagement").then(m => ({ default: m.AdminUserManagement }))));
 const AdminProfile = lazy(() => lazyRetry(() => import("./pages/admin/AdminProfile").then(m => ({ default: m.AdminProfile }))));
@@ -219,6 +220,7 @@ const adminRoutes = {
     { path: "integrations", element: <SuspenseWrap><AdminIntegrations /></SuspenseWrap> },
     { path: "cases", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
     { path: "cases/:caseId", element: <SuspenseWrap><AdminCaseManagement /></SuspenseWrap> },
+    { path: "case-settings", element: <SuspenseWrap><AdminCaseSettings /></SuspenseWrap> },
     { path: "business-intelligence", element: <SuspenseWrap><AdminBusinessIntelligence /></SuspenseWrap> },
     { path: "user-management", element: <SuspenseWrap><AdminUserManagement /></SuspenseWrap> },
     { path: "profile", element: <SuspenseWrap><AdminProfile /></SuspenseWrap> },

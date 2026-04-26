@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router";
+import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { Shield, Briefcase, User, Sun, Moon, Globe, ArrowRight, Sparkles, Crown, Monitor, Gem } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "../lib/toast";
@@ -7,7 +8,17 @@ import { staggerContainer, staggerItem, floating } from "../lib/animations";
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { darkMode, toggleDarkMode, language, toggleLanguage, t, isUrdu, fontClass } = useTheme();
+
+  // Detect Supabase password-recovery tokens on the landing page and redirect
+  useEffect(() => {
+    const hash = window.location.hash;
+    const code = searchParams.get("code");
+    if (code || hash.includes("type=recovery") || hash.includes("access_token=")) {
+      navigate("/update-password" + window.location.search + window.location.hash, { replace: true });
+    }
+  }, [navigate, searchParams]);
 
   const roles = [
     {

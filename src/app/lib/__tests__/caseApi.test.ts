@@ -16,6 +16,11 @@ vi.mock('../supabase', () => ({
   }
 }));
 
+vi.mock('../tenantContext', () => ({
+  getCurrentTenantId: vi.fn().mockResolvedValue('test-tenant-123'),
+  getCachedTenantId: vi.fn().mockReturnValue('test-tenant-123'),
+}));
+
 describe('caseApi integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();

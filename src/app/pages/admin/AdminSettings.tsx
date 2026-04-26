@@ -1,6 +1,6 @@
 import { AdminSidebar } from "../../components/AdminSidebar";
 import { AdminHeader } from "../../components/AdminHeader";
-import { Bell, Zap, Users as UsersIcon, Database, Plug, Save, Plus, Eye, Edit, Send, Trash2, Download, Upload, RefreshCw, Globe, Moon, Sun, GitMerge, Timer, BarChart3, Sparkles, Gamepad2 } from "lucide-react";
+import { Bell, Zap, Users as UsersIcon, Database, Plug, Save, Plus, Eye, Edit, Send, Trash2, Download, Upload, RefreshCw, Globe, Moon, Sun, GitMerge, Timer, BarChart3, Sparkles, Gamepad2, Briefcase } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../../lib/ThemeContext";
@@ -39,6 +39,7 @@ export function AdminSettings() {
     { id: "automation", label: t("settings.automation"), icon: Zap },
     { id: "roles", label: t("settings.roles"), icon: UsersIcon },
     { id: "data", label: t("settings.data"), icon: Database },
+    { id: "case", label: isUrdu ? "کیس سیٹنگز" : "Case Settings", icon: Briefcase },
     { id: "integrations", label: t("settings.integrations"), icon: Plug },
     { id: "sync", label: isUrdu ? "سنک" : "Sync", icon: GitMerge },
     { id: "preferences", label: isUrdu ? "ترجیحات" : "Preferences", icon: Globe },
@@ -435,6 +436,23 @@ export function AdminSettings() {
                 </div>
               )}
 
+              {/* Case Settings Tab */}
+              {activeTab === "case" && (
+                <div className="space-y-4">
+                  <div className={`${card} rounded-xl border ${dc ? "border-gray-700" : "border-gray-200"} p-4 sm:p-6`}>
+                    <h3 className={`text-lg font-semibold mb-4 ${txt}`}>{isUrdu ? "کیس سیٹنگز" : "Case Settings"}</h3>
+                    <p className={`text-sm ${sub} mb-4`}>{isUrdu ? "کیس مینجمنٹ کی ترتیبات" : "Configure case management behavior, SLA, and pipeline rules"}</p>
+                    <button
+                      onClick={() => window.location.href = "/admin/case-settings"}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors min-h-[48px]"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      {isUrdu ? "کیس سیٹنگز کھولیں" : "Open Case Settings"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* VisaVerse Tab */}
               {activeTab === "visaverse" && (
                 <VisaVerseSettings isUrdu={isUrdu} darkMode={dc} />
@@ -443,7 +461,7 @@ export function AdminSettings() {
           </AnimatePresence>
 
           {/* Save button */}
-          {activeTab !== "visaverse" && (
+          {activeTab !== "visaverse" && activeTab !== "case" && (
             <motion.div className="mt-6">
               <button onClick={handleSave} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors min-h-[48px]">
                 <Save className="w-4 h-4" />
