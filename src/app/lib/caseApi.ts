@@ -3,6 +3,57 @@ import { getCurrentTenantId, getCachedTenantId } from "./tenantContext";
 import type { Case, Payment, Note } from "./mockData";
 import { getStageNumber, getStageLabel, getStageDeadlineHours } from "./mockData";
 
+export async function loadCaseDocuments(caseId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('case_id', caseId)
+    .order('created_at', { ascending: false });
+  
+  if (error || !data) return [];
+  
+  return data.map(doc => ({
+    id: doc.id,
+    name: doc.file_name,
+    url: doc.file_url,
+    type: doc.file_type,
+    size: doc.file_size,
+    checklistKey: doc.document_type,
+    status: doc.verified ? 'verified' : 'pending',
+    uploadedAt: doc.created_at,
+    verifiedBy: doc.verified_by,
+    verifiedAt: doc.verified_at,
+    notes: doc.description,
+  }));
+}
+
+export async function saveDocumentToTable(caseId: string, doc: any): Promise<boolean> {
+  const tenantId = getCachedTenantId();
+  
+  const { error } = await supabase.from('documents').insert({
+    case_id: caseId,
+    tenant_id: tenantId,
+    file_name: doc.name,
+    file_url: doc.url,
+    file_type: doc.type || 'application/pdf',
+    file_size: doc.size || 0,
+    document_type: doc.checklistKey || 'other',
+    description: doc.notes || null,
+    metadata: {
+      original_id: doc.id,
+      status: doc.status,
+      checklist_key: doc.checklistKey,
+    },
+  });
+  
+  if (error) {
+    console.error('Failed to save document:', error);
+    return false;
+  }
+  
+  return true;
+}
+
 export async function createCase(caseData: Partial<Case>): Promise<Case | null> {
   // Get tenant context for tenant isolation
   // CRITICAL FIX: getCurrentTenantId() now never returns null
