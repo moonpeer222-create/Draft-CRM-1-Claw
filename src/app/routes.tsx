@@ -267,6 +267,7 @@ const masterRoutes = {
     { path: "audit-log", element: <SuspenseWrap><AdminAuditLog /></SuspenseWrap> },
     { path: "backup", element: <SuspenseWrap><AdminBackup /></SuspenseWrap> },
     { path: "sync-history", element: <SuspenseWrap><AdminSyncHistory /></SuspenseWrap> },
+    { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
     { path: "ai-chatbot", element: <SuspenseWrap><MasterAIChatbot /></SuspenseWrap> },
     { path: "voice-assistant", element: <SuspenseWrap><MasterVoiceAssistant /></SuspenseWrap> },
     { path: "profile", element: <SuspenseWrap><MasterProfile /></SuspenseWrap> },
@@ -312,6 +313,7 @@ const operatorRoutes = {
   element: <OperatorLayout />,
   children: [
     { index: true, element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
+    { path: "operations", element: <SuspenseWrap><OperatorOperations /></SuspenseWrap> },
     { path: "ai-chatbot", element: <SuspenseWrap><OperatorAIChatbot /></SuspenseWrap> },
     { path: "voice-assistant", element: <SuspenseWrap><OperatorVoiceAssistant /></SuspenseWrap> },
   ],
