@@ -41,20 +41,9 @@ jobs:
           set ssl:verify-certificate no;
           set net:timeout 30;
           set net:max-retries 3;
-          set mirror:overwrite-all true;
-          !echo 'Current FTP directory:';
-          pwd;
-          ls;
-          mkdir -p public_html;
+          set ftp:passive-mode true;
           lcd ./dist;
-          cd public_html;
-          mirror -R --parallel=3 --overwrite \
-            --exclude .logs/ \
-            --exclude .filebrowser/ \
-            --exclude .ssh/ \
-            --exclude .transfer_*/ \
-            --exclude domains/ \
-            --exclude .git* .;
+          mirror -R --parallel=3 --overwrite . ./public_html;
           bye
         "
 
