@@ -43,13 +43,28 @@ jobs:
           set net:max-retries 5;
           set ftp:passive-mode true;
           set ftp:ssl-allow false;
+          !echo '=== Checking local .htaccess ===';
+          !ls -la ./dist/.htaccess;
           lcd ./dist;
           mirror -R --overwrite --verbose . public_html;
+          !echo '=== Explicitly uploading .htaccess ===';
+          put -O public_html/ ./.htaccess;
+          !echo '=== Verifying remote .htaccess ===';
+          ls public_html/.htaccess;
           bye
         "
 
     - name: ✅ Verify Deployment
       run: |
-        echo "Checking deployed files..."
-        curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/ || echo "Site check failed"
-        echo "Deployment verification complete"
+        echo "Checking root..."
+        ROOT_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/)
+        echo "Root status: $ROOT_CODE"
+        echo "Checking deep route..."
+        DEEP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/master/login)
+        echo "Deep route status: $DEEP_CODE"
+        if [ "$ROOT_CODE" = "200" ] && [ "$DEEP_CODE" = "200" ]; then
+          echo "✅ All checks passed"
+        else
+          echo "⚠️ Some checks failed"
+          exit 1
+        fi
