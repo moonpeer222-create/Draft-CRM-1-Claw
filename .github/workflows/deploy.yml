@@ -39,11 +39,12 @@ jobs:
         # Deploy to public_html directory on Hostinger
         lftp -u "u402219950","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" -e "
           set ssl:verify-certificate no;
-          set net:timeout 30;
-          set net:max-retries 3;
+          set net:timeout 60;
+          set net:max-retries 5;
           set ftp:passive-mode true;
+          set ftp:ssl-allow false;
           lcd ./dist;
-          mirror -R --parallel=3 --overwrite . ./public_html;
+          mirror -R --overwrite --verbose . public_html;
           bye
         "
 
