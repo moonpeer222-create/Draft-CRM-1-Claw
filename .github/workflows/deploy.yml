@@ -37,21 +37,19 @@ jobs:
     - name: 🚀 Deploy via FTP (lftp)
       run: |
         sudo apt-get update -qq && sudo apt-get install -y -qq lftp > /dev/null
-        # Deploy to public_html directory on Hostinger
+        # Deploy to current directory (Hostinger FTP user lands in domain root)
         lftp -u "u402219950","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" -e "
           set ssl:verify-certificate no;
-          set net:timeout 60;
-          set net:max-retries 5;
+          set net:timeout 120;
+          set net:max-retries 10;
+          set net:reconnect-interval-base 5;
           set ftp:passive-mode true;
           set ftp:ssl-allow false;
-          !echo '=== Checking local .htaccess ===';
-          !ls -la ./dist/.htaccess;
+          set mirror:set-times false;
+          !echo 'Current dir:';
+          pwd;
           lcd ./dist;
-          mirror -R --overwrite --verbose . public_html;
-          !echo '=== Explicitly uploading .htaccess ===';
-          put -O public_html/ ./.htaccess;
-          !echo '=== Verifying remote .htaccess ===';
-          ls public_html/.htaccess;
+          mirror -R --overwrite . .;
           bye
         "
 
