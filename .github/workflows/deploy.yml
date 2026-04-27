@@ -32,6 +32,7 @@ jobs:
       env:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_USE_HASH_ROUTER: "true"
 
     - name: 🚀 Deploy via FTP (lftp)
       run: |
@@ -59,12 +60,12 @@ jobs:
         echo "Checking root..."
         ROOT_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/)
         echo "Root status: $ROOT_CODE"
-        echo "Checking deep route..."
-        DEEP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://emeraldconsultancycompany.com/master/login)
-        echo "Deep route status: $DEEP_CODE"
-        if [ "$ROOT_CODE" = "200" ] && [ "$DEEP_CODE" = "200" ]; then
-          echo "✅ All checks passed"
+        echo "Checking hash route..."
+        HASH_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://emeraldconsultancycompany.com/#/master/login")
+        echo "Hash route status: $HASH_CODE"
+        if [ "$ROOT_CODE" = "200" ]; then
+          echo "✅ Deploy verified"
         else
-          echo "⚠️ Some checks failed"
+          echo "⚠️ Root check failed"
           exit 1
         fi
